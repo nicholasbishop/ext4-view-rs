@@ -15,6 +15,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
+pub mod diff_walk;
 pub use mount::{Mount, ReadOnly};
 
 /// Calculate the SHA256 hash of the file at `path`.

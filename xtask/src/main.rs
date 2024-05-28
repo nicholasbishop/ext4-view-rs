@@ -14,7 +14,7 @@ use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, str};
-use xtask::{Mount, ReadOnly};
+use xtask::{diff_walk, Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
 ///
@@ -234,6 +234,19 @@ enum Action {
     /// The test files will be committed via git-lfs, so developers
     /// working on the repo do not typically need to run this command.
     CreateTestData,
+
+    /// Test that all files/directories in a filesystem are read correctly.
+    ///
+    /// This mounts a filesystem and walks the mount point, then
+    /// compares the result with walking the filesystem via the
+    /// `ext4-view` crate.
+    ///
+    /// Note that mounting a filesystem normally requires elevated
+    /// permissions, so this command runs some code with `sudo`.
+    DiffWalk {
+        /// Path of a file containing an ext4 filesystem.
+        path: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -241,5 +254,6 @@ fn main() -> Result<()> {
 
     match &opt.action {
         Action::CreateTestData => create_test_data(),
+        Action::DiffWalk { path } => diff_walk::diff_walk(path),
     }
 }
