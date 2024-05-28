@@ -7,12 +7,12 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error};
 use crate::file_type::FileType;
+use crate::path::PathBuf;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
 };
-use crate::Ext4;
+use crate::{Corrupt, Ext4, Ext4Error};
 use alloc::vec;
 use bitflags::bitflags;
 use core::num::NonZeroU32;
@@ -145,6 +145,7 @@ impl Inode {
             size_in_bytes,
             flags: InodeFlags::from_bits_retain(i_flags),
             mode,
+            // TODO: better error?
             file_type: FileType::try_from(mode)
                 .map_err(|_| Ext4Error::Corrupt(Corrupt::Inode(index.get())))?,
             generation: i_generation,
@@ -214,6 +215,32 @@ impl Inode {
         }
 
         Ok(inode)
+    }
+
+    pub(crate) fn symlink_target(
+        &self,
+        ext4: &Ext4,
+    ) -> Result<PathBuf, Ext4Error> {
+        if !self.file_type.is_symlink() {
+            return Err(Ext4Error::NotASymlink);
+        }
+
+        // TODO: check behavior if EXT4_EA_INODE_FL is set
+
+        if self.size_in_bytes <= 59 {
+            // OK to unwrap since we checked the size above.
+            let len = usize::try_from(self.size_in_bytes).unwrap();
+            let target = &self.inline_data[..len];
+
+            PathBuf::try_from(target).map_err(|_| {
+                Ext4Error::Corrupt(Corrupt::SymlinkTarget(self.index.get()))
+            })
+        } else {
+            let data = ext4.read_inode_file(self)?;
+            PathBuf::try_from(data).map_err(|_| {
+                Ext4Error::Corrupt(Corrupt::SymlinkTarget(self.index.get()))
+            })
+        }
     }
 }
 

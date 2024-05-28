@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::dir_entry::DirEntry;
+use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::error::{Corrupt, Ext4Error};
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
@@ -185,4 +185,26 @@ impl<'a> Iterator for ReadDir<'a> {
             }
         }
     }
+}
+
+pub(crate) fn get_dir_entry_by_name(
+    ext4: &Ext4,
+    inode: &Inode,
+    name: DirEntryName<'_>,
+) -> Result<DirEntry, Ext4Error> {
+    assert!(inode.file_type.is_dir());
+
+    // TODO: add faster lookup by hash, if the inode has
+    // InodeFlags::DIRECTORY_HTREE.
+
+    // TODO
+    let path = PathBuf::empty();
+    for entry in ReadDir::new(ext4, inode, path)? {
+        let entry = entry?;
+        if entry.file_name() == name {
+            return Ok(entry);
+        }
+    }
+
+    Err(Ext4Error::NotFound)
 }

@@ -8,12 +8,25 @@
 
 use crate::error::IoError;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::fmt::{self, Display, Formatter};
 
 #[cfg(feature = "std")]
 use {
     std::fs::File,
     std::io::{Seek, SeekFrom},
 };
+
+// TODO
+#[derive(Debug)]
+pub struct SliceError;
+impl IoError for SliceError {}
+
+impl Display for SliceError {
+    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
 
 #[cfg(feature = "std")]
 impl IoError for std::io::Error {}
@@ -37,6 +50,33 @@ pub trait Ext4Read {
         start_byte: u64,
         dst: &mut [u8],
     ) -> Result<(), Box<dyn IoError>>;
+}
+
+impl Ext4Read for &[u8] {
+    fn read(
+        &mut self,
+        start_byte: u64,
+        dst: &mut [u8],
+    ) -> Result<(), Box<dyn IoError>> {
+        let start =
+            usize::try_from(start_byte).map_err(|_| box_err(SliceError))?;
+
+        let end = start + dst.len();
+        let src = self.get(start..end).ok_or(box_err(SliceError))?;
+        dst.copy_from_slice(src);
+        Ok(())
+    }
+}
+
+// TODO, want this for all &[u8]
+impl Ext4Read for Vec<u8> {
+    fn read(
+        &mut self,
+        start_byte: u64,
+        dst: &mut [u8],
+    ) -> Result<(), Box<dyn IoError>> {
+        self.as_slice().read(start_byte, dst)
+    }
 }
 
 #[cfg(feature = "std")]

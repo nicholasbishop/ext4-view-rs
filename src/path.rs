@@ -166,8 +166,8 @@ impl<'a> From<Path<'a>> for &'a std::path::Path {
 }
 
 impl<'a> LookupInode for Path<'a> {
-    fn lookup_inode(&self, _fs: &Ext4) -> Result<Inode, Ext4Error> {
-        todo!()
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error> {
+        fs.path_to_inode(*self)
     }
 }
 

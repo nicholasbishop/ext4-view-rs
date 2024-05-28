@@ -234,8 +234,22 @@ impl DirEntry {
         Ok((Some(entry), rec_len))
     }
 
+    #[must_use]
+    #[inline]
+    pub fn file_name(&self) -> DirEntryName<'_> {
+        self.name.as_dir_entry_name()
+    }
+
+    #[must_use]
+    #[inline]
     pub fn path(&self) -> PathBuf {
         self.path.join(self.name.as_bytes())
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn inode(&self) -> InodeIndex {
+        self.inode
     }
 }
 

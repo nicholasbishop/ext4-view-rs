@@ -43,4 +43,9 @@ impl Metadata {
         // Convert from u16 to u32 to match the std `PermissionsExt` interface.
         u32::from(mode)
     }
+
+    // TODO: accessed, created, modified
+    // TODO: is_file
+    // TODO: methods from std::os::unix::fs::MetadataExt... maybe even
+    // impl it if std enabled?
 }
