@@ -7,9 +7,9 @@
 # except according to those terms.
 
 [package]
-name = "ext4-view"
+name = "xtask"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
-[workspace]
-members = ["xtask"]
+[dependencies]
