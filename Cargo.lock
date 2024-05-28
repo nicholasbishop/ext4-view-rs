@@ -424,6 +424,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
+ "ext4-view",
  "nix",
  "sha2",
  "tempfile",
