@@ -45,7 +45,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
   spellcheck:
