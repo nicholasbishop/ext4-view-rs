@@ -13,3 +13,6 @@ edition = "2021"
 
 [workspace]
 members = ["xtask"]
+
+[features]
+std = []

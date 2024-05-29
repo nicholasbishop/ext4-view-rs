@@ -43,6 +43,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p ext4-view
 
+  test-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p ext4-view -F std
+
   doc:
     runs-on: ubuntu-latest
     steps:
