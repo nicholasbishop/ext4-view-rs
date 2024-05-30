@@ -16,3 +16,6 @@ members = ["xtask"]
 
 [features]
 std = []
+
+[dependencies]
+crc = "3.0.0"
