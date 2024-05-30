@@ -1,5 +1,7 @@
 # ext4-view-rs
 
+[![codecov.io](https://codecov.io/gh/nicholasbishop/ext4-view-rs/coverage.svg?branch=main)](https://app.codecov.io/gh/nicholasbishop/ext4-view-rs)
+
 This repository provides a Rust crate that allows read-only access to an
 [ext4] filesystem. Write access is an explicit non-goal. The crate is
 `no_std`, so it can be used in embedded contexts.
