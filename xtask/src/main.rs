@@ -112,6 +112,20 @@ fn create_test_data() -> Result<()> {
         fs::create_dir(&dir)?;
     }
 
+    // Create a 1KiB file containing just the superblock data. Used for
+    // unit testing in the superblock module.
+    let path = dir.join("raw_superblock.bin");
+    if !path.exists() {
+        let disk = DiskParams {
+            path: path.to_owned(),
+            size_in_kilobytes: 128,
+        };
+        disk.create()?;
+        let data = fs::read(&path)?;
+        let superblock = &data[1024..2048];
+        fs::write(path, superblock)?;
+    }
+
     let path = dir.join("test_disk1.bin");
     if !path.exists() {
         let disk = DiskParams {
