@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod big_fs;
+
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use std::env;
@@ -162,6 +164,12 @@ enum Action {
         /// Path of a file containing an ext4 filesystem.
         path: PathBuf,
     },
+
+    /// Download a ChromiumOS image and extract its stateful partition.
+    ///
+    /// This can be used with the `diff-walk` action to verify that the
+    /// library can read the whole filesystem correctly.
+    DownloadBigFilesystem,
 }
 
 fn main() -> Result<()> {
@@ -170,5 +178,6 @@ fn main() -> Result<()> {
     match &opt.action {
         Action::CreateTestData => create_test_data(),
         Action::DiffWalk { path } => diff_walk::diff_walk(path),
+        Action::DownloadBigFilesystem => big_fs::download_big_filesystem(),
     }
 }
