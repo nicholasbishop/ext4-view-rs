@@ -8,9 +8,13 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use std::env;
+use std::fs::{self, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
+use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
-use std::{env, fs};
+use xtask::Mount;
 
 /// Get the path of the root directory of the repo.
 ///
@@ -54,6 +58,52 @@ impl DiskParams {
         }
         Ok(())
     }
+
+    /// Put some data on the disk.
+    fn fill(&self) -> Result<()> {
+        let mount = Mount::new(&self.path)?;
+        let root = mount.path();
+
+        // Create an empty file.
+        fs::write(root.join("empty_file"), [])?;
+        // Create an empty dir.
+        fs::create_dir(root.join("empty_dir"))?;
+
+        // Create a small text file.
+        fs::write(root.join("small_file"), "hello, world!")?;
+
+        // Create some symlinks.
+        symlink("small_file", root.join("sym_simple"))?;
+        // Symlink targets up to 59 characters are stored inline, so
+        // create a symlink just under the limit and just over the
+        // limit.
+        symlink("a".repeat(59), root.join("sym_59"))?;
+        symlink("a".repeat(60), root.join("sym_60"))?;
+
+        // Create a directory with a bunch of files.
+        let big_dir = root.join("big_dir");
+        fs::create_dir(&big_dir)?;
+        for i in 0..10_000 {
+            fs::write(big_dir.join(format!("{i}")), [])?;
+        }
+
+        // Create a file with holes. By having five blocks, with holes
+        // between them, the file will require at least five extents. This
+        // will ensure the extent tree does not fit entirely within the
+        // inode, allowing testing of internal nodes.
+        let mut f = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(root.join("holes"))?;
+        let block = vec![0xa5; 4096];
+        for _ in 0..5 {
+            // Write a 4K block.
+            f.write_all(&block)?;
+            // Leave an 8K hole.
+            f.seek(SeekFrom::Current(8192))?;
+        }
+        Ok(())
+    }
 }
 
 fn create_test_data() -> Result<()> {
@@ -69,8 +119,7 @@ fn create_test_data() -> Result<()> {
             size_in_kilobytes: 1024 * 64,
         };
         disk.create()?;
-        // TODO(nicholasbishop): mount the filesystem and fill it with
-        // test data.
+        disk.fill()?;
     }
 
     Ok(())
