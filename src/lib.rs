@@ -15,4 +15,5 @@ extern crate alloc;
 mod checksum;
 mod error;
 mod features;
+mod superblock;
 mod util;
