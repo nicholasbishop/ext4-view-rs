@@ -10,6 +10,9 @@
 // smaller PRs.
 #![allow(dead_code)]
 
+extern crate alloc;
+
 mod checksum;
+mod error;
 mod features;
 mod util;
