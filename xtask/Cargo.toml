@@ -16,3 +16,4 @@ publish = false
 anyhow = { version = "1.0.86", features = ["backtrace"] }
 clap = { version = "4.5.0", default-features = false, features = ["derive", "help", "std"] }
 nix = { version = "0.29.0", features = ["user"] }
+tempfile = "3.10.1"
