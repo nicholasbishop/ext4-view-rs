@@ -11,4 +11,5 @@
 #![allow(dead_code)]
 
 mod checksum;
+mod features;
 mod util;
