@@ -11,3 +11,4 @@
 #![allow(dead_code)]
 
 mod checksum;
+mod util;
