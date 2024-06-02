@@ -6,11 +6,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
+use std::{env, fs};
+
+/// Get the path of the root directory of the repo.
+///
+/// This assumes the currently-running executable is `<repo>/target/release/xtask`.
+fn repo_root() -> Result<PathBuf> {
+    let current_exe = env::current_exe()?;
+    Ok(current_exe
+        .parent()
+        .and_then(|p| p.parent())
+        .and_then(|p| p.parent())
+        .context("xtask is not in expected location")?
+        .to_owned())
+}
+
+/// Get the path of the `test_data` directory.
+fn test_data_dir() -> Result<PathBuf> {
+    Ok(repo_root()?.join("test_data"))
+}
 
 struct DiskParams {
     path: PathBuf,
@@ -39,9 +57,9 @@ impl DiskParams {
 }
 
 fn create_test_data() -> Result<()> {
-    let dir = Path::new("test_data");
+    let dir = test_data_dir()?;
     if !dir.exists() {
-        fs::create_dir(dir)?;
+        fs::create_dir(&dir)?;
     }
 
     let path = dir.join("test_disk1.bin");
