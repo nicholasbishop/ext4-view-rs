@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,7 +18,7 @@ struct DiskParams {
 }
 
 impl DiskParams {
-    fn create(&self) {
+    fn create(&self) -> Result<()> {
         let uid = nix::unistd::getuid();
         let gid = nix::unistd::getgid();
 
@@ -29,16 +30,18 @@ impl DiskParams {
             .args(["-E", &format!("root_owner={uid}:{gid}")])
             .arg(&self.path)
             .arg(format!("{}k", self.size_in_kilobytes))
-            .status()
-            .unwrap();
-        assert!(status.success());
+            .status()?;
+        if !status.success() {
+            bail!("mkfs.ext4 failed");
+        }
+        Ok(())
     }
 }
 
-fn create_test_data() {
+fn create_test_data() -> Result<()> {
     let dir = Path::new("test_data");
     if !dir.exists() {
-        fs::create_dir(dir).unwrap();
+        fs::create_dir(dir)?;
     }
 
     let path = dir.join("test_disk1.bin");
@@ -47,10 +50,12 @@ fn create_test_data() {
             path: path.to_owned(),
             size_in_kilobytes: 1024 * 64,
         };
-        disk.create();
+        disk.create()?;
         // TODO(nicholasbishop): mount the filesystem and fill it with
         // test data.
     }
+
+    Ok(())
 }
 
 #[derive(Parser)]
@@ -68,7 +73,7 @@ enum Action {
     CreateTestData,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let opt = Opt::parse();
 
     match &opt.action {
