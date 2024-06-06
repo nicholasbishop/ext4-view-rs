@@ -43,7 +43,7 @@ pub(crate) fn u32_from_hilo(hi: u16, lo: u16) -> u32 {
 /// Panics if `bytes` is less than two bytes in length.
 #[inline]
 #[must_use]
-pub(crate) fn read_u16(bytes: &[u8], offset: usize) -> u16 {
+pub(crate) fn read_u16le(bytes: &[u8], offset: usize) -> u16 {
     let bytes = bytes.get(offset..offset + size_of::<u16>()).unwrap();
     u16::from_le_bytes(bytes.try_into().unwrap())
 }
@@ -55,7 +55,7 @@ pub(crate) fn read_u16(bytes: &[u8], offset: usize) -> u16 {
 /// Panics if `bytes` is less than four bytes in length.
 #[inline]
 #[must_use]
-pub(crate) fn read_u32(bytes: &[u8], offset: usize) -> u32 {
+pub(crate) fn read_u32le(bytes: &[u8], offset: usize) -> u32 {
     let bytes = bytes.get(offset..offset + size_of::<u32>()).unwrap();
     u32::from_le_bytes(bytes.try_into().unwrap())
 }
