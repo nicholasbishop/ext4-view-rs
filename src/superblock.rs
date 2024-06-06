@@ -9,7 +9,7 @@
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
-use crate::util::{read_u16, read_u32, u64_from_hilo};
+use crate::util::{read_u16le, read_u32le, u64_from_hilo};
 
 /// Information about the filesystem.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -40,21 +40,21 @@ impl Superblock {
         assert!(bytes.len() >= Self::SIZE_IN_BYTES_ON_DISK);
 
         // OK to unwrap: already checked the length.
-        let s_blocks_count_lo = read_u32(bytes, 0x4);
-        let s_first_data_block = read_u32(bytes, 0x14);
-        let s_log_block_size = read_u32(bytes, 0x18);
-        let s_blocks_per_group = read_u32(bytes, 0x20);
-        let s_inodes_per_group = read_u32(bytes, 0x28);
-        let s_magic = read_u16(bytes, 0x38);
-        let s_inode_size = read_u16(bytes, 0x58);
-        let s_feature_incompat = read_u32(bytes, 0x60);
-        let s_feature_ro_compat = read_u32(bytes, 0x64);
+        let s_blocks_count_lo = read_u32le(bytes, 0x4);
+        let s_first_data_block = read_u32le(bytes, 0x14);
+        let s_log_block_size = read_u32le(bytes, 0x18);
+        let s_blocks_per_group = read_u32le(bytes, 0x20);
+        let s_inodes_per_group = read_u32le(bytes, 0x28);
+        let s_magic = read_u16le(bytes, 0x38);
+        let s_inode_size = read_u16le(bytes, 0x58);
+        let s_feature_incompat = read_u32le(bytes, 0x60);
+        let s_feature_ro_compat = read_u32le(bytes, 0x64);
         let s_uuid = &bytes[0x68..0x68 + 16];
-        let s_desc_size = read_u16(bytes, 0xfe);
-        let s_blocks_count_hi = read_u32(bytes, 0x150);
-        let s_checksum_seed = read_u32(bytes, 0x270);
+        let s_desc_size = read_u16le(bytes, 0xfe);
+        let s_blocks_count_hi = read_u32le(bytes, 0x150);
+        let s_checksum_seed = read_u32le(bytes, 0x270);
         const S_CHECKSUM_OFFSET: usize = 0x3fc;
-        let s_checksum = read_u32(bytes, S_CHECKSUM_OFFSET);
+        let s_checksum = read_u32le(bytes, S_CHECKSUM_OFFSET);
 
         let blocks_count = u64_from_hilo(s_blocks_count_hi, s_blocks_count_lo);
 
