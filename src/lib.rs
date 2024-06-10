@@ -16,5 +16,8 @@ mod block_group;
 mod checksum;
 mod error;
 mod features;
+mod reader;
 mod superblock;
 mod util;
+
+pub use reader::Ext4Read;
