@@ -12,6 +12,7 @@
 
 extern crate alloc;
 
+mod block_group;
 mod checksum;
 mod error;
 mod features;
