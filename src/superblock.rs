@@ -13,7 +13,6 @@ use crate::util::{read_u16le, read_u32le, u64_from_hilo};
 
 /// Information about the filesystem.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
 pub struct Superblock {
     pub(crate) block_size: u32,
     pub(crate) blocks_count: u64,
