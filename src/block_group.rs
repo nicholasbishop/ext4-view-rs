@@ -14,11 +14,11 @@ pub(crate) type BlockGroupIndex = u32;
 #[derive(Debug)]
 pub(crate) struct BlockGroupDescriptor {
     pub(crate) inode_table_first_block: u64,
-    pub(crate) checksum: u16,
+    checksum: u16,
 }
 
 impl BlockGroupDescriptor {
-    pub(crate) fn from_bytes(
+    fn from_bytes(
         bgd_index: BlockGroupIndex,
         bytes: &[u8],
     ) -> Result<Self, Ext4Error> {
