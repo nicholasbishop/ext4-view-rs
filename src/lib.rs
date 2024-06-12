@@ -17,6 +17,7 @@ mod checksum;
 mod error;
 mod features;
 mod file_type;
+mod inode;
 mod reader;
 mod superblock;
 mod util;
