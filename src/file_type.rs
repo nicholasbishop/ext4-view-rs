@@ -6,6 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::inode::InodeMode;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct FileTypeError;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum FileType {
     BlockDevice,
@@ -44,5 +49,32 @@ impl FileType {
 
     pub fn is_symlink(self) -> bool {
         self == FileType::Symlink
+    }
+}
+
+impl TryFrom<InodeMode> for FileType {
+    type Error = FileTypeError;
+
+    fn try_from(mode: InodeMode) -> Result<Self, Self::Error> {
+        // Mask out the lower bits.
+        let mode = InodeMode::from_bits_retain(mode.bits() & 0xf000);
+
+        if mode == InodeMode::S_IFIFO {
+            Ok(Self::Fifo)
+        } else if mode == InodeMode::S_IFCHR {
+            Ok(Self::CharacterDevice)
+        } else if mode == InodeMode::S_IFDIR {
+            Ok(Self::Directory)
+        } else if mode == InodeMode::S_IFBLK {
+            Ok(Self::BlockDevice)
+        } else if mode == InodeMode::S_IFREG {
+            Ok(Self::Regular)
+        } else if mode == InodeMode::S_IFLNK {
+            Ok(Self::Symlink)
+        } else if mode == InodeMode::S_IFSOCK {
+            Ok(Self::Socket)
+        } else {
+            Err(FileTypeError)
+        }
     }
 }
