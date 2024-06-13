@@ -6,7 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::checksum::Checksum;
+use crate::error::{Corrupt, Ext4Error};
 use crate::file_type::FileType;
+use crate::util::{
+    read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
+};
+use crate::Ext4;
+use alloc::vec;
 use bitflags::bitflags;
 use core::num::NonZeroU32;
 
@@ -109,4 +116,103 @@ pub(crate) struct Inode {
 
 impl Inode {
     const INLINE_DATA_LEN: usize = 60;
+    const L_I_CHECKSUM_LO_OFFSET: usize = 0x74 + 0x8;
+    const I_CHECKSUM_HI_OFFSET: usize = 0x82;
+
+    fn from_bytes(index: InodeIndex, data: &[u8]) -> Result<Inode, Ext4Error> {
+        if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
+            return Err(Ext4Error::Corrupt(Corrupt::Inode(index.get())));
+        }
+
+        let i_mode = read_u16le(data, 0x0);
+        let i_size_lo = read_u32le(data, 0x4);
+        let i_flags = read_u32le(data, 0x20);
+        // OK to unwrap: already checked the length.
+        let i_block = data.get(0x28..0x28 + Self::INLINE_DATA_LEN).unwrap();
+        let i_generation = read_u32le(data, 0x64);
+        let i_size_high = read_u32le(data, 0x6c);
+        let l_i_checksum_lo = read_u16le(data, Self::L_I_CHECKSUM_LO_OFFSET);
+        let i_checksum_hi = read_u16le(data, Self::I_CHECKSUM_HI_OFFSET);
+
+        let size_in_bytes = u64_from_hilo(i_size_high, i_size_lo);
+        let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
+        let mode = InodeMode::from_bits_retain(i_mode);
+
+        Ok(Inode {
+            index,
+            // OK to unwap, we know `i_block` is 60 bytes.
+            inline_data: i_block.try_into().unwrap(),
+            size_in_bytes,
+            flags: InodeFlags::from_bits_retain(i_flags),
+            mode,
+            file_type: FileType::try_from(mode)
+                .map_err(|_| Ext4Error::Corrupt(Corrupt::Inode(index.get())))?,
+            generation: i_generation,
+            checksum,
+        })
+    }
+
+    /// Read an inode.
+    pub(crate) fn read(
+        ext4: &Ext4,
+        inode: InodeIndex,
+    ) -> Result<Inode, Ext4Error> {
+        let sb = &ext4.superblock;
+
+        let block_group_index = (inode.get() - 1) / sb.inodes_per_block_group;
+
+        let group = ext4
+            .block_group_descriptors
+            .get(usize_from_u32(block_group_index))
+            .ok_or(Ext4Error::Corrupt(Corrupt::Inode(inode.get())))?;
+
+        let index_within_group = (inode.get() - 1) % sb.inodes_per_block_group;
+
+        let src_offset = (u64::from(sb.block_size)
+            * group.inode_table_first_block)
+            + u64::from(index_within_group * u32::from(sb.inode_size));
+
+        let mut data = vec![0; usize::from(sb.inode_size)];
+        ext4.read_bytes(src_offset, &mut data).unwrap();
+
+        let inode = Self::from_bytes(inode, &data)?;
+
+        // Verify the inode checksum.
+        if ext4.has_metadata_checksums() {
+            let mut checksum = Checksum::with_seed(sb.checksum_seed);
+
+            checksum.update_u32_le(inode.index.get());
+            checksum.update_u32_le(inode.generation);
+
+            // Hash all the inode data, but treat the two checksum
+            // fields as zeroes.
+
+            // Up to the l_i_checksum_lo field.
+            checksum.update(&data[..Self::L_I_CHECKSUM_LO_OFFSET]);
+
+            // Zero'd field.
+            checksum.update_u16_le(0);
+
+            // Up to the i_checksum_hi field.
+            checksum.update(
+                &data[Self::L_I_CHECKSUM_LO_OFFSET + 2
+                    ..Self::I_CHECKSUM_HI_OFFSET],
+            );
+
+            // Zero'd field.
+            checksum.update_u16_le(0);
+
+            // Rest of the inode.
+            checksum.update(&data[Self::I_CHECKSUM_HI_OFFSET + 2..]);
+
+            let checksum = checksum.finalize();
+            if checksum != inode.checksum {
+                return Err(Ext4Error::Corrupt(Corrupt::InodeChecksum(
+                    inode.index.get(),
+                )));
+            }
+        }
+
+        Ok(inode)
+    }
 }
