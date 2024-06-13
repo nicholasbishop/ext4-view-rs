@@ -95,6 +95,17 @@ impl Ext4 {
         Ok(ext4)
     }
 
+    /// Load an `Ext4` filesystem from the given `path`.
+    ///
+    /// This reads and validates the superblock and block group
+    /// descriptors. No other data is read.
+    #[cfg(feature = "std")]
+    pub fn load_from_path(path: &std::path::Path) -> Result<Self, Ext4Error> {
+        let file = std::fs::File::open(path)
+            .map_err(|e| Ext4Error::Io(Box::new(e)))?;
+        Self::load(Box::new(file))
+    }
+
     /// Return true if the filesystem has metadata checksums enabled,
     /// false otherwise.
     fn has_metadata_checksums(&self) -> bool {
