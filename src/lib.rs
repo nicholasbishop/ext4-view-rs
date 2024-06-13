@@ -29,6 +29,7 @@ use core::cell::RefCell;
 use error::Ext4Error;
 use features::ReadOnlyCompatibleFeatures;
 use superblock::Superblock;
+use util::usize_from_u32;
 
 pub use reader::Ext4Read;
 
@@ -55,6 +56,38 @@ pub struct Ext4 {
 }
 
 impl Ext4 {
+    /// Load an `Ext4` instance from the given `reader`.
+    ///
+    /// This reads and validates the superblock and block group
+    /// descriptors. No other data is read.
+    pub fn load(mut reader: Box<dyn Ext4Read>) -> Result<Self, Ext4Error> {
+        // The first 1024 bytes are reserved for "weird" stuff like x86
+        // boot sectors.
+        let superblock_start = 1024;
+        let mut data = vec![0; Superblock::SIZE_IN_BYTES_ON_DISK];
+        reader
+            .read(superblock_start, &mut data)
+            .map_err(Ext4Error::Io)?;
+
+        let superblock = Superblock::from_bytes(&data)?;
+
+        let mut ext4 = Self {
+            reader: RefCell::new(reader),
+            block_group_descriptors: Vec::with_capacity(usize_from_u32(
+                superblock.num_block_groups,
+            )),
+            superblock,
+        };
+
+        // Read all the block group descriptors.
+        for bgd_index in 0..ext4.superblock.num_block_groups {
+            let bgd = BlockGroupDescriptor::read(&ext4, bgd_index)?;
+            ext4.block_group_descriptors.push(bgd);
+        }
+
+        Ok(ext4)
+    }
+
     /// Return true if the filesystem has metadata checksums enabled,
     /// false otherwise.
     fn has_metadata_checksums(&self) -> bool {
