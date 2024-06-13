@@ -20,6 +20,7 @@ mod extent;
 mod features;
 mod file_type;
 mod inode;
+mod metadata;
 mod path;
 mod reader;
 mod superblock;
