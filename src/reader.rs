@@ -9,8 +9,23 @@
 use crate::error::IoError;
 use alloc::boxed::Box;
 
-/// Interface used by `Ext4` to read the filesystem data from a storage
+#[cfg(feature = "std")]
+use {
+    std::fs::File,
+    std::io::{Seek, SeekFrom},
+};
+
+#[cfg(feature = "std")]
+impl IoError for std::io::Error {}
+
+fn box_err<E: IoError>(err: E) -> Box<dyn IoError> {
+    Box::new(err)
+}
+
+/// Interface used by [`Ext4`] to read the filesystem data from a storage
 /// file or device.
+///
+/// [`Ext4`]: crate::Ext4
 pub trait Ext4Read {
     /// Read bytes into `dst`, starting at `start_byte`.
     ///
@@ -22,4 +37,19 @@ pub trait Ext4Read {
         start_byte: u64,
         dst: &mut [u8],
     ) -> Result<(), Box<dyn IoError>>;
+}
+
+#[cfg(feature = "std")]
+impl Ext4Read for File {
+    fn read(
+        &mut self,
+        start_byte: u64,
+        dst: &mut [u8],
+    ) -> Result<(), Box<dyn IoError>> {
+        use std::io::Read;
+
+        self.seek(SeekFrom::Start(start_byte)).map_err(box_err)?;
+        self.read_exact(dst).map_err(box_err)?;
+        Ok(())
+    }
 }
