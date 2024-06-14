@@ -21,6 +21,7 @@ mod error;
 mod extent;
 mod features;
 mod file_type;
+mod format;
 mod inode;
 mod metadata;
 mod path;
