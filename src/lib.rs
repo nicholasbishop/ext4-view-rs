@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
 // TODO(nicholasbishop): Temporarily allow dead code to allow for
 // smaller PRs.
 #![allow(dead_code)]
@@ -27,6 +28,7 @@ mod superblock;
 mod util;
 
 use alloc::boxed::Box;
+use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
