@@ -27,9 +27,6 @@
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![forbid(unsafe_code)]
-// TODO(nicholasbishop): Temporarily allow dead code to allow for
-// smaller PRs.
-#![allow(dead_code)]
 
 extern crate alloc;
 
