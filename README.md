@@ -4,9 +4,8 @@
 
 This repository provides a Rust crate that allows read-only access to an
 [ext4] filesystem. Write access is an explicit non-goal. The crate is
-`no_std`, so it can be used in embedded contexts.
-
-Note: the crate is not yet implemented.
+`no_std`, so it can be used in embedded contexts. However, it does
+require `alloc`.
 
 [ext4]: https://en.wikipedia.org/wiki/Ext4
 
