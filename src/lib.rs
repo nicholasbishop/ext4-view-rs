@@ -90,9 +90,6 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![forbid(unsafe_code)]
-// TODO(nicholasbishop): Temporarily allow dead code to allow for
-// smaller PRs.
-#![allow(dead_code)]
 #![warn(clippy::as_conversions)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
