@@ -1,12 +1,13 @@
 # ext4-view-rs
 
+[![Crates.io](https://img.shields.io/crates/v/ext4-view)](https://crates.io/crates/ext4-view) 
+[![Docs.rs](https://docs.rs/ext4-view/badge.svg)](https://docs.rs/ext4-view)
 [![codecov.io](https://codecov.io/gh/nicholasbishop/ext4-view-rs/coverage.svg?branch=main)](https://app.codecov.io/gh/nicholasbishop/ext4-view-rs)
 
 This repository provides a Rust crate that allows read-only access to an
 [ext4] filesystem. Write access is an explicit non-goal. The crate is
-`no_std`, so it can be used in embedded contexts.
-
-Note: the crate is not yet implemented.
+`no_std`, so it can be used in embedded contexts. However, it does
+require `alloc`.
 
 [ext4]: https://en.wikipedia.org/wiki/Ext4
 
