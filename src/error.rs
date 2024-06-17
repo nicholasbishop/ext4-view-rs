@@ -52,11 +52,11 @@ pub enum Ext4Error {
     /// Data cannot be converted into a valid path.
     MalformedPath,
 
-    /// An IO operation failed. This error comes from the [`Reader`]
+    /// An IO operation failed. This error comes from the [`Ext4Read`]
     /// passed to [`Ext4::load`].
     ///
     /// [`Ext4::load`]: crate::Ext4::load
-    /// [`Reader`]: crate::Reader
+    /// [`Ext4Read`]: crate::Ext4Read
     Io(
         /// Underlying error.
         Box<dyn IoError>,
