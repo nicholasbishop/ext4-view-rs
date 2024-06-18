@@ -23,7 +23,7 @@ pub enum DirEntryNameError {
     ContainsSeparator,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Eq, Ord, PartialOrd, Hash)]
 pub struct DirEntryName<'a>(pub(crate) &'a [u8]);
 
 impl<'a> DirEntryName<'a> {
@@ -50,6 +50,15 @@ impl<'a> AsRef<[u8]> for DirEntryName<'a> {
 impl<'a> Debug for DirEntryName<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_bytes_debug(self.0, f)
+    }
+}
+
+impl<'a, T> PartialEq<T> for DirEntryName<'a>
+where
+    T: AsRef<[u8]>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other.as_ref()
     }
 }
 
@@ -380,5 +389,20 @@ mod tests {
         let name = DirEntryName::try_from(b"abc".as_slice()).unwrap();
         let bytes: &[u8] = name.as_ref();
         assert_eq!(bytes, b"abc");
+    }
+
+    #[test]
+    fn test_dir_entry_name_partial_eq() {
+        let name = DirEntryName::try_from(b"abc".as_slice()).unwrap();
+        assert_eq!(name, name);
+
+        let v: &str = "abc";
+        assert_eq!(name, v);
+
+        let v: &[u8] = b"abc";
+        assert_eq!(name, v);
+
+        let v: &[u8; 3] = b"abc";
+        assert_eq!(name, v);
     }
 }
