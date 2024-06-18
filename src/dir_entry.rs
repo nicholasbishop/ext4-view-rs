@@ -12,6 +12,7 @@ use crate::inode::InodeIndex;
 use crate::path::Path;
 use crate::util::{read_u16le, read_u32le};
 use core::fmt::{self, Debug, Formatter};
+use core::hash::{Hash, Hasher};
 use core::str::Utf8Error;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -104,6 +105,17 @@ impl PartialEq<DirEntryNameBuf> for DirEntryNameBuf {
     }
 }
 
+// Manual implementation of `Hash` because we don't want to include the
+// entire `data` array, only up to `len` (see also `PartialEq` impl).
+impl Hash for DirEntryNameBuf {
+    fn hash<H>(&self, hasher: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_bytes().hash(hasher);
+    }
+}
+
 impl TryFrom<&[u8]> for DirEntryNameBuf {
     type Error = DirEntryNameError;
 
@@ -122,7 +134,7 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 }
 
 /// Directory entry.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DirEntry {
     /// Number of the inode that this entry points to.
     inode: InodeIndex,
@@ -193,6 +205,7 @@ impl DirEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::hash::DefaultHasher;
 
     #[test]
     fn test_dir_entry_debug() {
@@ -277,6 +290,18 @@ mod tests {
             DirEntryNameBuf::try_from(src),
             Err(DirEntryNameError::ContainsSeparator)
         );
+    }
+
+    #[test]
+    fn test_dir_entry_name_buf_hash() {
+        fn get_hash<T: Hash>(v: T) -> u64 {
+            let mut s = DefaultHasher::new();
+            v.hash(&mut s);
+            s.finish()
+        }
+
+        let name = DirEntryNameBuf::try_from(b"abc".as_slice()).unwrap();
+        assert_eq!(get_hash(name), get_hash(b"abc"));
     }
 
     #[test]
