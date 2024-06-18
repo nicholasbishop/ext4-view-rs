@@ -172,6 +172,7 @@ mod tests {
         assert_eq!(PathBuf::try_from(src), Err(PathError::ComponentTooLong));
     }
 
+    #[test]
     fn test_path_debug() {
         let src = "abc😁\n".as_bytes();
         let expected = "abc😁\\n"; // Note the escaped slash.
