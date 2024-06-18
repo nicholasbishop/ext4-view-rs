@@ -41,6 +41,12 @@ impl<'a> DirEntryName<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for DirEntryName<'a> {
+    fn as_ref(&self) -> &'a [u8] {
+        self.0
+    }
+}
+
 impl<'a> Debug for DirEntryName<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_bytes_debug(self.0, f)
@@ -367,5 +373,12 @@ mod tests {
 
         let name = DirEntryNameBuf::try_from(b"abc".as_slice()).unwrap();
         assert_eq!(get_hash(name), get_hash(b"abc"));
+    }
+
+    #[test]
+    fn test_dir_entry_name_as_ref() {
+        let name = DirEntryName::try_from(b"abc".as_slice()).unwrap();
+        let bytes: &[u8] = name.as_ref();
+        assert_eq!(bytes, b"abc");
     }
 }
