@@ -77,6 +77,16 @@ impl<'a, const N: usize> TryFrom<&'a [u8; N]> for Path<'a> {
     }
 }
 
+#[cfg(all(feature = "std", unix))]
+impl<'a> From<Path<'a>> for &'a std::path::Path {
+    fn from(p: Path<'a>) -> &'a std::path::Path {
+        use std::os::unix::ffi::OsStrExt;
+
+        let s = std::ffi::OsStr::from_bytes(p.0);
+        std::path::Path::new(s)
+    }
+}
+
 /// Owned path type.
 ///
 /// Paths are mostly arbitrary sequences of bytes, with two restrictions:
@@ -133,6 +143,16 @@ impl TryFrom<Vec<u8>> for PathBuf {
     }
 }
 
+#[cfg(all(feature = "std", unix))]
+impl From<PathBuf> for std::path::PathBuf {
+    fn from(p: PathBuf) -> std::path::PathBuf {
+        use std::os::unix::ffi::OsStringExt;
+
+        let s = std::ffi::OsString::from_vec(p.0);
+        std::path::PathBuf::from(s)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,5 +198,18 @@ mod tests {
         let expected = "abc😁\\n"; // Note the escaped slash.
         assert_eq!(format!("{:?}", Path(src)), expected);
         assert_eq!(format!("{:?}", PathBuf(src.to_vec())), expected);
+    }
+
+    #[cfg(all(feature = "std", unix))]
+    #[test]
+    fn test_to_std() {
+        let p = Path(b"abc");
+        assert_eq!(<&std::path::Path>::from(p), std::path::Path::new("abc"));
+
+        let p = PathBuf(b"abc".to_vec());
+        assert_eq!(
+            std::path::PathBuf::from(p),
+            std::path::PathBuf::from("abc")
+        );
     }
 }
