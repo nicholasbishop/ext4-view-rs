@@ -32,20 +32,25 @@ pub enum FileContent {
 pub struct WalkDirEntry {
     pub path: PathBuf,
     pub content: FileContent,
+    pub mode: u16,
 }
 
 impl WalkDirEntry {
     pub fn format(&self) -> Vec<u8> {
         let mut output = self.path.as_os_str().as_bytes().to_vec();
 
+        output.push(b' ');
+        output.extend(format!("{:o}", self.mode).as_bytes());
+        output.push(b' ');
+
         match &self.content {
-            FileContent::Dir => {}
+            FileContent::Dir => output.extend(b"dir"),
             FileContent::Symlink(target) => {
-                output.extend(b": ");
+                output.extend(b"symlink=");
                 output.extend(target.as_os_str().as_bytes());
             }
             FileContent::Regular(hash) => {
-                output.extend(b": ");
+                output.extend(b"file sha256=");
                 output.extend(hash.as_bytes());
             }
         }
@@ -72,6 +77,7 @@ fn new_dir_entry(
     Ok(WalkDirEntry {
         path: dir_entry.path().into(),
         content,
+        mode: metadata.mode(),
     })
 }
 
@@ -84,6 +90,7 @@ fn walk_with_lib(
     output.push(WalkDirEntry {
         path: ext4_view::PathBuf::from(path).into(),
         content: FileContent::Dir,
+        mode: fs.metadata("/")?.mode(),
     });
 
     for entry in fs.read_dir(path)? {

@@ -8,25 +8,37 @@
 
 use anyhow::{Context, Result};
 use std::io::{self, Write};
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::{env, fs};
 use xtask::diff_walk::{FileContent, WalkDirEntry};
 use xtask::{calc_file_sha256, Mount};
 
-fn new_dir_entry(path: &Path) -> Result<WalkDirEntry> {
+fn new_dir_entry(dir_entry: fs::DirEntry) -> Result<WalkDirEntry> {
+    let metadata = dir_entry.metadata()?;
+    let path = dir_entry.path();
+
     // Test for symlink first, because `is_dir` follows symlinks.
-    let content = if path.is_symlink() {
-        let target = fs::read_link(path)?;
+    let content = if metadata.is_symlink() {
+        let target = fs::read_link(&path)?;
         FileContent::Symlink(target)
-    } else if path.is_dir() {
+    } else if metadata.is_dir() {
         FileContent::Dir
     } else {
-        FileContent::Regular(calc_file_sha256(path)?)
+        FileContent::Regular(calc_file_sha256(&path)?)
     };
     Ok(WalkDirEntry {
-        path: path.to_owned(),
+        path,
         content,
+        mode: mode_from_metadata(metadata),
     })
+}
+
+fn mode_from_metadata(metadata: fs::Metadata) -> u16 {
+    // fs::Metadata::mode() returns the full st_mode field which
+    // combines file type and permissions.
+    let mode = metadata.mode() & 0xfff;
+    u16::try_from(mode).unwrap()
 }
 
 fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
@@ -34,7 +46,11 @@ fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
 
     let mut output = Vec::new();
 
-    output.push(new_dir_entry(path)?);
+    output.push(WalkDirEntry {
+        path: path.to_path_buf(),
+        content: FileContent::Dir,
+        mode: mode_from_metadata(path.metadata()?),
+    });
 
     for entry in fs::read_dir(path)? {
         let entry = entry?;
@@ -46,7 +62,7 @@ fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
         if entry.file_type()?.is_dir() {
             output.extend(walk_mounted(&path)?);
         } else {
-            output.push(new_dir_entry(&path)?);
+            output.push(new_dir_entry(entry)?);
         }
     }
 
