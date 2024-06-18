@@ -6,9 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::error::{Corrupt, Ext4Error};
 use crate::format::format_bytes_debug;
 use crate::inode::InodeIndex;
 use crate::path::Path;
+use crate::util::{read_u16le, read_u32le};
 use core::fmt::{self, Debug, Formatter};
 use core::str::Utf8Error;
 
@@ -129,6 +131,65 @@ pub struct DirEntry {
     name: DirEntryNameBuf,
 }
 
+impl DirEntry {
+    /// Read a `DirEntry` from a byte slice.
+    ///
+    /// If no error occurs, this returns `(Option<DirEntry>, usize)`.
+    /// * The first value in this tuple is an `Option` because some
+    ///   special data is stored in directory blocks that aren't
+    ///   actually directory entries. If the inode pointed to by the
+    ///   entry is zero, this value is set to None.
+    /// * The `usize` in this tuple is the overall length of the entry's
+    ///   data. This is used when iterating over raw dir entry data.
+    pub(crate) fn from_bytes(
+        bytes: &[u8],
+        inode: InodeIndex,
+    ) -> Result<(Option<Self>, usize), Ext4Error> {
+        const NAME_OFFSET: usize = 8;
+
+        let err = || Ext4Error::Corrupt(Corrupt::DirEntry(inode.get()));
+
+        // Check size (the full entry will usually be larger than this),
+        // but these header fields must be present.
+        if bytes.len() < NAME_OFFSET {
+            return Err(err());
+        }
+
+        // Get the inode that this entry points to. If zero, this is a
+        // special type of entry (such as a checksum entry or hash tree
+        // node entry).
+        let points_to_inode = read_u32le(bytes, 0);
+
+        // Get the full size of the entry.
+        let rec_len = read_u16le(bytes, 4);
+        let rec_len = usize::from(rec_len);
+
+        // As described above, an inode of zero is used for special
+        // entries. Return early since the rest of the fields won't be
+        // valid.
+        let Some(points_to_inode) = InodeIndex::new(points_to_inode) else {
+            return Ok((None, rec_len));
+        };
+
+        // Get the size of the entry's name field.
+        // OK to unwrap: already checked length.
+        let name_len = *bytes.get(6).unwrap();
+        let name_len_usize = usize::from(name_len);
+
+        // Get the entry's name.
+        let name_slice = bytes
+            .get(NAME_OFFSET..NAME_OFFSET + name_len_usize)
+            .ok_or(err())?;
+
+        let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
+        let entry = DirEntry {
+            inode: points_to_inode,
+            name,
+        };
+        Ok((Some(entry), rec_len))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +277,60 @@ mod tests {
             DirEntryNameBuf::try_from(src),
             Err(DirEntryNameError::ContainsSeparator)
         );
+    }
+
+    #[test]
+    fn test_dir_entry_from_bytes() {
+        let inode1 = InodeIndex::new(1).unwrap();
+        let inode2 = InodeIndex::new(2).unwrap();
+
+        // Read a normal entry.
+        let mut bytes = Vec::new();
+        bytes.extend(2u32.to_le_bytes()); // inode
+        bytes.extend(72u16.to_le_bytes()); // record length
+        bytes.push(3u8); // name length
+        bytes.push(8u8); // file type
+        bytes.extend("abc".bytes()); // name
+        bytes.resize(72, 0u8);
+        assert_eq!(
+            DirEntry::from_bytes(&bytes, inode1).unwrap(),
+            (
+                Some(DirEntry {
+                    inode: inode2,
+                    name: DirEntryNameBuf::try_from("abc".as_bytes()).unwrap(),
+                }),
+                72
+            )
+        );
+
+        // Special entry: inode is zero.
+        let mut bytes = Vec::new();
+        bytes.extend(0u32.to_le_bytes()); // inode
+        bytes.extend(72u16.to_le_bytes()); // record length
+        bytes.resize(72, 0u8);
+        assert_eq!(DirEntry::from_bytes(&bytes, inode1).unwrap(), (None, 72));
+
+        // Error: not enough data.
+        let err = DirEntry::from_bytes(&[], inode1).unwrap_err();
+        assert_eq!(*err.as_corrupt().unwrap(), Corrupt::DirEntry(1));
+
+        // Error: not enough data for the name.
+        let mut bytes = Vec::new();
+        bytes.extend(2u32.to_le_bytes()); // inode
+        bytes.extend(72u16.to_le_bytes()); // record length
+        bytes.push(3u8); // name length
+        bytes.push(8u8); // file type
+        bytes.extend("a".bytes()); // name
+        assert!(DirEntry::from_bytes(&bytes, inode1).is_err());
+
+        // Error: name contains invalid characters.
+        let mut bytes = Vec::new();
+        bytes.extend(2u32.to_le_bytes()); // inode
+        bytes.extend(72u16.to_le_bytes()); // record length
+        bytes.push(3u8); // name length
+        bytes.push(8u8); // file type
+        bytes.extend("ab/".bytes()); // name
+        bytes.resize(72, 0u8);
+        assert!(DirEntry::from_bytes(&bytes, inode1).is_err());
     }
 }
