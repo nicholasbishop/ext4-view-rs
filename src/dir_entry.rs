@@ -108,6 +108,12 @@ impl DirEntryNameBuf {
     fn as_bytes(&self) -> &[u8] {
         &self.data[..usize::from(self.len)]
     }
+
+    #[inline]
+    #[must_use]
+    fn as_dir_entry_name(&self) -> DirEntryName<'_> {
+        DirEntryName(self.as_bytes())
+    }
 }
 
 impl Debug for DirEntryNameBuf {
@@ -404,5 +410,12 @@ mod tests {
 
         let v: &[u8; 3] = b"abc";
         assert_eq!(name, v);
+    }
+
+    #[test]
+    fn test_dir_entry_name_buf_as_dir_entry_name() {
+        let name = DirEntryNameBuf::try_from(b"abc".as_slice()).unwrap();
+        let r: DirEntryName<'_> = name.as_dir_entry_name();
+        assert_eq!(r, "abc");
     }
 }
