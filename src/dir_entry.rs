@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::error::{Corrupt, Ext4Error};
-use crate::format::format_bytes_debug;
+use crate::format::{format_bytes_debug, BytesDisplay};
 use crate::inode::InodeIndex;
 use crate::path::Path;
 use crate::util::{read_u16le, read_u32le};
@@ -34,6 +34,10 @@ impl<'a> DirEntryName<'a> {
     #[inline]
     pub fn as_str(&self) -> Result<&'a str, Utf8Error> {
         core::str::from_utf8(self.0)
+    }
+
+    pub fn display(&self) -> BytesDisplay {
+        BytesDisplay(self.0)
     }
 }
 
@@ -225,6 +229,12 @@ mod tests {
             ),
             expected
         );
+    }
+
+    #[test]
+    fn test_dir_entry_display() {
+        let name = DirEntryName([0xc3, 0x28].as_slice());
+        assert_eq!(format!("{}", name.display()), "�(");
     }
 
     #[test]
