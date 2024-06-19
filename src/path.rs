@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::dir_entry::DirEntryName;
-use crate::format::format_bytes_debug;
+use crate::format::{format_bytes_debug, BytesDisplay};
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
 
@@ -63,6 +63,15 @@ impl<'a> Path<'a> {
         } else {
             self.0[0] == Self::SEPARATOR
         }
+    }
+
+    /// Get an object that implements [`Display`] to allow conveniently
+    /// printing paths that may or may not be valid UTF-8. Non-UTF-8
+    /// characters will be replaced with '�'.
+    ///
+    /// [`Display`]: core::fmt::Display
+    pub fn display(self) -> BytesDisplay<'a> {
+        BytesDisplay(self.0)
     }
 }
 
@@ -150,6 +159,15 @@ impl PathBuf {
     /// Get whether the path is absolute (starts with `/`).
     pub fn is_absolute(&self) -> bool {
         self.as_path().is_absolute()
+    }
+
+    /// Get an object that implements [`Display`] to allow conveniently
+    /// printing paths that may or may not be valid UTF-8. Non-UTF-8
+    /// characters will be replaced with '�'.
+    ///
+    /// [`Display`]: core::fmt::Display
+    pub fn display(&self) -> BytesDisplay {
+        BytesDisplay(&self.0)
     }
 }
 
@@ -255,6 +273,15 @@ mod tests {
         let expected = "abc😁\\n"; // Note the escaped slash.
         assert_eq!(format!("{:?}", Path(src)), expected);
         assert_eq!(format!("{:?}", PathBuf(src.to_vec())), expected);
+    }
+
+    #[test]
+    fn test_path_display() {
+        let path = Path::new([0xc3, 0x28].as_slice());
+        assert_eq!(format!("{}", path.display()), "�(");
+
+        let path = PathBuf::new([0xc3, 0x28].as_slice());
+        assert_eq!(format!("{}", path.display()), "�(");
     }
 
     #[cfg(all(feature = "std", unix))]
