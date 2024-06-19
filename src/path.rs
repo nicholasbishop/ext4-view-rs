@@ -75,6 +75,12 @@ impl<'a> Path<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for Path<'a> {
+    fn as_ref(&self) -> &'a [u8] {
+        self.0
+    }
+}
+
 impl<'a> Debug for Path<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_bytes_debug(self.0, f)
@@ -168,6 +174,12 @@ impl PathBuf {
     /// [`Display`]: core::fmt::Display
     pub fn display(&self) -> BytesDisplay {
         BytesDisplay(&self.0)
+    }
+}
+
+impl AsRef<[u8]> for PathBuf {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -305,5 +317,16 @@ mod tests {
         assert!(!PathBuf::new(b"abc").is_absolute());
         assert!(!Path::new(b"").is_absolute());
         assert!(!PathBuf::new(b"").is_absolute());
+    }
+
+    #[test]
+    fn test_as_ref() {
+        let path = Path::new("abc");
+        let b: &[u8] = path.as_ref();
+        assert_eq!(b, b"abc");
+
+        let path = PathBuf::new("abc");
+        let b: &[u8] = path.as_ref();
+        assert_eq!(b, b"abc");
     }
 }
