@@ -242,6 +242,12 @@ where
     }
 }
 
+impl<'a> From<Path<'a>> for PathBuf {
+    fn from(p: Path<'a>) -> Self {
+        PathBuf(p.0.to_vec())
+    }
+}
+
 #[cfg(all(feature = "std", unix))]
 impl From<PathBuf> for std::path::PathBuf {
     fn from(p: PathBuf) -> std::path::PathBuf {
@@ -360,5 +366,12 @@ mod tests {
         let v: &[u8] = b"abc";
         assert_eq!(path, v);
         assert_eq!(pathbuf, v);
+    }
+
+    #[test]
+    fn test_path_buf_from_path() {
+        let path = Path::new("abc");
+        let pathbuf = PathBuf::from(path);
+        assert_eq!(pathbuf, "abc");
     }
 }
