@@ -16,6 +16,7 @@ extern crate alloc;
 
 mod block_group;
 mod checksum;
+mod dir;
 mod dir_entry;
 mod error;
 mod extent;
