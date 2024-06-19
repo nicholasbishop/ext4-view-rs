@@ -55,6 +55,15 @@ impl<'a> Path<'a> {
     {
         Self::try_from(p.as_ref()).unwrap()
     }
+
+    /// Get whether the path is absolute (starts with `/`).
+    pub fn is_absolute(self) -> bool {
+        if self.0.is_empty() {
+            false
+        } else {
+            self.0[0] == Self::SEPARATOR
+        }
+    }
 }
 
 impl<'a> Debug for Path<'a> {
@@ -136,6 +145,11 @@ impl PathBuf {
     /// Borrow as a `Path`.
     pub fn as_path(&self) -> Path {
         Path(&self.0)
+    }
+
+    /// Get whether the path is absolute (starts with `/`).
+    pub fn is_absolute(self) -> bool {
+        self.as_path().is_absolute()
     }
 }
 
@@ -254,5 +268,15 @@ mod tests {
             std::path::PathBuf::from(p),
             std::path::PathBuf::from("abc")
         );
+    }
+
+    #[test]
+    fn test_is_absolute() {
+        assert!(Path::new(b"/abc").is_absolute());
+        assert!(PathBuf::new(b"/abc").is_absolute());
+        assert!(!Path::new(b"abc").is_absolute());
+        assert!(!PathBuf::new(b"abc").is_absolute());
+        assert!(!Path::new(b"").is_absolute());
+        assert!(!PathBuf::new(b"").is_absolute());
     }
 }
