@@ -34,11 +34,16 @@ use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
-use error::Ext4Error;
 use features::ReadOnlyCompatibleFeatures;
 use superblock::Superblock;
 use util::usize_from_u32;
 
+pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
+pub use error::{Corrupt, Ext4Error, Incompatible, IoError};
+pub use features::IncompatibleFeatures;
+pub use file_type::FileType;
+pub use metadata::Metadata;
+pub use path::{Path, PathBuf, PathError};
 pub use reader::Ext4Read;
 
 /// Read-only access to an [ext4] filesystem.
