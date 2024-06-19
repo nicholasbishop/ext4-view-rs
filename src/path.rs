@@ -35,6 +35,23 @@ pub struct Path<'a>(
 
 impl<'a> Path<'a> {
     pub const SEPARATOR: u8 = b'/';
+
+    /// Create a new `Path`.
+    ///
+    /// This panics if the input is invalid, use [`Path::try_from`] if
+    /// error handling is desired.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path contains any null bytes or if a component of
+    /// the path is longer than 255 bytes.
+    #[track_caller]
+    pub fn new<P>(p: &'a P) -> Self
+    where
+        P: AsRef<[u8]> + ?Sized,
+    {
+        Self::try_from(p.as_ref()).unwrap()
+    }
 }
 
 impl<'a> Debug for Path<'a> {
@@ -96,6 +113,23 @@ impl<'a> From<Path<'a>> for &'a std::path::Path {
 pub struct PathBuf(Vec<u8>);
 
 impl PathBuf {
+    /// Create a new `PathBuf`.
+    ///
+    /// This panics if the input is invalid, use [`Path::try_from`] if
+    /// error handling is desired.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path contains any null bytes or if a component of
+    /// the path is longer than 255 bytes.
+    #[track_caller]
+    pub fn new<P>(p: &P) -> Self
+    where
+        P: AsRef<[u8]> + ?Sized,
+    {
+        Self::try_from(p.as_ref()).unwrap()
+    }
+
     /// Borrow as a `Path`.
     pub fn as_path(&self) -> Path {
         Path(&self.0)
@@ -165,17 +199,23 @@ mod tests {
         // Successful construction from a string.
         let src: &str = "abc";
         assert_eq!(Path::try_from(src).unwrap(), expected_path);
+        assert_eq!(Path::new(src), expected_path);
         assert_eq!(PathBuf::try_from(src).unwrap(), expected_path_buf);
+        assert_eq!(PathBuf::new(src), expected_path_buf);
 
         // Successful construction from a byte slice.
         let src: &[u8] = b"abc";
         assert_eq!(Path::try_from(src).unwrap(), expected_path);
+        assert_eq!(Path::new(src), expected_path);
         assert_eq!(PathBuf::try_from(src).unwrap(), expected_path_buf);
+        assert_eq!(PathBuf::new(src), expected_path_buf);
 
         // Successful construction from a byte array.
         let src: &[u8; 3] = b"abc";
         assert_eq!(Path::try_from(src).unwrap(), expected_path);
+        assert_eq!(Path::new(src), expected_path);
         assert_eq!(PathBuf::try_from(src).unwrap(), expected_path_buf);
+        assert_eq!(PathBuf::new(src), expected_path_buf);
 
         // Successful construction from a vector (only for PathBuf).
         let src: Vec<u8> = b"abc".to_vec();
