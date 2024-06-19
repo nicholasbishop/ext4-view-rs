@@ -145,7 +145,7 @@ impl<'a> From<Path<'a>> for &'a std::path::Path {
 /// Paths are mostly arbitrary sequences of bytes, with two restrictions:
 /// * The path cannot contain any null bytes.
 /// * Each component of the path must be no longer than 255 bytes.
-#[derive(Clone, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Default, Eq, Ord, PartialOrd, Hash)]
 pub struct PathBuf(Vec<u8>);
 
 impl PathBuf {
@@ -164,6 +164,11 @@ impl PathBuf {
         P: AsRef<[u8]> + ?Sized,
     {
         Self::try_from(p.as_ref()).unwrap()
+    }
+
+    /// Create empty `PathBuf`.
+    pub const fn empty() -> Self {
+        Self(Vec::new())
     }
 
     /// Borrow as a `Path`.
@@ -291,6 +296,10 @@ mod tests {
         // Successful construction from a vector (only for PathBuf).
         let src: Vec<u8> = b"abc".to_vec();
         assert_eq!(PathBuf::try_from(src).unwrap(), expected_path_buf);
+
+        // Successful construction of empty PathBuf.
+        assert_eq!(PathBuf::empty(), []);
+        assert_eq!(PathBuf::default(), []);
 
         // Error: contains null.
         let src: &str = "\0";
