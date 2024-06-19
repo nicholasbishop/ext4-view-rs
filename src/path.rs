@@ -36,6 +36,9 @@ pub struct Path<'a>(
 impl<'a> Path<'a> {
     pub const SEPARATOR: u8 = b'/';
 
+    /// Root path, equivalent to `/`.
+    pub const ROOT: Path<'static> = Path(&[Self::SEPARATOR]);
+
     /// Create a new `Path`.
     ///
     /// This panics if the input is invalid, use [`Path::try_from`] if
