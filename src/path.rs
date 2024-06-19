@@ -25,7 +25,7 @@ pub enum PathError {
 /// Paths are mostly arbitrary sequences of bytes, with two restrictions:
 /// * The path cannot contain any null bytes.
 /// * Each component of the path must be no longer than 255 bytes.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Eq, Ord, PartialOrd, Hash)]
 pub struct Path<'a>(
     // Use `&[u8]` rather than `[u8]` so that we don't have to use any
     // unsafe code. Unfortunately that means we can't impl `Deref` to
@@ -121,6 +121,15 @@ impl<'a, const N: usize> TryFrom<&'a [u8; N]> for Path<'a> {
     }
 }
 
+impl<'a, T> PartialEq<T> for Path<'a>
+where
+    T: AsRef<[u8]>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other.as_ref()
+    }
+}
+
 #[cfg(all(feature = "std", unix))]
 impl<'a> From<Path<'a>> for &'a std::path::Path {
     fn from(p: Path<'a>) -> &'a std::path::Path {
@@ -136,7 +145,7 @@ impl<'a> From<Path<'a>> for &'a std::path::Path {
 /// Paths are mostly arbitrary sequences of bytes, with two restrictions:
 /// * The path cannot contain any null bytes.
 /// * Each component of the path must be no longer than 255 bytes.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, Ord, PartialOrd, Hash)]
 pub struct PathBuf(Vec<u8>);
 
 impl PathBuf {
@@ -221,6 +230,15 @@ impl TryFrom<Vec<u8>> for PathBuf {
         Path::try_from(s.as_slice())?;
 
         Ok(Self(s))
+    }
+}
+
+impl<T> PartialEq<T> for PathBuf
+where
+    T: AsRef<[u8]>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other.as_ref()
     }
 }
 
@@ -328,5 +346,19 @@ mod tests {
         let path = PathBuf::new("abc");
         let b: &[u8] = path.as_ref();
         assert_eq!(b, b"abc");
+    }
+
+    #[test]
+    fn test_partial_eq() {
+        let path = Path::new(b"abc".as_slice());
+        let pathbuf = PathBuf::new(b"abc".as_slice());
+        assert_eq!(path, path);
+        assert_eq!(pathbuf, pathbuf);
+        assert_eq!(path, pathbuf);
+        assert_eq!(pathbuf, path);
+
+        let v: &[u8] = b"abc";
+        assert_eq!(path, v);
+        assert_eq!(pathbuf, v);
     }
 }
