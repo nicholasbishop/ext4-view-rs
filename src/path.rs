@@ -7,7 +7,10 @@
 // except according to those terms.
 
 use crate::dir_entry::{DirEntryName, DirEntryNameError};
+use crate::error::Ext4Error;
 use crate::format::{format_bytes_debug, BytesDisplay};
+use crate::inode::{Inode, LookupInode};
+use crate::Ext4;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
 
@@ -159,6 +162,28 @@ impl<'a> From<Path<'a>> for &'a std::path::Path {
 
         let s = std::ffi::OsStr::from_bytes(p.0);
         std::path::Path::new(s)
+    }
+}
+
+impl<'a> LookupInode for Path<'a> {
+    fn lookup_inode(&self, _fs: &Ext4) -> Result<Inode, Ext4Error> {
+        todo!()
+    }
+}
+
+impl LookupInode for &[u8] {
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error> {
+        let path =
+            Path::try_from(*self).map_err(|_| Ext4Error::MalformedPath)?;
+        path.lookup_inode(fs)
+    }
+}
+
+impl LookupInode for &str {
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error> {
+        let path =
+            Path::try_from(*self).map_err(|_| Ext4Error::MalformedPath)?;
+        path.lookup_inode(fs)
     }
 }
 

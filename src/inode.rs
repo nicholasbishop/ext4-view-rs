@@ -86,8 +86,8 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Inode {
+#[derive(Clone, Debug)]
+pub struct Inode {
     /// This inode's index.
     pub(crate) index: InodeIndex,
 
@@ -214,5 +214,28 @@ impl Inode {
         }
 
         Ok(inode)
+    }
+}
+
+/// Trait for looking up an inode inode in the filesystem.
+///
+/// The trait is trivially implemented for [`Inode`] itself. It is also
+/// implemented for [`Path`], [`PathBuf`], [`&str`], and `&[u8`], as
+/// well as [`DirEntry`].
+///
+/// This is used as the input type for most of the public [`Ext4`]
+/// methods. While path-like types are likely the most common input, it
+/// can be much more efficient to directly pass in an inode if that
+/// value is already known. For example, after looking up a directory
+/// entry, it's more efficient to use the inode value in that directory
+/// entry rather than getting the entry's path and looking up the inode
+/// for that path.
+pub trait LookupInode {
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error>;
+}
+
+impl LookupInode for Inode {
+    fn lookup_inode(&self, _fs: &Ext4) -> Result<Inode, Ext4Error> {
+        Ok(self.clone())
     }
 }

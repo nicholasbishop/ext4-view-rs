@@ -8,9 +8,10 @@
 
 use crate::error::{Corrupt, Ext4Error};
 use crate::format::{format_bytes_debug, BytesDisplay};
-use crate::inode::InodeIndex;
+use crate::inode::{Inode, InodeIndex, LookupInode};
 use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
+use crate::Ext4;
 use alloc::rc::Rc;
 use core::fmt::{self, Debug, Formatter};
 use core::hash::{Hash, Hasher};
@@ -235,6 +236,18 @@ impl DirEntry {
 
     pub fn path(&self) -> PathBuf {
         self.path.join(self.name.as_bytes())
+    }
+}
+
+impl LookupInode for DirEntry {
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error> {
+        Inode::read(fs, self.inode)
+    }
+}
+
+impl LookupInode for &DirEntry {
+    fn lookup_inode(&self, fs: &Ext4) -> Result<Inode, Ext4Error> {
+        Inode::read(fs, self.inode)
     }
 }
 
