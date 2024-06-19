@@ -418,4 +418,13 @@ mod tests {
         let r: DirEntryName<'_> = name.as_dir_entry_name();
         assert_eq!(r, "abc");
     }
+
+    #[test]
+    fn test_dir_entry_name_as_str() {
+        let name = DirEntryName::try_from(b"abc".as_slice()).unwrap();
+        assert_eq!(name.as_str().unwrap(), "abc");
+
+        let name = DirEntryName([0xc3, 0x28].as_slice());
+        assert!(name.as_str().is_err());
+    }
 }
