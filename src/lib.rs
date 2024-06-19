@@ -16,6 +16,7 @@ extern crate alloc;
 
 mod block_group;
 mod checksum;
+mod dir;
 mod dir_entry;
 mod error;
 mod extent;
@@ -38,6 +39,7 @@ use features::ReadOnlyCompatibleFeatures;
 use superblock::Superblock;
 use util::usize_from_u32;
 
+pub use dir::ReadDir;
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible, IoError};
 pub use features::IncompatibleFeatures;
