@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::dir_entry::DirEntry;
+use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::error::{Corrupt, Ext4Error};
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
@@ -213,16 +213,46 @@ impl<'a> Iterator for ReadDir<'a> {
     }
 }
 
+/// Search a directory inode for an entry with the given `name`. If
+/// found, return the entry's inode, otherwise return a `NotFound`
+/// error.
+pub(crate) fn get_dir_entry_inode_by_name(
+    fs: &Ext4,
+    dir_inode: &Inode,
+    name: DirEntryName<'_>,
+) -> Result<Inode, Ext4Error> {
+    assert!(dir_inode.file_type.is_dir());
+
+    // TODO: add faster lookup by hash, if the inode has
+    // InodeFlags::DIRECTORY_HTREE.
+
+    // The entry's `path()` method is not called, so the value of the
+    // base path does not matter.
+    let path = PathBuf::empty();
+
+    for entry in ReadDir::new(fs, dir_inode, path)? {
+        let entry = entry?;
+        if entry.file_name() == name {
+            return Inode::read(fs, entry.inode);
+        }
+    }
+
+    Err(Ext4Error::NotFound)
+}
+
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn load_test_disk() -> Ext4 {
+        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
+        Ext4::load_from_path(fs_path).unwrap()
+    }
+
     #[test]
     fn test_read_dir() {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        let fs = Ext4::load_from_path(fs_path).unwrap();
-
+        let fs = load_test_disk();
         let root_inode = fs.read_root_inode().unwrap();
         let root_path = crate::PathBuf::new("/");
 
@@ -240,5 +270,34 @@ mod tests {
 
         // Check for something that does not exist.
         assert!(!entries.iter().any(|e| e.file_name() == "does_not_exist"));
+    }
+
+    #[test]
+    fn test_get_dir_entry_inode_by_name() {
+        let fs = load_test_disk();
+        let root_inode = fs.read_root_inode().unwrap();
+
+        let lookup = |name| {
+            get_dir_entry_inode_by_name(
+                &fs,
+                &root_inode,
+                DirEntryName::try_from(name).unwrap(),
+            )
+        };
+
+        // Check for a few expected entries.
+        // '.' always links to self.
+        assert_eq!(lookup(".").unwrap().index, root_inode.index);
+        // '..' is normally parent, but in the root dir it's just the
+        // root dir again.
+        assert_eq!(lookup("..").unwrap().index, root_inode.index);
+        // Don't check specific values of these since they might change
+        // if the test disk is regenerated
+        assert!(lookup("empty_file").is_ok());
+        assert!(lookup("empty_dir").is_ok());
+
+        // Check for something that does not exist.
+        let err = lookup("does_not_exist").unwrap_err();
+        assert!(matches!(err, Ext4Error::NotFound));
     }
 }
