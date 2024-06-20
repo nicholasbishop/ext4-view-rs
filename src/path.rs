@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::dir_entry::DirEntryName;
+use crate::dir_entry::{DirEntryName, DirEntryNameError};
 use crate::format::{format_bytes_debug, BytesDisplay};
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
@@ -333,6 +333,61 @@ impl From<PathBuf> for std::path::PathBuf {
     }
 }
 
+/// Component of a [`Path`].
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum Component<'a> {
+    /// Root directory (`/`), used at the start of an absolute path.
+    RootDir,
+
+    /// Current directory (`.`).
+    CurDir,
+
+    /// Parent directory (`..`).
+    ParentDir,
+
+    /// Directory or file name.
+    Normal(DirEntryName<'a>),
+}
+
+impl<'a> Component<'a> {
+    /// Construct a [`Component::Normal`] from the given `name`.
+    pub fn normal<T: AsRef<[u8]> + ?Sized>(
+        name: &'a T,
+    ) -> Result<Self, DirEntryNameError> {
+        Ok(Component::Normal(DirEntryName::try_from(name.as_ref())?))
+    }
+}
+
+impl<'a> Debug for Component<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Component::RootDir => write!(f, "RootDir"),
+            Component::CurDir => write!(f, "CurDir"),
+            Component::ParentDir => write!(f, "ParentDir"),
+            Component::Normal(name) => {
+                write!(f, "Normal(")?;
+                format_bytes_debug(name.as_ref(), f)?;
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+impl<'a, T> PartialEq<T> for Component<'a>
+where
+    T: AsRef<[u8]>,
+{
+    fn eq(&self, other: &T) -> bool {
+        let other = other.as_ref();
+        match self {
+            Component::RootDir => other == b"/",
+            Component::CurDir => other == b".",
+            Component::ParentDir => other == b"..",
+            Component::Normal(c) => *c == other,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -521,5 +576,23 @@ mod tests {
     fn test_path_buf_join_panic() {
         let p = PathBuf::new("");
         let _ = p.join("\0");
+    }
+
+    #[test]
+    fn test_component() {
+        assert_eq!(Component::normal("abc").unwrap(), "abc");
+        assert!(Component::normal("a/b").is_err());
+
+        assert_eq!(Component::RootDir, "/");
+        assert_eq!(Component::CurDir, ".");
+        assert_eq!(Component::ParentDir, "..");
+
+        assert_eq!(format!("{:?}", Component::RootDir), "RootDir");
+        assert_eq!(format!("{:?}", Component::CurDir), "CurDir");
+        assert_eq!(format!("{:?}", Component::ParentDir), "ParentDir");
+        assert_eq!(
+            format!("{:?}", Component::normal("abc").unwrap()),
+            "Normal(abc)"
+        );
     }
 }
