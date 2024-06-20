@@ -189,6 +189,48 @@ impl PathBuf {
     pub fn display(&self) -> BytesDisplay {
         BytesDisplay(&self.0)
     }
+
+    /// Append to the path.
+    ///
+    /// This will add a separator if needed. Note that if the argument
+    /// is an absolute path, `self` will be replaced with that path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the argument is not a valid path.
+    #[track_caller]
+    pub fn push(&mut self, p: impl AsRef<[u8]>) {
+        #[track_caller]
+        fn inner(this: &mut PathBuf, p: &[u8]) {
+            // Panic if the arg is not a valid path.
+            let p = Path::try_from(p).expect("invalid path arg");
+
+            // If the arg is absolute, replace `self` with the arg rather
+            // than appending.
+            if p.is_absolute() {
+                this.0.clear();
+                this.0.extend(p.0);
+                return;
+            }
+
+            let add_sep = if let Some(last) = this.0.last() {
+                *last != b'/'
+            } else {
+                false
+            };
+
+            if add_sep {
+                this.0.reserve(p.0.len() + 1);
+                this.0.push(Path::SEPARATOR);
+            } else {
+                this.0.reserve(p.0.len());
+            }
+
+            this.0.extend(p.0);
+        }
+
+        inner(self, p.as_ref())
+    }
 }
 
 impl AsRef<[u8]> for PathBuf {
@@ -382,5 +424,39 @@ mod tests {
         let path = Path::new("abc");
         let pathbuf = PathBuf::from(path);
         assert_eq!(pathbuf, "abc");
+    }
+
+    #[test]
+    fn test_path_buf_push() {
+        let mut p = PathBuf::new("");
+        p.push("a");
+        assert_eq!(p, "a");
+
+        let mut p = PathBuf::new("/");
+        p.push("a");
+        assert_eq!(p, "/a");
+
+        let mut p = PathBuf::new("a");
+        p.push("b");
+        assert_eq!(p, "a/b");
+
+        let mut p = PathBuf::new("a/");
+        p.push("b");
+        assert_eq!(p, "a/b");
+
+        let mut p = PathBuf::new("a/");
+        p.push("b/c");
+        assert_eq!(p, "a/b/c");
+
+        let mut p = PathBuf::new("a");
+        p.push("/b");
+        assert_eq!(p, "/b");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_path_buf_push_panic() {
+        let mut p = PathBuf::new("");
+        p.push("\0");
     }
 }
