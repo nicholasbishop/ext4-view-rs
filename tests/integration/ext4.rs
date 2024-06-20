@@ -72,6 +72,49 @@ fn test_read_to_string() {
 }
 
 #[test]
+fn test_read_link() {
+    let fs = load_test_disk1();
+
+    // Basic success test.
+    assert_eq!(fs.read_link("/sym_simple").unwrap(), "small_file");
+
+    // Symlinks prior to the final component are expanded as normal.
+    assert_eq!(
+        fs.read_link("/dir1/dir2/sym_abs_dir/../sym_simple")
+            .unwrap(),
+        "small_file"
+    );
+
+    // Short symlink target is inline, longer symlink is stored in extents.
+    assert_eq!(fs.read_link("/sym_59").unwrap(), "a".repeat(59));
+    assert_eq!(fs.read_link("/sym_60").unwrap(), "a".repeat(60));
+
+    // Error: path is not absolute.
+    assert!(matches!(
+        fs.read_link("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+
+    // Error: malformed path.
+    assert!(matches!(
+        fs.read_link("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
+
+    // Error: does not exist.
+    assert!(matches!(
+        fs.read_link("/does_not_exist").unwrap_err(),
+        Ext4Error::NotFound
+    ));
+
+    // Error: not a symlink.
+    assert!(matches!(
+        fs.read_link("/small_file").unwrap_err(),
+        Ext4Error::NotASymlink
+    ));
+}
+
+#[test]
 fn test_read_dir() {
     let fs = load_test_disk1();
 

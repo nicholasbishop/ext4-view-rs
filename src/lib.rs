@@ -333,6 +333,30 @@ impl Ext4 {
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
 
+    /// Get the target of a symbolic link.
+    ///
+    /// The final component of `path` must be a symlink. If the path
+    /// contains any symlinks in components prior to the end, they will
+    /// be fully resolved as normal.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * The final component of `path` is not a symlink.
+    pub fn read_link<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<PathBuf, Ext4Error> {
+            let inode =
+                fs.path_to_inode(path, FollowSymlinks::ExcludeFinalComponent)?;
+            inode.symlink_target(fs)
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+
     /// Get an iterator over the entries in a directory.
     ///
     /// # Errors
