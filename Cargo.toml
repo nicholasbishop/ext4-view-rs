@@ -10,6 +10,11 @@
 name = "ext4-view"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nicholasbishop/ext4-view-rs"
+categories = ["filesystem", "embedded", "no-std"]
+description = "No-std compatible Rust library for reading ext4 filesystems"
+keywords = ["ext4", "filesystem", "no_std"]
 
 [workspace]
 members = ["xtask"]
