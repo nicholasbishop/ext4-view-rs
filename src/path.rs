@@ -73,6 +73,19 @@ impl<'a> Path<'a> {
     pub fn display(self) -> BytesDisplay<'a> {
         BytesDisplay(self.0)
     }
+
+    /// Create a new `PathBuf` joining `self` with `path`.
+    ///
+    /// This will add a separator if needed. Note that if the argument
+    /// is an absolute path, the returned value will be equal to `path`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the argument is not a valid path.
+    #[must_use]
+    pub fn join(self, path: impl AsRef<[u8]>) -> PathBuf {
+        PathBuf::from(self).join(path)
+    }
 }
 
 impl<'a> AsRef<[u8]> for Path<'a> {
@@ -230,6 +243,21 @@ impl PathBuf {
         }
 
         inner(self, path.as_ref())
+    }
+
+    /// Create a new `PathBuf` joining `self` with `path`.
+    ///
+    /// This will add a separator if needed. Note that if the argument
+    /// is an absolute path, the returned value will be equal to `path`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the argument is not a valid path.
+    #[must_use]
+    pub fn join(&self, path: impl AsRef<[u8]>) -> PathBuf {
+        let mut t = self.clone();
+        t.push(path);
+        t
     }
 }
 
@@ -458,5 +486,40 @@ mod tests {
     fn test_path_buf_push_panic() {
         let mut p = PathBuf::new("");
         p.push("\0");
+    }
+
+    #[test]
+    fn test_path_join() {
+        assert_eq!(Path::new("").join("b"), "b");
+        assert_eq!(PathBuf::new("").join("b"), "b");
+
+        assert_eq!(Path::new("/").join("a"), "/a");
+        assert_eq!(PathBuf::new("/").join("a"), "/a");
+
+        assert_eq!(Path::new("a").join("b"), "a/b");
+        assert_eq!(PathBuf::new("a").join("b"), "a/b");
+
+        assert_eq!(Path::new("a/").join("b"), "a/b");
+        assert_eq!(PathBuf::new("a/").join("b"), "a/b");
+
+        assert_eq!(Path::new("a/").join("b/c"), "a/b/c");
+        assert_eq!(PathBuf::new("a/").join("b/c"), "a/b/c");
+
+        assert_eq!(Path::new("a").join("/b"), "/b");
+        assert_eq!(PathBuf::new("a").join("/b"), "/b");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_path_join_panic() {
+        let p = Path::new("");
+        let _ = p.join("\0");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_path_buf_join_panic() {
+        let p = PathBuf::new("");
+        let _ = p.join("\0");
     }
 }
