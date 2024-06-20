@@ -233,6 +233,13 @@ impl DirEntry {
         Ok((Some(entry), rec_len))
     }
 
+    /// Get the directory entry's name.
+    #[must_use]
+    #[inline]
+    pub fn file_name(&self) -> DirEntryName<'_> {
+        self.name.as_dir_entry_name()
+    }
+
     /// Get the entry's path.
     ///
     /// This appends the entry's name to the path that `Ext4::read_dir`
@@ -377,6 +384,7 @@ mod tests {
                 path: path.clone(),
             },
         );
+        assert_eq!(entry.file_name(), "abc");
         assert_eq!(entry.path(), "path/abc");
 
         // Special entry: inode is zero.
