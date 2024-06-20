@@ -86,6 +86,15 @@ impl<'a> Path<'a> {
     pub fn join(self, path: impl AsRef<[u8]>) -> PathBuf {
         PathBuf::from(self).join(path)
     }
+
+    /// Get an iterator over each [`Component`] in the path.
+    #[must_use]
+    pub fn components(self) -> Components<'a> {
+        Components {
+            path: self,
+            offset: 0,
+        }
+    }
 }
 
 impl<'a> AsRef<[u8]> for Path<'a> {
@@ -259,6 +268,12 @@ impl PathBuf {
         t.push(path);
         t
     }
+
+    /// Get an iterator over each [`Component`] in the path.
+    #[must_use]
+    pub fn components(&self) -> Components<'_> {
+        self.as_path().components()
+    }
 }
 
 impl AsRef<[u8]> for PathBuf {
@@ -385,6 +400,64 @@ where
             Component::ParentDir => other == b"..",
             Component::Normal(c) => *c == other,
         }
+    }
+}
+
+/// Iterator over [`Component`]s in a [`Path`].
+pub struct Components<'a> {
+    path: Path<'a>,
+    offset: usize,
+}
+
+impl<'a> Iterator for Components<'a> {
+    type Item = Component<'a>;
+
+    fn next(&mut self) -> Option<Component<'a>> {
+        let path = &self.path.0;
+
+        if self.offset >= path.len() {
+            return None;
+        }
+
+        if self.offset == 0 && path[0] == Path::SEPARATOR {
+            self.offset += 1;
+            return Some(Component::RootDir);
+        }
+
+        // Coalesce repeated separators like "a//b".
+        while self.offset < path.len() && path[self.offset] == Path::SEPARATOR {
+            self.offset += 1;
+        }
+        if self.offset >= path.len() {
+            return None;
+        }
+
+        let end = if let Some(index) = self
+            .path
+            .0
+            .iter()
+            .skip(self.offset)
+            .position(|b| *b == Path::SEPARATOR)
+        {
+            self.offset + index
+        } else {
+            path.len()
+        };
+
+        let component = &path[self.offset..end];
+        let component = if component == b"." {
+            Component::CurDir
+        } else if component == b".." {
+            Component::ParentDir
+        } else {
+            // Paths are validated at construction time to ensure each
+            // component is of a valid length, so don't need to check
+            // that here when constructing `DirEntryName`.
+            Component::Normal(DirEntryName(component))
+        };
+
+        self.offset = end;
+        Some(component)
     }
 }
 
@@ -593,6 +666,67 @@ mod tests {
         assert_eq!(
             format!("{:?}", Component::normal("abc").unwrap()),
             "Normal(abc)"
+        );
+    }
+
+    #[test]
+    fn test_path_components() {
+        let p = Path::new("");
+        let c: Vec<_> = p.components().collect();
+        assert!(c.is_empty());
+
+        let p = Path::new("/");
+        let c: Vec<_> = p.components().collect();
+        assert_eq!(c, [Component::RootDir]);
+
+        let p = Path::new("/ab/cd/ef/../.");
+        let c: Vec<_> = p.components().collect();
+        assert_eq!(
+            c,
+            [
+                Component::RootDir,
+                Component::normal("ab").unwrap(),
+                Component::normal("cd").unwrap(),
+                Component::normal("ef").unwrap(),
+                Component::ParentDir,
+                Component::CurDir,
+            ]
+        );
+
+        let p = Path::new("ab/cd/ef");
+        let c: Vec<_> = p.components().collect();
+        assert_eq!(
+            c,
+            [
+                Component::normal("ab").unwrap(),
+                Component::normal("cd").unwrap(),
+                Component::normal("ef").unwrap(),
+            ]
+        );
+
+        let p = Path::new("///ab///cd///ef//");
+        let c: Vec<_> = p.components().collect();
+        assert_eq!(
+            c,
+            [
+                Component::RootDir,
+                Component::normal("ab").unwrap(),
+                Component::normal("cd").unwrap(),
+                Component::normal("ef").unwrap(),
+            ]
+        );
+
+        // PathBuf uses the same implementation, just do one test to
+        // verify.
+        let p = PathBuf::new("/a/b");
+        let c: Vec<_> = p.components().collect();
+        assert_eq!(
+            c,
+            [
+                Component::RootDir,
+                Component::normal("a").unwrap(),
+                Component::normal("b").unwrap(),
+            ]
         );
     }
 }
