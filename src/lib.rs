@@ -43,7 +43,7 @@ pub use error::{Corrupt, Ext4Error, Incompatible, IoError};
 pub use features::IncompatibleFeatures;
 pub use file_type::FileType;
 pub use metadata::Metadata;
-pub use path::{Path, PathBuf, PathError};
+pub use path::{Component, Path, PathBuf, PathError};
 pub use reader::Ext4Read;
 
 /// Read-only access to an [ext4] filesystem.
