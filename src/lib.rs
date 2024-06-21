@@ -375,11 +375,11 @@ impl Ext4 {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_path_to_inode() {
         let fs_path = std::path::Path::new("test_data/test_disk1.bin");
@@ -435,5 +435,29 @@ mod tests {
             .is_err());
 
         // TODO: add deeper paths to the test disk and test here.
+    }
+
+    #[test]
+    fn test_disk1() {
+        let data = include_bytes!("../test_data/test_disk1.bin");
+        let ext4 = Ext4::load(Box::new(data.to_vec())).unwrap();
+
+        // Check the targets of the symlinks.
+        // TODO: enable symlink support.
+        if false {
+            assert_eq!(ext4.read_link("/sym_simple").unwrap(), "small_file");
+
+            // Symlink target is inline.
+            assert_eq!(ext4.read_link("/sym_59").unwrap(), "a".repeat(59));
+
+            // Symlink target is stored in extents.
+            assert_eq!(ext4.read_link("/sym_60").unwrap(), "a".repeat(60));
+
+            // Not a symlink.
+            assert!(matches!(
+                ext4.read_link("/small_file").unwrap_err(),
+                Ext4Error::NotASymlink
+            ));
+        }
     }
 }
