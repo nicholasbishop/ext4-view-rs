@@ -45,9 +45,27 @@ impl Metadata {
     }
 
     /// Get the file's UNIX permission bits.
-    pub fn mode(&self) -> u32 {
-        let mode = self.mode.bits() & 0xfff;
-        // Convert from u16 to u32 to match the std `PermissionsExt` interface.
-        u32::from(mode)
+    ///
+    /// Diagram of the returned value's bits:
+    ///
+    /// ```text
+    ///       top four bits are always zero
+    ///       │   
+    ///       │   set uid, set gid, sticky bit
+    ///       │   │  
+    ///       │   │  owner read/write/execute
+    ///       │   │  │  
+    ///       │   │  │  group read/write/execute
+    ///       │   │  │  │  
+    ///       │   │  │  │  other read/write/execute
+    ///       │   │  │  │  │
+    /// (msb) 0000xxxuuugggooo (lsb)
+    /// ```
+    ///
+    /// See `st_mode` in [inode(7)][inode] for more details.
+    ///
+    /// [inode]: https://www.man7.org/linux/man-pages/man7/inode.7.html
+    pub fn mode(&self) -> u16 {
+        self.mode.bits() & 0o7777
     }
 }
