@@ -275,6 +275,12 @@ pub enum Incompatible {
         /// The incompatible features.
         IncompatibleFeatures,
     ),
+
+    /// The directory hash algorithm is not supported.
+    DirectoryHash(
+        /// The algorithm identifier.
+        u8,
+    ),
 }
 
 impl Display for Incompatible {
@@ -288,6 +294,9 @@ impl Display for Incompatible {
             }
             Self::Incompatible(feat) => {
                 write!(f, "incompatible features: {feat:?}")
+            }
+            Self::DirectoryHash(algorithm) => {
+                write!(f, "unsupported directory hash algorithm: {algorithm}")
             }
         }
     }
