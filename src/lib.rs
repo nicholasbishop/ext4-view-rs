@@ -18,6 +18,7 @@ mod block_group;
 mod checksum;
 mod dir;
 mod dir_entry;
+mod dir_entry_hash;
 mod error;
 mod extent;
 mod features;
