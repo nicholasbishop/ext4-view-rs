@@ -23,6 +23,7 @@ pub struct Superblock {
     pub(crate) incompatible_features: IncompatibleFeatures,
     pub(crate) read_only_compatible_features: ReadOnlyCompatibleFeatures,
     pub(crate) checksum_seed: u32,
+    pub(crate) htree_hash_seed: [u32; 4],
 }
 
 impl Superblock {
@@ -49,6 +50,13 @@ impl Superblock {
         let s_feature_incompat = read_u32le(bytes, 0x60);
         let s_feature_ro_compat = read_u32le(bytes, 0x64);
         let s_uuid = &bytes[0x68..0x68 + 16];
+        const S_HASH_SEED_OFFSET: usize = 0xec;
+        let s_hash_seed = [
+            read_u32le(bytes, S_HASH_SEED_OFFSET),
+            read_u32le(bytes, S_HASH_SEED_OFFSET + 4),
+            read_u32le(bytes, S_HASH_SEED_OFFSET + 8),
+            read_u32le(bytes, S_HASH_SEED_OFFSET + 12),
+        ];
         let s_desc_size = read_u16le(bytes, 0xfe);
         let s_blocks_count_hi = read_u32le(bytes, 0x150);
         let s_checksum_seed = read_u32le(bytes, 0x270);
@@ -112,6 +120,7 @@ impl Superblock {
             incompatible_features,
             read_only_compatible_features,
             checksum_seed,
+            htree_hash_seed: s_hash_seed,
         })
     }
 
@@ -205,6 +214,9 @@ mod tests {
                         | ReadOnlyCompatibleFeatures::LARGE_INODES
                         | ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS,
                 checksum_seed: 0xfd3cc0be,
+                htree_hash_seed: [
+                    0xbb071441, 0x7746982f, 0x6007bb8f, 0xb61a9b7
+                ],
             }
         );
     }
