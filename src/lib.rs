@@ -6,6 +6,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! This crate provides read-only access to [ext4] filesystems.
+//!
+//! [ext4]: https://en.wikipedia.org/wiki/Ext4
+//!
+//! # Example
+//!
+//! Load an ext4 filesystem from an in-memory buffer and then read a file
+//! from the filesystem:
+//!
+//! ```
+//! use ext4_view::{Ext4, Path};
+//!
+//! fn in_memory_example(fs_data: Vec<u8>) -> Vec<u8> {
+//!     let ext4 = Ext4::load(Box::new(fs_data)).unwrap();
+//!     ext4.read("/some/file/path").unwrap()
+//! }
+//! ```
+
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![forbid(unsafe_code)]
 // TODO(nicholasbishop): Temporarily allow dead code to allow for
