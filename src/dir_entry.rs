@@ -207,6 +207,14 @@ impl DirEntry {
         let rec_len = read_u16le(bytes, 4);
         let rec_len = usize::from(rec_len);
 
+        // Check that the rec_len is somewhat reasonable. Too small a
+        // value could indicate the wrong data is being read. And
+        // notably, a value of zero would cause an infinite loop when
+        // iterating over entries.
+        if rec_len < NAME_OFFSET {
+            return Err(err());
+        }
+
         // As described above, an inode of zero is used for special
         // entries. Return early since the rest of the fields won't be
         // valid.
