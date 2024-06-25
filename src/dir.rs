@@ -223,9 +223,7 @@ mod tests {
         let fs_path = std::path::Path::new("test_data/test_disk1.bin");
         let fs = Ext4::load_from_path(fs_path).unwrap();
 
-        // Root inode is always 2.
-        let root_inode_index = InodeIndex::new(2).unwrap();
-        let root_inode = Inode::read(&fs, root_inode_index).unwrap();
+        let root_inode = fs.read_root_inode().unwrap();
         let root_path = crate::PathBuf::new("/");
 
         // Use the iterator to get all DirEntries in the root directory.
