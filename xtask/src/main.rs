@@ -8,12 +8,12 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{env, str};
 use xtask::{Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
@@ -104,6 +104,56 @@ impl DiskParams {
         }
         Ok(())
     }
+
+    /// Check some properties of the filesystem.
+    fn check(&self) -> Result<()> {
+        self.check_dir_htree_depth("/big_dir", 1)?;
+
+        Ok(())
+    }
+
+    /// Run the [debugfs] tool on the disk with the given `request` and
+    /// return the raw stdout.
+    ///
+    /// [debugfs]: https://www.man7.org/linux/man-pages/man8/debugfs.8.html
+    fn run_debugfs(&self, request: &str) -> Result<Vec<u8>> {
+        let output = Command::new("debugfs")
+            .args(["-R", request])
+            .arg(&self.path)
+            .output()?;
+        if !output.status.success() {
+            bail!("debugfs failed");
+        }
+        Ok(output.stdout)
+    }
+
+    /// Use debugfs to check that a directory has the expected htree depth.
+    ///
+    /// The depth is the number of levels containing internal nodes, not
+    /// counting the root. So, a depth of zero means the htree's root
+    /// node points directly to leaf nodes. A depth of one means the
+    /// htree's root node points to internal nodes, and those nodes
+    /// point to leaf nodes.
+    fn check_dir_htree_depth(
+        &self,
+        dir_path: &str,
+        expected_depth: u8,
+    ) -> Result<()> {
+        let stdout = self.run_debugfs(&format!("htree_dump {dir_path}"))?;
+        let stdout = str::from_utf8(&stdout)?;
+        let depth = stdout
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("Indirect levels:"))
+            .next()
+            .context("htree levels not found")?;
+        let depth: u8 = depth.trim().parse()?;
+        if depth != expected_depth {
+            bail!(
+                "{dir_path}: htree depth is {depth}, expected {expected_depth}"
+            );
+        }
+        Ok(())
+    }
 }
 
 fn create_test_data() -> Result<()> {
@@ -127,14 +177,15 @@ fn create_test_data() -> Result<()> {
     }
 
     let path = dir.join("test_disk1.bin");
+    let disk = DiskParams {
+        path: path.to_owned(),
+        size_in_kilobytes: 1024 * 64,
+    };
     if !path.exists() {
-        let disk = DiskParams {
-            path: path.to_owned(),
-            size_in_kilobytes: 1024 * 64,
-        };
         disk.create()?;
         disk.fill()?;
     }
+    disk.check()?;
 
     Ok(())
 }
