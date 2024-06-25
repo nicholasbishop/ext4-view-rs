@@ -163,7 +163,7 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DirEntry {
     /// Number of the inode that this entry points to.
-    inode: InodeIndex,
+    pub(crate) inode: InodeIndex,
 
     /// Raw name of the entry.
     name: DirEntryNameBuf,
