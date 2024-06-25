@@ -38,6 +38,7 @@ mod checksum;
 mod dir;
 mod dir_entry;
 mod dir_entry_hash;
+mod dir_htree;
 mod error;
 mod extent;
 mod features;
@@ -458,6 +459,20 @@ mod tests {
                 ext4.read_link("/small_file").unwrap_err(),
                 Ext4Error::NotASymlink
             ));
+        }
+
+        // Resolve paths in `/medium_dir` via htree.
+        let medium_dir = Path::new("/medium_dir");
+        for i in 0..1_000 {
+            let i = i.to_string();
+            assert_eq!(ext4.read_to_string(&medium_dir.join(&i)).unwrap(), i);
+        }
+
+        // Resolve paths in `/big_dir` via htree.
+        let big_dir = Path::new("/big_dir");
+        for i in 0..10_000 {
+            let i = i.to_string();
+            assert_eq!(ext4.read_to_string(&big_dir.join(&i)).unwrap(), i);
         }
     }
 }
