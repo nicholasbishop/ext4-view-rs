@@ -38,7 +38,7 @@ use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
 use extent::Extents;
 use features::ReadOnlyCompatibleFeatures;
-use inode::Inode;
+use inode::{Inode, InodeIndex};
 use superblock::Superblock;
 use util::usize_from_u32;
 
@@ -123,6 +123,12 @@ impl Ext4 {
         self.superblock
             .read_only_compatible_features
             .contains(ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS)
+    }
+
+    /// Read the inode of the root `/` directory.
+    fn read_root_inode(&self) -> Result<Inode, Ext4Error> {
+        let root_inode_index = InodeIndex::new(2).unwrap();
+        Inode::read(self, root_inode_index)
     }
 
     /// Read bytes into `dst`, starting at `start_byte`.
