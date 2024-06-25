@@ -47,7 +47,7 @@ pub use features::IncompatibleFeatures;
 pub use file_type::FileType;
 pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};
-pub use reader::Ext4Read;
+pub use reader::{Ext4Read, MemIoError};
 
 /// Read-only access to an [ext4] filesystem.
 ///
