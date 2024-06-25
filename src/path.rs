@@ -143,6 +143,14 @@ impl<'a, const N: usize> TryFrom<&'a [u8; N]> for Path<'a> {
     }
 }
 
+impl<'a> TryFrom<&'a PathBuf> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(p: &'a PathBuf) -> Result<Self, PathError> {
+        Ok(p.as_path())
+    }
+}
+
 impl<'a, T> PartialEq<T> for Path<'a>
 where
     T: AsRef<[u8]>,
@@ -494,6 +502,10 @@ mod tests {
         // Successful construction from a vector (only for PathBuf).
         let src: Vec<u8> = b"abc".to_vec();
         assert_eq!(PathBuf::try_from(src).unwrap(), expected_path_buf);
+
+        // Successful construction of a `Path` from a `&PathBuf`.
+        let src: &PathBuf = &expected_path_buf;
+        assert_eq!(Path::try_from(src).unwrap(), expected_path);
 
         // Successful construction of empty PathBuf.
         assert_eq!(PathBuf::empty(), []);
