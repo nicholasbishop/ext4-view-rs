@@ -11,6 +11,9 @@ use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
 
+/// Whether to mount read-only or read-write.
+pub struct ReadOnly(pub bool);
+
 /// Mounted filesystem.
 ///
 /// The filesystem will be unmounted on drop.
@@ -22,10 +25,10 @@ impl Mount {
     /// Mount a file containing a filesystem to a temporary directory.
     ///
     /// Mounting is a privileged operation, so this runs `sudo mount`.
-    pub fn new(fs_bin: &Path) -> Result<Self> {
+    pub fn new(fs_bin: &Path, read_only: ReadOnly) -> Result<Self> {
         let mount_point = TempDir::new()?;
         let status = Command::new("sudo")
-            .args(["mount", "-o", "ro"])
+            .args(["mount", "-o", if read_only.0 { "ro" } else { "rw" }])
             .args([fs_bin, mount_point.path()])
             .status()?;
         if !status.success() {

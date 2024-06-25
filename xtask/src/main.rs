@@ -14,7 +14,7 @@ use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
-use xtask::Mount;
+use xtask::{Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
 ///
@@ -61,7 +61,7 @@ impl DiskParams {
 
     /// Put some data on the disk.
     fn fill(&self) -> Result<()> {
-        let mount = Mount::new(&self.path)?;
+        let mount = Mount::new(&self.path, ReadOnly(false))?;
         let root = mount.path();
 
         // Create an empty file.
