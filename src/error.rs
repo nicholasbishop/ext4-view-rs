@@ -281,6 +281,10 @@ pub enum Incompatible {
         /// The algorithm identifier.
         u8,
     ),
+
+    /// A path contains symlink or ".." components, but the operation
+    /// being attempted does not supports this type of path.
+    UnresolvedPath,
 }
 
 impl Display for Incompatible {
@@ -297,6 +301,9 @@ impl Display for Incompatible {
             }
             Self::DirectoryHash(algorithm) => {
                 write!(f, "unsupported directory hash algorithm: {algorithm}")
+            }
+            Self::UnresolvedPath => {
+                write!(f, "path contains a symlink or '..'")
             }
         }
     }
