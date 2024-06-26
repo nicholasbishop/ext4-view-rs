@@ -36,7 +36,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
+use extent::Extents;
 use features::ReadOnlyCompatibleFeatures;
+use inode::Inode;
 use superblock::Superblock;
 use util::usize_from_u32;
 
@@ -133,5 +135,44 @@ impl Ext4 {
             .borrow_mut()
             .read(start_byte, dst)
             .map_err(Ext4Error::Io)
+    }
+
+    /// Read the entire contents of a file into a `Vec<u8>`.
+    ///
+    /// Holes are filled with zero.
+    ///
+    /// Fails with `FileTooLarge` if the size of the file is too large
+    /// to fit in a [`usize`].
+    fn read_inode_file(&self, inode: &Inode) -> Result<Vec<u8>, Ext4Error> {
+        let block_size = self.superblock.block_size;
+
+        // Get the file size and preallocate the output vector.
+        let file_size_in_bytes = usize::try_from(inode.size_in_bytes)
+            .map_err(|_| Ext4Error::FileTooLarge)?;
+        let mut dst = vec![0; file_size_in_bytes];
+
+        for extent in Extents::new(self, inode)? {
+            let extent = extent?;
+
+            let dst_start =
+                usize_from_u32(extent.block_within_file * block_size);
+
+            // Get the length (in bytes) of the extent.
+            //
+            // This length may actually be too long, since the last
+            // block may extend past the end of the file. This is
+            // checked below.
+            let len = usize_from_u32(block_size * u32::from(extent.num_blocks));
+            let dst_end = dst_start + len;
+            // Cap to the end of the file.
+            let dst_end = dst_end.min(file_size_in_bytes);
+
+            let dst = &mut dst[dst_start..dst_end];
+
+            let src_start = extent.start_block * u64::from(block_size);
+
+            self.read_bytes(src_start, dst)?;
+        }
+        Ok(dst)
     }
 }
