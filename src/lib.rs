@@ -240,6 +240,39 @@ impl Ext4 {
     }
 }
 
+/// These methods mirror the [`std::fs`][stdfs] API.
+///
+/// [stdfs]: https://doc.rust-lang.org/std/fs/index.html
+impl Ext4 {
+    /// Read the entire contents of a file as raw bytes.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    /// * `path` is a directory or special file type.
+    pub fn read<'p, P>(&self, path: P) -> Result<Vec<u8>, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<Vec<u8>, Ext4Error> {
+            let inode = fs.path_to_inode(path)?;
+
+            if inode.file_type.is_dir() {
+                return Err(Ext4Error::IsADirectory);
+            }
+            if !inode.file_type.is_regular_file() {
+                return Err(Ext4Error::IsASpecialFile);
+            }
+
+            fs.read_inode_file(&inode)
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+}
+
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
