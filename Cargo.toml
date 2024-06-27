@@ -26,3 +26,7 @@ std = []
 [dependencies]
 bitflags = "2.0.0"
 crc = "3.0.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
