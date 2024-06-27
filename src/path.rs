@@ -11,6 +11,7 @@ use crate::format::{format_bytes_debug, BytesDisplay};
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
 
+/// Error returned when [`Path`] or [`PathBuf`] construction fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PathError {
     /// Path contains a component longer than 255 bytes.
@@ -34,6 +35,7 @@ pub struct Path<'a>(
 );
 
 impl<'a> Path<'a> {
+    /// Unix path separator.
     pub const SEPARATOR: u8 = b'/';
 
     /// Root path, equivalent to `/`.
