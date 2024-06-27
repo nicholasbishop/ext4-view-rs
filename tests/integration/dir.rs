@@ -6,13 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod dir;
-mod ext4;
-mod path;
-
-use ext4_view::Ext4;
-
-fn load_test_disk1() -> Ext4 {
-    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
-    Ext4::load(Box::new(DATA.to_vec())).unwrap()
+#[test]
+fn test_read_dir_debug() {
+    let fs = crate::load_test_disk1();
+    let read_dir = fs.read_dir("/big_dir").unwrap();
+    assert_eq!(format!("{:?}", read_dir), r#"ReadDir("/big_dir")"#);
 }

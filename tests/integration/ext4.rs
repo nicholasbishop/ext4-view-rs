@@ -6,12 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::load_test_disk1;
 use ext4_view::{Corrupt, Ext4, Ext4Error, Path, PathBuf};
-
-fn load_test_disk1() -> Ext4 {
-    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
-    Ext4::load(Box::new(DATA.to_vec())).unwrap()
-}
 
 #[test]
 fn test_ext4_debug() {
@@ -319,7 +315,7 @@ fn test_metadata() {
 
 #[test]
 fn test_symlink_metadata() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     // Final component is a symlink.
     let metadata = fs.symlink_metadata("/sym_simple").unwrap();
