@@ -16,14 +16,26 @@ use core::fmt::{self, Debug, Formatter};
 use core::hash::{Hash, Hasher};
 use core::str::Utf8Error;
 
+/// Error returned when [`DirEntryName`] construction fails.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DirEntryNameError {
+    /// Name is empty.
     Empty,
+
+    /// Name is longer than [`DirEntryName::MAX_LEN`].
     TooLong,
+
+    /// Name contains a null byte.
     ContainsNull,
+
+    /// Name contains a path separator.
     ContainsSeparator,
 }
 
+/// Name of a [`DirEntry`], stored as a reference.
+///
+/// This is guaranteed at construction to be a valid directory entry
+/// name.
 #[derive(Clone, Copy, Eq, Ord, PartialOrd, Hash)]
 pub struct DirEntryName<'a>(pub(crate) &'a [u8]);
 
@@ -37,6 +49,11 @@ impl<'a> DirEntryName<'a> {
         core::str::from_utf8(self.0)
     }
 
+    /// Get an object that implements [`Display`] to allow conveniently
+    /// printing names that may or may not be valid UTF-8. Non-UTF-8
+    /// characters will be replaced with '�'.
+    ///
+    /// [`Display`]: core::fmt::Display
     pub fn display(&self) -> BytesDisplay {
         BytesDisplay(self.0)
     }
