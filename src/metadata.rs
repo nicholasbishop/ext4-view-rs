@@ -19,14 +19,17 @@ impl Metadata {
         Self { inode }
     }
 
+    /// Get the file type.
     pub fn file_type(&self) -> FileType {
         self.inode.file_type
     }
 
+    /// Return true if this metadata is for a directory.
     pub fn is_dir(&self) -> bool {
         self.inode.file_type.is_dir()
     }
 
+    /// Return true if this metadata is for a symlink.
     pub fn is_symlink(&self) -> bool {
         self.inode.file_type.is_symlink()
     }
