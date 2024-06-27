@@ -6,16 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ext4_view::{Ext4, Ext4Error, PathBuf};
-
-fn load_test_disk1() -> Ext4 {
-    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
-    Ext4::load(Box::new(DATA.to_vec())).unwrap()
-}
+use ext4_view::{Ext4Error, PathBuf};
 
 #[test]
 fn test_read() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     // Empty file.
     assert_eq!(fs.read("/empty_file").unwrap(), []);
@@ -40,7 +35,7 @@ fn test_read() {
 
 #[test]
 fn test_read_to_string() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     // Empty file.
     assert_eq!(fs.read_to_string("/empty_file").unwrap(), "");
@@ -73,7 +68,7 @@ fn test_read_to_string() {
 
 #[test]
 fn test_read_dir() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     // Get contents of directory `/big_dir`.
     let dir = fs
@@ -124,7 +119,7 @@ fn test_read_dir() {
 
 #[test]
 fn test_exists() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     // Success: exists.
     assert!(fs.exists("/empty_file").unwrap());
@@ -147,7 +142,7 @@ fn test_exists() {
 
 #[test]
 fn test_metadata() {
-    let fs = load_test_disk1();
+    let fs = crate::load_test_disk1();
 
     let metadata = fs.metadata("/small_file").unwrap();
     assert!(metadata.file_type().is_regular_file());
