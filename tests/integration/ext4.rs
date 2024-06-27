@@ -6,12 +6,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ext4_view::Ext4;
+use ext4_view::{Ext4, Ext4Error};
+
+fn load_test_disk1() -> Ext4 {
+    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
+    Ext4::load(Box::new(DATA.to_vec())).unwrap()
+}
 
 #[test]
 fn test_read() {
-    let data = include_bytes!("../../test_data/test_disk1.bin");
-    let fs = Ext4::load(Box::new(data.to_vec())).unwrap();
+    let fs = load_test_disk1();
 
     // Empty file.
     assert_eq!(fs.read("/empty_file").unwrap(), []);
@@ -32,4 +36,37 @@ fn test_read() {
     // Errors.
     assert!(fs.read("not_absolute").is_err());
     assert!(fs.read("/does_not_exist").is_err());
+}
+
+#[test]
+fn test_read_to_string() {
+    let fs = load_test_disk1();
+
+    // Empty file.
+    assert_eq!(fs.read_to_string("/empty_file").unwrap(), "");
+
+    // Small file.
+    assert_eq!(fs.read_to_string("/small_file").unwrap(), "hello, world!");
+
+    // Errors:
+    assert!(matches!(
+        fs.read_to_string("/holes").unwrap_err(),
+        Ext4Error::NotUtf8
+    ));
+    assert!(matches!(
+        fs.read_to_string("/empty_dir").unwrap_err(),
+        Ext4Error::IsADirectory
+    ));
+    assert!(matches!(
+        fs.read_to_string("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+    assert!(matches!(
+        fs.read_to_string("/does_not_exist").unwrap_err(),
+        Ext4Error::NotFound
+    ));
+    assert!(matches!(
+        fs.read_to_string("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
 }
