@@ -13,7 +13,7 @@ use crate::util::{read_u16le, read_u32le, u64_from_hilo};
 
 /// Information about the filesystem.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Superblock {
+pub(crate) struct Superblock {
     pub(crate) block_size: u32,
     pub(crate) blocks_count: u64,
     pub(crate) inode_size: u16,
@@ -122,22 +122,6 @@ impl Superblock {
             checksum_seed,
             htree_hash_seed: s_hash_seed,
         })
-    }
-
-    pub fn block_size(&self) -> u32 {
-        self.block_size
-    }
-
-    pub fn num_block_groups(&self) -> u32 {
-        self.num_block_groups
-    }
-
-    pub fn incompatible_features(&self) -> IncompatibleFeatures {
-        self.incompatible_features
-    }
-
-    pub fn read_only_compatible_features(&self) -> ReadOnlyCompatibleFeatures {
-        self.read_only_compatible_features
     }
 }
 

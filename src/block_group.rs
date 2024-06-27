@@ -94,7 +94,7 @@ impl BlockGroupDescriptor {
                 ));
             }
         } else if sb
-            .read_only_compatible_features()
+            .read_only_compatible_features
             .contains(ReadOnlyCompatibleFeatures::GROUP_DESCRIPTOR_CHECKSUMS)
         {
             // TODO: prior to general checksum metadata being added,
