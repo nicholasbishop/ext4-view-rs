@@ -11,42 +11,63 @@ use crate::inode::InodeMode;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct FileTypeError;
 
+/// File type.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum FileType {
+    /// Block device.
     BlockDevice,
+
+    /// Character device.
     CharacterDevice,
+
+    /// Directory.
     Directory,
+
+    /// First-in first-out (FIFO) special file.
     Fifo,
+
+    /// Regular file.
     Regular,
+
+    /// Socket file.
     Socket,
+
+    /// Symbolic link.
     Symlink,
 }
 
 impl FileType {
+    /// Returns true if the file is a block device.
     pub fn is_block_dev(self) -> bool {
         self == FileType::BlockDevice
     }
 
+    /// Returns true if the file is a character device.
     pub fn is_char_dev(self) -> bool {
         self == FileType::CharacterDevice
     }
 
+    /// Returns true if the file is a directory.
     pub fn is_dir(self) -> bool {
         self == FileType::Directory
     }
 
+    /// Returns true if the file is a first-in first-out (FIFO) special file.
     pub fn is_fifo(self) -> bool {
         self == FileType::Fifo
     }
 
+    /// Returns true if the file is a regular file.
     pub fn is_regular_file(self) -> bool {
         self == FileType::Regular
     }
 
+    /// Returns true if the file is a socket.
     pub fn is_socket(self) -> bool {
         self == FileType::Socket
     }
 
+    /// Returns true if the file is a symlink.
     pub fn is_symlink(self) -> bool {
         self == FileType::Symlink
     }
