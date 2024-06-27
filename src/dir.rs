@@ -17,6 +17,7 @@ use crate::Ext4;
 use alloc::rc::Rc;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::fmt::{self, Debug, Formatter};
 
 /// Iterator over each [`DirEntry`] in a directory inode.
 pub struct ReadDir<'a> {
@@ -176,6 +177,14 @@ impl<'a> ReadDir<'a> {
         self.offset_within_block += entry_size;
 
         Ok(entry)
+    }
+}
+
+impl<'a> Debug for ReadDir<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // Only include the path field. This matches the Debug impl for
+        // `std::fs::ReadDir`.
+        write!(f, r#"ReadDir("{:?}")"#, self.path)
     }
 }
 
