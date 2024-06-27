@@ -50,6 +50,7 @@ mod superblock;
 mod util;
 
 use alloc::boxed::Box;
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
@@ -285,6 +286,26 @@ impl Ext4 {
             }
 
             fs.read_inode_file(&inode)
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+
+    /// Read the entire contents of a file as a string.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    /// * `path` is a directory or special file type.
+    pub fn read_to_string<'p, P>(&self, path: P) -> Result<String, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<String, Ext4Error> {
+            let content = fs.read(path)?;
+            String::from_utf8(content).map_err(|_| Ext4Error::NotUtf8)
         }
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
