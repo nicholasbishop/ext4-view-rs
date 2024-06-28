@@ -9,7 +9,7 @@
 use crate::dir_entry::{DirEntryName, DirEntryNameError};
 use crate::format::{format_bytes_debug, BytesDisplay};
 use alloc::vec::Vec;
-use core::fmt::{self, Debug, Formatter};
+use core::fmt::{self, Debug, Display, Formatter};
 
 /// Error returned when [`Path`] or [`PathBuf`] construction fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -20,6 +20,20 @@ pub enum PathError {
     /// Path contains a null byte.
     ContainsNull,
 }
+
+impl Display for PathError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ComponentTooLong => {
+                write!(f, "path contains a component longer than 255 bytes")
+            }
+            Self::ContainsNull => write!(f, "path contains a null byte"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for PathError {}
 
 /// Reference path type.
 ///
