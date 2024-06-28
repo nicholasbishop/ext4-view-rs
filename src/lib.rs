@@ -30,6 +30,7 @@
 // TODO(nicholasbishop): Temporarily allow dead code to allow for
 // smaller PRs.
 #![allow(dead_code)]
+#![warn(missing_docs)]
 #![warn(unreachable_pub)]
 
 extern crate alloc;

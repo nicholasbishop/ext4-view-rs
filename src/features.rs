@@ -6,9 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bitflags::bitflags;
-
 // TODO: fill in more docstrings.
+#![allow(missing_docs)]
+
+use bitflags::bitflags;
 
 bitflags! {
     /// File system features that affect whether the data can be read.
