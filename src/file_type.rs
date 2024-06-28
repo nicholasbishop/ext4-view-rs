@@ -99,3 +99,37 @@ impl TryFrom<InodeMode> for FileType {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_type() {
+        // Check each valid file type.
+        assert!(FileType::try_from(InodeMode::S_IFIFO).unwrap().is_fifo());
+        assert!(FileType::try_from(InodeMode::S_IFCHR)
+            .unwrap()
+            .is_char_dev());
+        assert!(FileType::try_from(InodeMode::S_IFBLK)
+            .unwrap()
+            .is_block_dev());
+        assert!(FileType::try_from(InodeMode::S_IFREG)
+            .unwrap()
+            .is_regular_file());
+        assert!(FileType::try_from(InodeMode::S_IFLNK).unwrap().is_symlink());
+        assert!(FileType::try_from(InodeMode::S_IFSOCK).unwrap().is_socket());
+
+        // Check that other bits being set in the mode don't impact the
+        // file type.
+        assert!(FileType::try_from(InodeMode::S_IFREG | InodeMode::S_IXOTH)
+            .unwrap()
+            .is_regular_file());
+
+        // Error, no file type set.
+        assert_eq!(
+            FileType::try_from(InodeMode::empty()).unwrap_err(),
+            FileTypeError
+        );
+    }
+}
