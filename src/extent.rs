@@ -145,7 +145,10 @@ pub(crate) struct Extents<'a> {
 }
 
 impl<'a> Extents<'a> {
-    pub fn new(ext4: &'a Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
+    pub(crate) fn new(
+        ext4: &'a Ext4,
+        inode: &Inode,
+    ) -> Result<Self, Ext4Error> {
         let mut checksum_base =
             Checksum::with_seed(ext4.superblock.checksum_seed);
         checksum_base.update_u32_le(inode.index.get());

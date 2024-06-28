@@ -155,7 +155,7 @@ fn create_hash_block(src: &[u8]) -> HashBlock {
 /// The `seed` value comes from the `s_hash_seed` field of the
 /// superblock. If the `seed` is all zeroes, it's replaced with a
 /// standard default seed.
-pub fn dir_hash_md4_half(
+pub(crate) fn dir_hash_md4_half(
     name: DirEntryName<'_>,
     mut seed: &[u32; 4],
 ) -> (u32, u32) {
