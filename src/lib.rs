@@ -366,6 +366,25 @@ impl Ext4 {
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
+
+    /// Get [`Metadata`] for `path`.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    pub fn metadata<'p, P>(&self, path: P) -> Result<Metadata, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<Metadata, Ext4Error> {
+            let inode = fs.path_to_inode(path)?;
+            Ok(Metadata::new(inode))
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
 }
 
 #[cfg(feature = "std")]

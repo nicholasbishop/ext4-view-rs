@@ -144,3 +144,30 @@ fn test_exists() {
         Ext4Error::NotAbsolute
     ));
 }
+
+#[test]
+fn test_metadata() {
+    let fs = load_test_disk1();
+
+    let metadata = fs.metadata("/small_file").unwrap();
+    assert!(metadata.file_type().is_regular_file());
+    assert!(!metadata.is_dir());
+    assert!(!metadata.is_symlink());
+    assert_eq!(metadata.mode(), 0o644);
+    assert_eq!(
+        metadata.len(),
+        u64::try_from("hello, world!".len()).unwrap()
+    );
+
+    // Error: malformed path.
+    assert!(matches!(
+        fs.metadata("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
+
+    // Error: path is not absolute.
+    assert!(matches!(
+        fs.metadata("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+}
