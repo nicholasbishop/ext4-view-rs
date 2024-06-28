@@ -12,7 +12,7 @@ use crate::inode::InodeIndex;
 use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
 use alloc::rc::Rc;
-use core::fmt::{self, Debug, Formatter};
+use core::fmt::{self, Debug, Display, Formatter};
 use core::hash::{Hash, Hasher};
 use core::str::Utf8Error;
 
@@ -31,6 +31,26 @@ pub enum DirEntryNameError {
     /// Name contains a path separator.
     ContainsSeparator,
 }
+
+impl Display for DirEntryNameError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => write!(f, "direntry name is empty"),
+            Self::TooLong => {
+                write!(f, "directory entry name is longer than 255 bytes")
+            }
+            Self::ContainsNull => {
+                write!(f, "directory entry name contains a null byte")
+            }
+            Self::ContainsSeparator => {
+                write!(f, "directory entry name contains a path separator")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for DirEntryNameError {}
 
 /// Name of a [`DirEntry`], stored as a reference.
 ///
