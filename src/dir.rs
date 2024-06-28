@@ -133,36 +133,15 @@ impl<'a> ReadDir<'a> {
 
         // If at the start of a new block, read it and verify the checksum.
         if self.offset_within_block == 0 {
-            self.fs.read_bytes(
-                (self.block_index + extent.start_block) * u64::from(block_size),
-                &mut self.block,
-            )?;
-
-            // Check if this is an internal node in an htree. If so, it
-            // doesn't have a checksum.
-            let first_rec_len = u32::from(read_u16le(&self.block, 4));
-            let is_internal_node = self.has_htree
-                && (extent.block_within_file == 0
-                    || first_rec_len == block_size);
-
-            // Verify checksum of the whole directory block.
-            if self.fs.has_metadata_checksums() && !is_internal_node {
-                let tail_entry_size = 12;
-                let tail_entry_offset =
-                    usize_from_u32(block_size) - tail_entry_size;
-                let checksum_offset = tail_entry_offset + 8;
-                let expected_checksum =
-                    read_u32le(&self.block, checksum_offset);
-
-                let mut checksum = self.checksum_base.clone();
-                checksum.update(&self.block[..tail_entry_offset]);
-                let actual_checksum = checksum.finalize();
-                if expected_checksum != actual_checksum {
-                    return Err(Ext4Error::Corrupt(Corrupt::DirBlockChecksum(
-                        self.inode.get(),
-                    )));
-                }
+            DirBlock {
+                fs: self.fs,
+                dir_inode: self.inode,
+                extent,
+                block_index_within_extent: self.block_index,
+                has_htree: self.has_htree,
+                checksum_base: self.checksum_base.clone(),
             }
+            .read(&mut self.block)?;
         }
 
         let (entry, entry_size) = DirEntry::from_bytes(
@@ -215,6 +194,79 @@ impl<'a> Iterator for ReadDir<'a> {
                 }
             }
         }
+    }
+}
+
+struct DirBlock<'a> {
+    fs: &'a Ext4,
+    extent: &'a Extent,
+    dir_inode: InodeIndex,
+    block_index_within_extent: u64,
+    has_htree: bool,
+    // TODO: move this into inode for real.
+    checksum_base: Checksum,
+}
+
+impl<'a> DirBlock<'a> {
+    pub(crate) fn read(&self, block: &mut [u8]) -> Result<(), Ext4Error> {
+        let block_size = self.fs.superblock.block_size;
+        let block_index =
+            self.extent.start_block + self.block_index_within_extent;
+        self.fs
+            .read_bytes(block_index * u64::from(block_size), block)?;
+
+        if !self.fs.has_metadata_checksums() {
+            return Ok(());
+        }
+
+        // Check if this is an internal node in an htree. If so, it
+        // doesn't have a checksum.
+        let first_rec_len = u32::from(read_u16le(block, 4));
+        let is_first_block_in_dir = self.block_index_within_extent == 0
+            && self.extent.block_within_file == 0;
+        let is_internal_node = self.has_htree
+            && (is_first_block_in_dir || first_rec_len == block_size);
+
+        let expected_checksum;
+        let actual_checksum;
+        if is_internal_node {
+            let tail_entry_size = 8;
+            let tail_entry_offset =
+                usize_from_u32(block_size) - tail_entry_size;
+            let checksum_offset = tail_entry_offset + 4;
+            expected_checksum = read_u32le(block, checksum_offset);
+
+            let mut checksum = self.checksum_base.clone();
+
+            // TODO: share constants.
+            let limit_offset = if is_first_block_in_dir { 0x20 } else { 0x8 };
+            let count = read_u16le(block, limit_offset + 2);
+            let num_bytes = limit_offset + (usize::from(count) * 8);
+
+            checksum.update(&block[..num_bytes]);
+            checksum.update_u32_le(read_u32le(block, tail_entry_offset));
+            checksum.update_u32_le(0);
+
+            actual_checksum = checksum.finalize();
+        } else {
+            let tail_entry_size = 12;
+            let tail_entry_offset =
+                usize_from_u32(block_size) - tail_entry_size;
+            let checksum_offset = tail_entry_offset + 8;
+            expected_checksum = read_u32le(block, checksum_offset);
+
+            let mut checksum = self.checksum_base.clone();
+            checksum.update(&block[..tail_entry_offset]);
+            actual_checksum = checksum.finalize();
+        }
+
+        if expected_checksum != actual_checksum {
+            return Err(Ext4Error::Corrupt(Corrupt::DirBlockChecksum(
+                self.dir_inode.get(),
+            )));
+        }
+
+        Ok(())
     }
 }
 
