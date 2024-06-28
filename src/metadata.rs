@@ -10,6 +10,7 @@ use crate::file_type::FileType;
 use crate::inode::Inode;
 
 /// Metadata information about a file.
+#[derive(Debug)]
 pub struct Metadata {
     inode: Inode,
 }
