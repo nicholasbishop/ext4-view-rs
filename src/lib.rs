@@ -30,6 +30,7 @@
 // TODO(nicholasbishop): Temporarily allow dead code to allow for
 // smaller PRs.
 #![allow(dead_code)]
+#![warn(clippy::as_conversions)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 
