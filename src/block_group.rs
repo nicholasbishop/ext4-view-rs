@@ -86,7 +86,7 @@ impl BlockGroupDescriptor {
             // Rest of the block group descriptor.
             checksum.update(&data[Self::BG_CHECKSUM_OFFSET + 2..]);
             // Truncate to the lower 16 bits.
-            let checksum = checksum.finalize() as u16;
+            let checksum = u16::try_from(checksum.finalize() & 0xffff).unwrap();
 
             if checksum != block_group_descriptor.checksum {
                 return Err(Ext4Error::Corrupt(
