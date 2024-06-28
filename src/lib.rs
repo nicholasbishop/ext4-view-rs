@@ -285,6 +285,22 @@ impl Ext4 {
 ///
 /// [stdfs]: https://doc.rust-lang.org/std/fs/index.html
 impl Ext4 {
+    /// Get the canonical, absolute form of a path with all intermediate
+    /// components normalized and symbolic links resolved.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    pub fn canonicalize<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        let path = path.try_into().map_err(|_| Ext4Error::MalformedPath)?;
+        resolve::resolve_path(self, path, FollowSymlinks::All).map(|v| v.1)
+    }
+
     /// Read the entire contents of a file as raw bytes.
     ///
     /// # Errors

@@ -14,6 +14,58 @@ fn load_test_disk1() -> Ext4 {
 }
 
 #[test]
+fn test_canonicalize() {
+    let fs = load_test_disk1();
+
+    assert_eq!(fs.canonicalize("/empty_file").unwrap(), "/empty_file");
+
+    assert_eq!(fs.canonicalize("/").unwrap(), "/");
+    assert_eq!(fs.canonicalize("/..").unwrap(), "/");
+    assert_eq!(fs.canonicalize("/dir1").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/.").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/./").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/../dir1").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/../dir1/").unwrap(), "/dir1");
+    assert_eq!(
+        fs.canonicalize("/dir1/dir2/sym_abs").unwrap(),
+        "/small_file"
+    );
+    assert_eq!(
+        fs.canonicalize("/dir1/dir2/sym_rel").unwrap(),
+        "/small_file"
+    );
+    assert_eq!(fs.canonicalize("/dir1/dir2/sym_abs_dir").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/dir2/sym_abs_dir/").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/dir2/sym_rel_dir").unwrap(), "/dir1");
+    assert_eq!(fs.canonicalize("/dir1/dir2/sym_rel_dir/").unwrap(), "/dir1");
+
+    // Error: does not exist.
+    assert!(matches!(
+        fs.canonicalize("/does_not_exist").unwrap_err(),
+        Ext4Error::NotFound
+    ));
+
+    // Error: child of a non-directory.
+    assert!(matches!(
+        fs.canonicalize("/small_file/invalid").unwrap_err(),
+        Ext4Error::NotADirectory
+    ));
+
+    // Error: malformed path.
+    assert!(matches!(
+        fs.canonicalize("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
+
+    // Error: path is not absolute.
+    assert!(matches!(
+        fs.canonicalize("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+}
+
+#[test]
 fn test_read() {
     let fs = load_test_disk1();
 
