@@ -342,6 +342,30 @@ impl Ext4 {
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
+
+    /// Check if `path` exists.
+    ///
+    /// Returns `Ok(true)` if `path` exists, or `Ok(false)` if it does
+    /// not exist.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    pub fn exists<'p, P>(&self, path: P) -> Result<bool, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<bool, Ext4Error> {
+            match fs.path_to_inode(path) {
+                Ok(_) => Ok(true),
+                Err(Ext4Error::NotFound) => Ok(false),
+                Err(err) => Err(err),
+            }
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
 }
 
 #[cfg(feature = "std")]
