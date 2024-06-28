@@ -121,3 +121,26 @@ fn test_read_dir() {
         Ext4Error::MalformedPath
     ));
 }
+
+#[test]
+fn test_exists() {
+    let fs = load_test_disk1();
+
+    // Success: exists.
+    assert!(fs.exists("/empty_file").unwrap());
+
+    // Success: does not exist.
+    assert!(!fs.exists("/does_not_exist").unwrap());
+
+    // Error: malformed path.
+    assert!(matches!(
+        fs.exists("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
+
+    // Error: path is not absolute.
+    assert!(matches!(
+        fs.exists("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+}
