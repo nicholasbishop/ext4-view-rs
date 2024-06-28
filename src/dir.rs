@@ -7,12 +7,13 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
+use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::Ext4Error;
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
-use crate::util::{read_u16le, read_u32le, usize_from_u32};
+use crate::util::usize_from_u32;
 use crate::Ext4;
 use alloc::rc::Rc;
 use alloc::vec;
@@ -132,36 +133,15 @@ impl<'a> ReadDir<'a> {
 
         // If at the start of a new block, read it and verify the checksum.
         if self.offset_within_block == 0 {
-            self.fs.read_bytes(
-                (self.block_index + extent.start_block) * u64::from(block_size),
-                &mut self.block,
-            )?;
-
-            // Check if this is an internal node in an htree. If so, it
-            // doesn't have a checksum.
-            let first_rec_len = u32::from(read_u16le(&self.block, 4));
-            let is_internal_node = self.has_htree
-                && (extent.block_within_file == 0
-                    || first_rec_len == block_size);
-
-            // Verify checksum of the whole directory block.
-            if self.fs.has_metadata_checksums() && !is_internal_node {
-                let tail_entry_size = 12;
-                let tail_entry_offset =
-                    usize_from_u32(block_size) - tail_entry_size;
-                let checksum_offset = tail_entry_offset + 8;
-                let expected_checksum =
-                    read_u32le(&self.block, checksum_offset);
-
-                let mut checksum = self.checksum_base.clone();
-                checksum.update(&self.block[..tail_entry_offset]);
-                let actual_checksum = checksum.finalize();
-                if expected_checksum != actual_checksum {
-                    return Err(Ext4Error::Corrupt(Corrupt::DirBlockChecksum(
-                        self.inode.get(),
-                    )));
-                }
+            DirBlock {
+                fs: self.fs,
+                dir_inode: self.inode,
+                extent,
+                block_within_extent: self.block_index,
+                has_htree: self.has_htree,
+                checksum_base: self.checksum_base.clone(),
             }
+            .read(&mut self.block)?;
         }
 
         let (entry, entry_size) = DirEntry::from_bytes(
