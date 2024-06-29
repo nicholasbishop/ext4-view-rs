@@ -243,7 +243,7 @@ pub(crate) fn get_dir_entry_via_htree(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Path, ReadDir};
+    use crate::{FollowSymlinks, Path, ReadDir};
 
     #[test]
     fn test_internal_node() {
@@ -306,7 +306,7 @@ mod tests {
     /// Returns the number of entries.
     #[track_caller]
     fn compare_all_entries(fs: &Ext4, dir: Path<'_>) -> usize {
-        let dir_inode = fs.path_to_inode(dir).unwrap();
+        let dir_inode = fs.path_to_inode(dir, FollowSymlinks::All).unwrap();
         let iter = ReadDir::new(fs, &dir_inode, PathBuf::from(dir)).unwrap();
         let mut count = 0;
         for iter_entry in iter {
