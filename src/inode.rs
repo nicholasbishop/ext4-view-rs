@@ -111,8 +111,6 @@ pub(crate) struct Inode {
 
     /// File version, usually zero. Used in checksums.
     pub(crate) generation: u32,
-
-    checksum: u32,
 }
 
 impl Inode {
@@ -120,7 +118,14 @@ impl Inode {
     const L_I_CHECKSUM_LO_OFFSET: usize = 0x74 + 0x8;
     const I_CHECKSUM_HI_OFFSET: usize = 0x82;
 
-    fn from_bytes(index: InodeIndex, data: &[u8]) -> Result<Inode, Ext4Error> {
+    /// Load an inode from `bytes`.
+    ///
+    /// If successful, returns a tuple containing the inode and its
+    /// checksum field.
+    fn from_bytes(
+        index: InodeIndex,
+        data: &[u8],
+    ) -> Result<(Inode, u32), Ext4Error> {
         if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
             return Err(Ext4Error::Corrupt(Corrupt::Inode(index.get())));
         }
@@ -139,18 +144,21 @@ impl Inode {
         let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
         let mode = InodeMode::from_bits_retain(i_mode);
 
-        Ok(Inode {
-            index,
-            // OK to unwap, we know `i_block` is 60 bytes.
-            inline_data: i_block.try_into().unwrap(),
-            size_in_bytes,
-            flags: InodeFlags::from_bits_retain(i_flags),
-            mode,
-            file_type: FileType::try_from(mode)
-                .map_err(|_| Ext4Error::Corrupt(Corrupt::Inode(index.get())))?,
-            generation: i_generation,
+        Ok((
+            Inode {
+                index,
+                // OK to unwap, we know `i_block` is 60 bytes.
+                inline_data: i_block.try_into().unwrap(),
+                size_in_bytes,
+                flags: InodeFlags::from_bits_retain(i_flags),
+                mode,
+                file_type: FileType::try_from(mode).map_err(|_| {
+                    Ext4Error::Corrupt(Corrupt::Inode(index.get()))
+                })?,
+                generation: i_generation,
+            },
             checksum,
-        })
+        ))
     }
 
     /// Read an inode.
@@ -176,7 +184,7 @@ impl Inode {
         let mut data = vec![0; usize::from(sb.inode_size)];
         ext4.read_bytes(src_offset, &mut data).unwrap();
 
-        let inode = Self::from_bytes(inode, &data)?;
+        let (inode, expected_checksum) = Self::from_bytes(inode, &data)?;
 
         // Verify the inode checksum.
         if ext4.has_metadata_checksums() {
@@ -206,8 +214,8 @@ impl Inode {
             // Rest of the inode.
             checksum.update(&data[Self::I_CHECKSUM_HI_OFFSET + 2..]);
 
-            let checksum = checksum.finalize();
-            if checksum != inode.checksum {
+            let actual_checksum = checksum.finalize();
+            if actual_checksum != expected_checksum {
                 return Err(Ext4Error::Corrupt(Corrupt::InodeChecksum(
                     inode.index.get(),
                 )));
