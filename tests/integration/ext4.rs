@@ -266,3 +266,38 @@ fn test_metadata() {
         Ext4Error::NotAbsolute
     ));
 }
+
+#[test]
+fn test_symlink_metadata() {
+    let fs = load_test_disk1();
+
+    // Final component is a symlink.
+    let metadata = fs.symlink_metadata("/sym_simple").unwrap();
+    assert!(metadata.is_symlink());
+    assert_eq!(metadata.mode(), 0o777);
+
+    // Symlinks prior to the final component are followed as normal.
+    assert_eq!(
+        fs.symlink_metadata("/dir1/dir2/sym_abs_dir/../sym_simple")
+            .unwrap(),
+        metadata
+    );
+
+    // Final component not a symlink behaves same as `metadata`.
+    assert_eq!(
+        fs.symlink_metadata("/small_file").unwrap(),
+        fs.metadata("/small_file").unwrap()
+    );
+
+    // Error: malformed path.
+    assert!(matches!(
+        fs.symlink_metadata("\0").unwrap_err(),
+        Ext4Error::MalformedPath
+    ));
+
+    // Error: path is not absolute.
+    assert!(matches!(
+        fs.symlink_metadata("not_absolute").unwrap_err(),
+        Ext4Error::NotAbsolute
+    ));
+}
