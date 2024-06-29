@@ -68,11 +68,6 @@ impl<'a> ReadDir<'a> {
         inode: &Inode,
         path: PathBuf,
     ) -> Result<Self, Ext4Error> {
-        let mut checksum_base =
-            Checksum::with_seed(fs.superblock.checksum_seed);
-        checksum_base.update_u32_le(inode.index.get());
-        checksum_base.update_u32_le(inode.generation);
-
         let has_htree = inode.flags.contains(InodeFlags::DIRECTORY_HTREE);
 
         Ok(Self {
@@ -85,7 +80,7 @@ impl<'a> ReadDir<'a> {
             offset_within_block: 0,
             is_done: false,
             has_htree,
-            checksum_base,
+            checksum_base: inode.checksum_base.clone(),
             inode: inode.index,
         })
     }
