@@ -149,11 +149,6 @@ impl<'a> Extents<'a> {
         ext4: &'a Ext4,
         inode: &Inode,
     ) -> Result<Self, Ext4Error> {
-        let mut checksum_base =
-            Checksum::with_seed(ext4.superblock.checksum_seed);
-        checksum_base.update_u32_le(inode.index.get());
-        checksum_base.update_u32_le(inode.generation);
-
         Ok(Self {
             ext4,
             inode: inode.index,
@@ -161,7 +156,7 @@ impl<'a> Extents<'a> {
                 inode.inline_data.to_vec(),
                 inode.index,
             )?],
-            checksum_base,
+            checksum_base: inode.checksum_base.clone(),
         })
     }
 

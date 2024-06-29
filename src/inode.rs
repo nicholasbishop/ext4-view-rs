@@ -198,10 +198,7 @@ impl Inode {
 
         // Verify the inode checksum.
         if ext4.has_metadata_checksums() {
-            let mut checksum = Checksum::with_seed(sb.checksum_seed);
-
-            checksum.update_u32_le(inode.index.get());
-            checksum.update_u32_le(inode.generation);
+            let mut checksum = inode.checksum_base.clone();
 
             // Hash all the inode data, but treat the two checksum
             // fields as zeroes.
