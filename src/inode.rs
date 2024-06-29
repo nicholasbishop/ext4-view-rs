@@ -111,6 +111,9 @@ pub(crate) struct Inode {
 
     /// File version, usually zero. Used in checksums.
     pub(crate) generation: u32,
+
+    /// Checksum seed used in various places.
+    pub(crate) checksum_base: Checksum,
 }
 
 impl Inode {
@@ -123,6 +126,7 @@ impl Inode {
     /// If successful, returns a tuple containing the inode and its
     /// checksum field.
     fn from_bytes(
+        ext4: &Ext4,
         index: InodeIndex,
         data: &[u8],
     ) -> Result<(Inode, u32), Ext4Error> {
@@ -144,6 +148,11 @@ impl Inode {
         let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
         let mode = InodeMode::from_bits_retain(i_mode);
 
+        let mut checksum_base =
+            Checksum::with_seed(ext4.superblock.checksum_seed);
+        checksum_base.update_u32_le(index.get());
+        checksum_base.update_u32_le(i_generation);
+
         Ok((
             Inode {
                 index,
@@ -156,6 +165,7 @@ impl Inode {
                     Ext4Error::Corrupt(Corrupt::Inode(index.get()))
                 })?,
                 generation: i_generation,
+                checksum_base,
             },
             checksum,
         ))
@@ -184,7 +194,7 @@ impl Inode {
         let mut data = vec![0; usize::from(sb.inode_size)];
         ext4.read_bytes(src_offset, &mut data).unwrap();
 
-        let (inode, expected_checksum) = Self::from_bytes(inode, &data)?;
+        let (inode, expected_checksum) = Self::from_bytes(ext4, inode, &data)?;
 
         // Verify the inode checksum.
         if ext4.has_metadata_checksums() {
