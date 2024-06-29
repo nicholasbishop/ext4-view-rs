@@ -6,11 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::dir::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::extent::Extents;
-use crate::inode::{Inode, InodeIndex};
+use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
 use crate::util::{read_u16le, read_u32le, usize_from_u32};
 use crate::Ext4;
@@ -136,7 +137,15 @@ pub(crate) fn get_dir_entry_via_htree(
     // TODO: unwrap
     let extent = extents.next().unwrap()?;
 
-    fs.read_bytes(extent.start_block * u64::from(block_size), &mut block)?;
+    let dir_block = DirBlock {
+        fs,
+        dir_inode: inode.index,
+        extent: &extent,
+        block_index_within_extent: 0,
+        has_htree: inode.flags.contains(InodeFlags::DIRECTORY_HTREE),
+        checksum_base: inode.checksum_base.clone(),
+    };
+    dir_block.read(&mut block)?;
 
     // Handle '.' and '..'.
     // TODO: could just delegate these to the higher level?
@@ -189,13 +198,15 @@ pub(crate) fn get_dir_entry_via_htree(
             })
             .unwrap()
             .unwrap();
-        let child_block_absolute = extent.start_block
-            + u64::from(child_block_relative - extent.block_within_file);
 
-        fs.read_bytes(
-            child_block_absolute * u64::from(block_size),
-            &mut block,
-        )?;
+        let dir_block = DirBlock {
+            extent: &extent,
+            block_index_within_extent: u64::from(
+                child_block_relative - extent.block_within_file,
+            ),
+            ..dir_block.clone()
+        };
+        dir_block.read(&mut block)?;
 
         if level != depth {
             // TODO

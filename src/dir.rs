@@ -197,14 +197,15 @@ impl<'a> Iterator for ReadDir<'a> {
     }
 }
 
-struct DirBlock<'a> {
-    fs: &'a Ext4,
-    extent: &'a Extent,
-    dir_inode: InodeIndex,
-    block_index_within_extent: u64,
-    has_htree: bool,
-    // TODO: move this into inode for real.
-    checksum_base: Checksum,
+#[derive(Clone)]
+pub(crate) struct DirBlock<'a> {
+    pub(crate) fs: &'a Ext4,
+    pub(crate) extent: &'a Extent,
+    // TODO: use inode instead?
+    pub(crate) dir_inode: InodeIndex,
+    pub(crate) block_index_within_extent: u64,
+    pub(crate) has_htree: bool,
+    pub(crate) checksum_base: Checksum,
 }
 
 impl<'a> DirBlock<'a> {
