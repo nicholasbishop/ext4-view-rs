@@ -443,6 +443,34 @@ impl Ext4 {
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
+
+    /// Get [`Metadata`] for `path`.
+    ///
+    /// If the final component of `path` is a symlink, information about
+    /// the symlink itself will be returned, not the symlink's
+    /// targets. Any other symlink components of `path` are resolved as
+    /// normal.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    pub fn symlink_metadata<'p, P>(
+        &self,
+        path: P,
+    ) -> Result<Metadata, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<Metadata, Ext4Error> {
+            let inode =
+                fs.path_to_inode(path, FollowSymlinks::ExcludeFinalComponent)?;
+            Ok(inode.metadata)
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
 }
 
 #[cfg(feature = "std")]
