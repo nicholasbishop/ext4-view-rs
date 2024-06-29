@@ -50,7 +50,7 @@ fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
     output.push(WalkDirEntry {
         path: path.to_path_buf(),
         content: FileContent::Dir,
-        mode: mode_from_metadata(path.metadata()?),
+        mode: mode_from_metadata(path.symlink_metadata()?),
     });
 
     for entry in fs::read_dir(path)? {

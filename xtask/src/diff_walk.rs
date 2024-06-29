@@ -63,7 +63,7 @@ fn new_dir_entry(
     dir_entry: ext4_view::DirEntry,
 ) -> Result<WalkDirEntry> {
     let path = dir_entry.path();
-    let metadata = fs.metadata(&path)?;
+    let metadata = fs.symlink_metadata(&path)?;
 
     let content = if metadata.is_symlink() {
         let target = fs.read_link(&path)?;
@@ -91,7 +91,7 @@ fn walk_with_lib(
     output.push(WalkDirEntry {
         path: ext4_view::PathBuf::from(path).into(),
         content: FileContent::Dir,
-        mode: fs.metadata(path)?.mode(),
+        mode: fs.symlink_metadata(path)?.mode(),
     });
 
     for entry in fs.read_dir(path)? {
@@ -103,7 +103,7 @@ fn walk_with_lib(
         }
 
         // TODO: use DirEntry::file_type once that exists.
-        if fs.metadata(&path)?.is_dir() {
+        if fs.symlink_metadata(&path)?.is_dir() {
             output.extend(walk_with_lib(fs, path.as_path())?);
         } else {
             output.push(new_dir_entry(fs, entry)?);
