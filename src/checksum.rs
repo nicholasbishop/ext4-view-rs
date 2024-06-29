@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::fmt::{self, Debug, Formatter};
+
 /// Stateful checksum calculator.
 ///
 /// Ext4 has [metadata checksums][0] for most data structures
@@ -70,6 +72,15 @@ impl Checksum {
     }
 }
 
+impl Debug for Checksum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // Not a particularly informative Debug impl, but allows
+        // `Checksum` to be embedded in other structs that derive
+        // `Debug`.
+        f.debug_struct("Checksum").finish_non_exhaustive()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -85,5 +96,7 @@ mod tests {
         c.update_u32_le(1);
         c.update_u32_le(2);
         assert_eq!(c.finalize(), 0xfc527a0a);
+
+        assert_eq!(format!("{:?}", Checksum::new()), "Checksum { .. }");
     }
 }
