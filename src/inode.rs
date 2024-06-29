@@ -109,9 +109,6 @@ pub(crate) struct Inode {
     /// Internal inode flags.
     pub(crate) flags: InodeFlags,
 
-    /// File version, usually zero. Used in checksums.
-    pub(crate) generation: u32,
-
     /// Checksum seed used in various places.
     pub(crate) checksum_base: Checksum,
 }
@@ -164,7 +161,6 @@ impl Inode {
                 file_type: FileType::try_from(mode).map_err(|_| {
                     Ext4Error::Corrupt(Corrupt::Inode(index.get()))
                 })?,
-                generation: i_generation,
                 checksum_base,
             },
             checksum,
