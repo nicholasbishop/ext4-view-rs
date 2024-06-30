@@ -240,6 +240,13 @@ impl Inode {
             return Err(Ext4Error::NotASymlink);
         }
 
+        // An empty symlink target is not allowed.
+        if self.size_in_bytes == 0 {
+            return Err(Ext4Error::Corrupt(Corrupt::SymlinkTarget(
+                self.index.get(),
+            )));
+        }
+
         // Symlink targets of up to 59 bytes are stored inline. Longer
         // targets are stored as regular file data.
         const MAX_INLINE_SYMLINK_LEN: u64 = 59;
