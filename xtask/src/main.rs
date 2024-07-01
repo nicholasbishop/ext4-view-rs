@@ -101,10 +101,22 @@ impl DiskParams {
         symlink("sym_loop_b", root.join("sym_loop_a")).unwrap();
         symlink("sym_loop_a", root.join("sym_loop_b")).unwrap();
 
+        // Create a directory with a bunch of files. This is sized to
+        // create an htree with depth 0.
+        let medium_dir = root.join("medium_dir");
+        fs::create_dir(&medium_dir)?;
+        for i in 0..1_000 {
+            let i = i.to_string();
+            fs::write(medium_dir.join(&i), i)?;
+        }
+
+        // Create a directory with a bunch of files. This is sized to
+        // create an htree with depth 1.
         let big_dir = root.join("big_dir");
         fs::create_dir(&big_dir)?;
         for i in 0..10_000 {
-            fs::write(big_dir.join(format!("{i}")), [])?;
+            let i = i.to_string();
+            fs::write(big_dir.join(&i), i)?;
         }
 
         // Create a file with holes. By having five blocks, with holes
@@ -127,6 +139,7 @@ impl DiskParams {
 
     /// Check some properties of the filesystem.
     fn check(&self) -> Result<()> {
+        self.check_dir_htree_depth("/medium_dir", 0)?;
         self.check_dir_htree_depth("/big_dir", 1)?;
 
         Ok(())
