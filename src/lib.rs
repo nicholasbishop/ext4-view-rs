@@ -102,6 +102,7 @@ extern crate alloc;
 mod block_group;
 mod checksum;
 mod dir;
+mod dir_block;
 mod dir_entry;
 mod dir_entry_hash;
 mod error;
