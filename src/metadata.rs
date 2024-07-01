@@ -42,9 +42,7 @@ impl Metadata {
     }
 
     /// Get the file's UNIX permission bits.
-    pub fn mode(&self) -> u32 {
-        let mode = self.inode.mode.bits() & 0xfff;
-        // Convert from u16 to u32 to match the std `PermissionsExt` interface.
-        u32::from(mode)
+    pub fn mode(&self) -> u16 {
+        self.inode.mode.bits() & 0o7777
     }
 }

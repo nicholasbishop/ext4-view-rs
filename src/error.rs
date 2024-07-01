@@ -221,6 +221,12 @@ pub enum Corrupt {
         /// Inode number.
         u32,
     ),
+
+    /// A directory block is invalid.
+    DirBlock(
+        /// Inode number.
+        u32,
+    ),
 }
 
 impl Display for Corrupt {
@@ -263,6 +269,9 @@ impl Display for Corrupt {
             ),
             Self::DirEntry(inode) => {
                 write!(f, "invalid directory entry in inode {inode}")
+            }
+            Self::DirBlock(inode) => {
+                write!(f, "invalid directory block in inode {inode}")
             }
         }
     }

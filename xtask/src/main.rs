@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod big_fs;
+
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs::{self, OpenOptions};
@@ -14,7 +16,7 @@ use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, str};
-use xtask::{Mount, ReadOnly};
+use xtask::{diff_walk, Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
 ///
@@ -72,6 +74,12 @@ impl DiskParams {
         // Create a small text file.
         fs::write(root.join("small_file"), "hello, world!")?;
 
+        // Create some nested directories.
+        let dir1 = root.join("dir1");
+        let dir2 = dir1.join("dir2");
+        fs::create_dir(dir1).unwrap();
+        fs::create_dir(&dir2).unwrap();
+
         // Create some symlinks.
         symlink("small_file", root.join("sym_simple"))?;
         // Symlink targets up to 59 characters are stored inline, so
@@ -79,12 +87,36 @@ impl DiskParams {
         // limit.
         symlink("a".repeat(59), root.join("sym_59"))?;
         symlink("a".repeat(60), root.join("sym_60"))?;
+        // Target is an absolute file path.
+        symlink("/small_file", dir2.join("sym_abs")).unwrap();
+        // Target is an absolute directory path.
+        symlink("/dir1", dir2.join("sym_abs_dir")).unwrap();
+        // Target is a relative file path.
+        symlink("../../small_file", dir2.join("sym_rel")).unwrap();
+        // Target is a relative directory path.
+        symlink("../../dir1", dir2.join("sym_rel_dir")).unwrap();
+        // Target is maximum length (341*3 = 1023).
+        symlink("/..".repeat(341), root.join("sym_long")).unwrap();
+        // Create a symlink loop.
+        symlink("sym_loop_b", root.join("sym_loop_a")).unwrap();
+        symlink("sym_loop_a", root.join("sym_loop_b")).unwrap();
 
-        // Create a directory with a bunch of files.
+        // Create a directory with a bunch of files. This is sized to
+        // create an htree with depth 0.
+        let medium_dir = root.join("medium_dir");
+        fs::create_dir(&medium_dir)?;
+        for i in 0..1_000 {
+            let i = i.to_string();
+            fs::write(medium_dir.join(&i), i)?;
+        }
+
+        // Create a directory with a bunch of files. This is sized to
+        // create an htree with depth 1.
         let big_dir = root.join("big_dir");
         fs::create_dir(&big_dir)?;
         for i in 0..10_000 {
-            fs::write(big_dir.join(format!("{i}")), [])?;
+            let i = i.to_string();
+            fs::write(big_dir.join(&i), i)?;
         }
 
         // Create a file with holes. By having five blocks, with holes
@@ -107,6 +139,7 @@ impl DiskParams {
 
     /// Check some properties of the filesystem.
     fn check(&self) -> Result<()> {
+        self.check_dir_htree_depth("/medium_dir", 0)?;
         self.check_dir_htree_depth("/big_dir", 1)?;
 
         Ok(())
@@ -203,6 +236,22 @@ enum Action {
     /// The test files will be committed via git-lfs, so developers
     /// working on the repo do not typically need to run this command.
     CreateTestData,
+
+    /// Test that all files/directories are read correctly.
+    ///
+    /// This mounts a filesystem and walks the mount point, then
+    /// compares the result with walking the filesystem via the
+    /// `ext4-view` crate.
+    DiffWalk {
+        /// Path of a file containing an ext4 filesystem.
+        path: PathBuf,
+    },
+
+    /// Download a ChromiumOS image and extract its stateful partition.
+    ///
+    /// This can be used with the `diff-walk` action to verify that the
+    /// library can read the whole filesystem correctly.
+    DownloadBigFilesystem,
 }
 
 fn main() -> Result<()> {
@@ -210,5 +259,7 @@ fn main() -> Result<()> {
 
     match &opt.action {
         Action::CreateTestData => create_test_data(),
+        Action::DiffWalk { path } => diff_walk::diff_walk(path),
+        Action::DownloadBigFilesystem => big_fs::download_big_filesystem(),
     }
 }

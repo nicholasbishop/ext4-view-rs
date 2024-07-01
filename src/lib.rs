@@ -27,9 +27,6 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![forbid(unsafe_code)]
-// TODO(nicholasbishop): Temporarily allow dead code to allow for
-// smaller PRs.
-#![allow(dead_code)]
 #![warn(clippy::as_conversions)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
@@ -41,6 +38,7 @@ mod checksum;
 mod dir;
 mod dir_entry;
 mod dir_entry_hash;
+mod dir_htree;
 mod error;
 mod extent;
 mod features;
@@ -50,6 +48,7 @@ mod inode;
 mod metadata;
 mod path;
 mod reader;
+mod resolve;
 mod superblock;
 mod util;
 
@@ -62,6 +61,7 @@ use core::cell::RefCell;
 use extent::Extents;
 use features::ReadOnlyCompatibleFeatures;
 use inode::{Inode, InodeIndex};
+use resolve::FollowSymlinks;
 use superblock::Superblock;
 use util::usize_from_u32;
 
@@ -206,60 +206,12 @@ impl Ext4 {
     }
 
     /// Follow a path to get an inode.
-    fn path_to_inode(&self, path: Path<'_>) -> Result<Inode, Ext4Error> {
-        if !path.is_absolute() {
-            return Err(Ext4Error::NotAbsolute);
-        }
-
-        let mut inode = self.read_root_inode()?;
-
-        for component in path.components() {
-            match component {
-                // RootDir is only every returned by `components()` for
-                // the first component, and `inode` is already the root
-                // inode in that case.
-                Component::RootDir => continue,
-
-                // Nothing to do for `CurDir`.
-                Component::CurDir => continue,
-
-                // TODO: add support for "..".
-                Component::ParentDir => {
-                    return Err(Ext4Error::Incompatible(
-                        Incompatible::UnresolvedPath,
-                    ))
-                }
-                Component::Normal(name) => {
-                    // TODO: add support for symlinks.
-                    if inode.file_type.is_symlink() {
-                        return Err(Ext4Error::Incompatible(
-                            Incompatible::UnresolvedPath,
-                        ));
-                    }
-
-                    // Lookup the entry in the directory.
-                    if inode.file_type.is_dir() {
-                        inode = dir::get_dir_entry_inode_by_name(
-                            self, &inode, name,
-                        )?;
-                    } else {
-                        // Can't look up a child of a non-directory;
-                        // path is invalid. This handles a case like
-                        // "/a/b", where "a" is a regular file instead
-                        // of a directory.
-                        return Err(Ext4Error::NotFound);
-                    }
-                }
-            }
-        }
-
-        // Check if the final component is a symlink.
-        // TODO: add support for symlinks.
-        if inode.file_type.is_symlink() {
-            return Err(Ext4Error::Incompatible(Incompatible::UnresolvedPath));
-        }
-
-        Ok(inode)
+    fn path_to_inode(
+        &self,
+        path: Path<'_>,
+        follow: FollowSymlinks,
+    ) -> Result<Inode, Ext4Error> {
+        resolve::resolve_path(self, path, follow).map(|v| v.0)
     }
 }
 
@@ -267,6 +219,22 @@ impl Ext4 {
 ///
 /// [stdfs]: https://doc.rust-lang.org/std/fs/index.html
 impl Ext4 {
+    /// Get the canonical, absolute form of a path with all intermediate
+    /// components normalized and symbolic links resolved.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    pub fn canonicalize<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        let path = path.try_into().map_err(|_| Ext4Error::MalformedPath)?;
+        resolve::resolve_path(self, path, FollowSymlinks::All).map(|v| v.1)
+    }
+
     /// Read the entire contents of a file as raw bytes.
     ///
     /// # Errors
@@ -280,7 +248,7 @@ impl Ext4 {
         P: TryInto<Path<'p>>,
     {
         fn inner(fs: &Ext4, path: Path<'_>) -> Result<Vec<u8>, Ext4Error> {
-            let inode = fs.path_to_inode(path)?;
+            let inode = fs.path_to_inode(path, FollowSymlinks::All)?;
 
             if inode.file_type.is_dir() {
                 return Err(Ext4Error::IsADirectory);
@@ -315,6 +283,27 @@ impl Ext4 {
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
 
+    /// Get the target of a symbolic link.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    /// * `path` is not a symlink.
+    pub fn read_link<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<PathBuf, Ext4Error> {
+            let inode =
+                fs.path_to_inode(path, FollowSymlinks::ExcludeFinalComponent)?;
+            inode.symlink_target(fs)
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+
     /// Get an iterator over the entries in a directory.
     ///
     /// # Errors
@@ -331,7 +320,7 @@ impl Ext4 {
             fs: &'a Ext4,
             path: Path<'_>,
         ) -> Result<ReadDir<'a>, Ext4Error> {
-            let inode = fs.path_to_inode(path)?;
+            let inode = fs.path_to_inode(path, FollowSymlinks::All)?;
 
             if !inode.file_type.is_dir() {
                 return Err(Ext4Error::NotADirectory);
@@ -357,7 +346,7 @@ impl Ext4 {
         P: TryInto<Path<'p>>,
     {
         fn inner(fs: &Ext4, path: Path<'_>) -> Result<bool, Ext4Error> {
-            match fs.path_to_inode(path) {
+            match fs.path_to_inode(path, FollowSymlinks::All) {
                 Ok(_) => Ok(true),
                 Err(Ext4Error::NotFound) => Ok(false),
                 Err(err) => Err(err),
@@ -379,7 +368,35 @@ impl Ext4 {
         P: TryInto<Path<'p>>,
     {
         fn inner(fs: &Ext4, path: Path<'_>) -> Result<Metadata, Ext4Error> {
-            let inode = fs.path_to_inode(path)?;
+            let inode = fs.path_to_inode(path, FollowSymlinks::All)?;
+            Ok(Metadata::new(inode))
+        }
+
+        inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+
+    /// Get [`Metadata`] for `path`.
+    ///
+    /// If the final component of `path` is a symlink, information about
+    /// the symlink itself will be returned, not the symlink's
+    /// targets. Any other symlink components of `path` are resolved as
+    /// normal.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    pub fn symlink_metadata<'p, P>(
+        &self,
+        path: P,
+    ) -> Result<Metadata, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<Metadata, Ext4Error> {
+            let inode =
+                fs.path_to_inode(path, FollowSymlinks::ExcludeFinalComponent)?;
             Ok(Metadata::new(inode))
         }
 
@@ -387,59 +404,103 @@ impl Ext4 {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_path_to_inode() {
         let fs_path = std::path::Path::new("test_data/test_disk1.bin");
         let fs = Ext4::load_from_path(fs_path).unwrap();
 
-        let inode = fs.path_to_inode(Path::try_from("/").unwrap()).unwrap();
+        let follow = FollowSymlinks::All;
+
+        let inode = fs
+            .path_to_inode(Path::try_from("/").unwrap(), follow)
+            .unwrap();
         assert_eq!(inode.index.get(), 2);
 
         // Successful lookup.
         assert!(fs
-            .path_to_inode(Path::try_from("/empty_file").unwrap())
+            .path_to_inode(Path::try_from("/empty_file").unwrap(), follow)
             .is_ok());
 
         // Successful lookup with a "." component.
         assert!(fs
-            .path_to_inode(Path::try_from("/./empty_file").unwrap())
+            .path_to_inode(Path::try_from("/./empty_file").unwrap(), follow)
+            .is_ok());
+
+        // Successful lookup with a ".." component.
+        let inode = fs
+            .path_to_inode(Path::try_from("/empty_dir/..").unwrap(), follow)
+            .unwrap();
+        assert_eq!(inode.index.get(), 2);
+
+        // Successful lookup with symlink.
+        assert!(fs
+            .path_to_inode(Path::try_from("/sym_simple").unwrap(), follow)
             .is_ok());
 
         // Error: not an absolute path.
         assert!(fs
-            .path_to_inode(Path::try_from("empty_file").unwrap())
+            .path_to_inode(Path::try_from("empty_file").unwrap(), follow)
             .is_err());
 
         // Error: invalid child of a valid directory.
         assert!(fs
-            .path_to_inode(Path::try_from("/empty_dir/does_not_exist").unwrap())
+            .path_to_inode(
+                Path::try_from("/empty_dir/does_not_exist").unwrap(),
+                follow
+            )
             .is_err());
 
         // Error: attempted to lookup child of a regular file.
         assert!(fs
             .path_to_inode(
-                Path::try_from("/empty_file/does_not_exist").unwrap()
+                Path::try_from("/empty_file/does_not_exist").unwrap(),
+                follow
             )
             .is_err());
 
-        // Error: symlinks aren't supported yet.
-        assert!(fs
-            .path_to_inode(Path::try_from("/sym_simple").unwrap())
-            .is_err());
-        assert!(fs
-            .path_to_inode(Path::try_from("/sym_simple/a").unwrap())
-            .is_err());
-
-        // Error: ".." isn't supported yet.
-        assert!(fs
-            .path_to_inode(Path::try_from("/empty_dir/..").unwrap())
-            .is_err());
-
         // TODO: add deeper paths to the test disk and test here.
+    }
+
+    #[test]
+    fn test_disk1() {
+        let data = include_bytes!("../test_data/test_disk1.bin");
+        let ext4 = Ext4::load(Box::new(data.to_vec())).unwrap();
+
+        // Check the targets of the symlinks.
+        // TODO: enable symlink support.
+        if false {
+            assert_eq!(ext4.read_link("/sym_simple").unwrap(), "small_file");
+
+            // Symlink target is inline.
+            assert_eq!(ext4.read_link("/sym_59").unwrap(), "a".repeat(59));
+
+            // Symlink target is stored in extents.
+            assert_eq!(ext4.read_link("/sym_60").unwrap(), "a".repeat(60));
+
+            // Not a symlink.
+            assert!(matches!(
+                ext4.read_link("/small_file").unwrap_err(),
+                Ext4Error::NotASymlink
+            ));
+        }
+
+        // Resolve paths in `/medium_dir` via htree.
+        let medium_dir = Path::new("/medium_dir");
+        for i in 0..1_000 {
+            let i = i.to_string();
+            assert_eq!(ext4.read_to_string(&medium_dir.join(&i)).unwrap(), i);
+        }
+
+        // Resolve paths in `/big_dir` via htree.
+        let big_dir = Path::new("/big_dir");
+        for i in 0..10_000 {
+            let i = i.to_string();
+            assert_eq!(ext4.read_to_string(&big_dir.join(&i)).unwrap(), i);
+        }
     }
 }
