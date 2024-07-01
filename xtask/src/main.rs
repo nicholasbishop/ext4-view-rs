@@ -72,6 +72,12 @@ impl DiskParams {
         // Create a small text file.
         fs::write(root.join("small_file"), "hello, world!")?;
 
+        // Create some nested directories.
+        let dir1 = root.join("dir1");
+        let dir2 = dir1.join("dir2");
+        fs::create_dir(dir1).unwrap();
+        fs::create_dir(&dir2).unwrap();
+
         // Create some symlinks.
         symlink("small_file", root.join("sym_simple"))?;
         // Symlink targets up to 59 characters are stored inline, so
@@ -79,6 +85,19 @@ impl DiskParams {
         // limit.
         symlink("a".repeat(59), root.join("sym_59"))?;
         symlink("a".repeat(60), root.join("sym_60"))?;
+        // Target is an absolute file path.
+        symlink("/small_file", dir2.join("sym_abs")).unwrap();
+        // Target is an absolute directory path.
+        symlink("/dir1", dir2.join("sym_abs_dir")).unwrap();
+        // Target is a relative file path.
+        symlink("../../small_file", dir2.join("sym_rel")).unwrap();
+        // Target is a relative directory path.
+        symlink("../../dir1", dir2.join("sym_rel_dir")).unwrap();
+        // Target is maximum length (341*3 = 1023).
+        symlink("/..".repeat(341), root.join("sym_long")).unwrap();
+        // Create a symlink loop.
+        symlink("sym_loop_b", root.join("sym_loop_a")).unwrap();
+        symlink("sym_loop_a", root.join("sym_loop_b")).unwrap();
 
         // Create a directory with a bunch of files.
         let big_dir = root.join("big_dir");
