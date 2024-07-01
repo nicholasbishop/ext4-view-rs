@@ -50,6 +50,7 @@ mod inode;
 mod metadata;
 mod path;
 mod reader;
+mod resolve;
 mod superblock;
 mod util;
 
