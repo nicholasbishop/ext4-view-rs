@@ -52,6 +52,17 @@ pub enum Ext4Error {
     /// Data cannot be converted into a valid path.
     MalformedPath,
 
+    /// Path is too long.
+    ///
+    /// Maximum path length is not strictly enforced by this library for
+    /// all paths, but during path resolution the length may not exceed
+    /// 4096 bytes.
+    PathTooLong,
+
+    /// Path could not be resolved because it contains too many levels
+    /// of symbolic links.
+    TooManySymlinks,
+
     /// An IO operation failed. This error comes from the [`Ext4Read`]
     /// passed to [`Ext4::load`].
     ///
@@ -115,6 +126,10 @@ impl Display for Ext4Error {
             }
             Self::NotUtf8 => write!(f, "data is not utf-8"),
             Self::MalformedPath => write!(f, "data is not a valid path"),
+            Self::PathTooLong => write!(f, "path is too long"),
+            Self::TooManySymlinks => {
+                write!(f, "too many levels of symbolic links")
+            }
             // TODO: if the `Error` trait ever makes it into core, stop
             // printing `err` here and return it via `Error::source` instead.
             Self::Io(err) => write!(f, "io error: {err}"),
