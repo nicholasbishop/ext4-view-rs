@@ -8,21 +8,84 @@
 
 //! This crate provides read-only access to [ext4] filesystems.
 //!
+//! The main entry point is the [`Ext4`] struct.
+//!
 //! [ext4]: https://en.wikipedia.org/wiki/Ext4
 //!
 //! # Example
 //!
-//! Load an ext4 filesystem from an in-memory buffer and then read a file
-//! from the filesystem:
+//! This example reads the filesystem data from a byte vector, then
+//! looks at files and directories in the filesystem.
 //!
 //! ```
-//! use ext4_view::{Ext4, Path};
+//! use ext4_view::{Ext4, Ext4Error, Metadata};
 //!
-//! fn in_memory_example(fs_data: Vec<u8>) -> Vec<u8> {
-//!     let ext4 = Ext4::load(Box::new(fs_data)).unwrap();
-//!     ext4.read("/some/file/path").unwrap()
+//! fn in_memory_example(fs_data: Vec<u8>) -> Result<(), Ext4Error> {
+//!     let fs = Ext4::load(Box::new(fs_data)).unwrap();
+//!
+//!     let path = "/some/file";
+//!
+//!     // Read a file's contents.
+//!     let file_data: Vec<u8> = fs.read(path)?;
+//!
+//!     // Read a file's contents as a string.
+//!     let file_str: String = fs.read_to_string(path)?;
+//!
+//!     // Check whether a path exists.
+//!     let exists: bool = fs.exists(path)?;
+//!
+//!     // Get metadata (file type, permissions, etc).
+//!     let metadata: Metadata = fs.metadata(path)?;
+//!
+//!     // Print each entry in a directory.
+//!     for entry in fs.read_dir("/some/dir")? {
+//!         let entry = entry?;
+//!         println!("{}", entry.path().display());
+//!     }
+//!
+//!     Ok(())
 //! }
 //! ```
+//! # Loading a filesystem
+//!
+//! Call [`Ext4::load`] to load a filesystem. The source data can be
+//! anything that implements the [`Ext4Read`] trait. The simplest form
+//! of source data is a `Vec<u8>` containing the whole filesystem.
+//!
+//! If the `std` feature is enabled, [`Ext4Read`] is implemented for
+//! [`std::fs::File`]. As a shortcut, you can also use
+//! [`Ext4::load_from_path`] to open a path and read the filesystem from
+//! it.
+//!
+//! For other cases, implement [`Ext4Read`] for your data source. This
+//! trait has a single method which reads bytes into a byte slice.
+//!
+//! Note that the underlying data should never be changed while the
+//! filesystem is in use.
+//!
+//! # Paths
+//!
+//! Paths in the filesystem are represented by [`Path`] and
+//! [`PathBuf`]. These types are similar to the types of the same names
+//! in [`std::path`].
+//!
+//! Functions that take a path as input accept a variety of types
+//! including strings.
+//!
+//! # Errors
+//!
+//! Most functions return [`Ext4Error`] on failure. This type is broadly
+//! similar to [`std::io::Error`], with a few notable additions:
+//! * Errors that come from the underlying reader are returned as
+//!   [`Ext4Error::Io`].
+//! * If the filesystem is corrupt in some way, [`Ext4Error::Corrupt`]
+//!   is returned.
+//! * If the filesystem can't be read due to a limitation of the
+//!   library, [`Ext4Error::Incompatible`] is returned. Please [file a
+//!   bug][issues] if you encounter an incompatibility so we know to
+//!   prioritize a fix!
+//!
+//! [issues]: https://github.com/nicholasbishop/ext4-view-rs/issues
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
