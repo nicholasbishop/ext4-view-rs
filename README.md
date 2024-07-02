@@ -11,6 +11,58 @@ require `alloc`.
 
 [ext4]: https://en.wikipedia.org/wiki/Ext4
 
+## Usage
+
+Add the dependency:
+```console
+cargo add ext4-view
+```
+
+Basic example:
+```rust
+use ext4_view::{Ext4, Metadata};
+
+// Load the filesystem. The data source can be be anything that
+// implements the `Ext4Read` trait. The simplest source is a
+// `Vec<u8>` containing the whole filesystem.
+let fs_data: Vec<u8> = get_fs_data_from_somewhere();
+let fs = Ext4::load(Box::new(data_source))?;
+
+// If the `std` feature is enabled, you can load a filesystem by path:
+let fs = Ext4::load_from_path(std::path::Path::new("some-fs.bin"))?;
+
+// The `Ext4` type has methods very similar to `std::fs`:
+let path = "/some/file/path";
+let file_data: Vec<u8> = fs.read(path)?;
+let file_str: String = fs.read_to_string(path)?;
+let exists: bool = fs.exists(path)?;
+let metadata: Metadata = fs.metadata(path)?;
+for entry in fs.read_dir("/some/dir")? {
+    let entry = entry?;
+    println!("{}", entry.path().display());
+}
+```
+
+## Design Goals
+
+In order of importance:
+
+1. Correct
+   * All valid ext4 filesystems should be readable.
+   * Invalid data should never cause crashes, panics, or non-terminating loops.
+   * No `unsafe` code in the main package (it is allowed in dependencies).
+   * Well tested.
+2. Easy to use
+   * The API should follow the conventions of [`std::fs`] where possible.
+3. Good performance
+   * Performance should not come at the expense of correctness or ease of use.
+
+Non-goals:
+* Write support.
+* Recovery of corrupt filesystems.
+
+[`std::fs`]: https://doc.rust-lang.org/std/fs/index.html
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE)
@@ -19,6 +71,8 @@ or [MIT license](LICENSE-MIT) at your option.
 ## Contributing
 
 See the [code of conduct] and [contributing.md].
+
+Bug reports and PRs are welcome!
 
 [code of conduct]: docs/code-of-conduct.md
 [contributing.md]: docs/contributing.md
