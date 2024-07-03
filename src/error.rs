@@ -18,6 +18,7 @@ pub trait IoError: Any + Debug + Display + Send + Sync {}
 ///
 /// [`Ext4`]: crate::Ext4
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Ext4Error {
     /// An operation that requires an absolute path was attempted on a
     /// relative path.
@@ -145,6 +146,7 @@ impl std::error::Error for Ext4Error {}
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Corrupt {
     /// Superblock magic is invalid.
     SuperblockMagic,
@@ -271,6 +273,7 @@ impl Display for Corrupt {
 /// Error type used in [`Ext4Error::Incompatible`] when the filesystem
 /// cannot be read due to incomplete support in this library.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Incompatible {
     /// One or more unknown bits are set in the incompatible feature flags.
     Unknown(

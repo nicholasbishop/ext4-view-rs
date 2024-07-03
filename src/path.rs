@@ -13,6 +13,7 @@ use core::fmt::{self, Debug, Display, Formatter};
 
 /// Error returned when [`Path`] or [`PathBuf`] construction fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum PathError {
     /// Path contains a component longer than 255 bytes.
     ComponentTooLong,

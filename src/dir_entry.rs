@@ -18,6 +18,7 @@ use core::str::Utf8Error;
 
 /// Error returned when [`DirEntryName`] construction fails.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum DirEntryNameError {
     /// Name is empty.
     Empty,
