@@ -9,6 +9,7 @@
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::file_type::FileType;
+use crate::metadata::Metadata;
 use crate::path::PathBuf;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
@@ -97,14 +98,7 @@ pub(crate) struct Inode {
     /// * Target path for symlinks.
     pub(crate) inline_data: [u8; Self::INLINE_DATA_LEN],
 
-    /// Size in bytes of the file data.
-    pub(crate) size_in_bytes: u64,
-
-    /// Raw permissions and file type.
-    pub(crate) mode: InodeMode,
-
-    /// File type parsed from the `mode` bitfield.
-    pub(crate) file_type: FileType,
+    pub(crate) metadata: Metadata,
 
     /// Internal inode flags.
     pub(crate) flags: InodeFlags,
@@ -155,12 +149,14 @@ impl Inode {
                 index,
                 // OK to unwap, we know `i_block` is 60 bytes.
                 inline_data: i_block.try_into().unwrap(),
-                size_in_bytes,
+                metadata: Metadata {
+                    size_in_bytes,
+                    mode,
+                    file_type: FileType::try_from(mode).map_err(|_| {
+                        Ext4Error::Corrupt(Corrupt::Inode(index.get()))
+                    })?,
+                },
                 flags: InodeFlags::from_bits_retain(i_flags),
-                mode,
-                file_type: FileType::try_from(mode).map_err(|_| {
-                    Ext4Error::Corrupt(Corrupt::Inode(index.get()))
-                })?,
                 checksum_base,
             },
             checksum,
@@ -232,12 +228,12 @@ impl Inode {
         &self,
         ext4: &Ext4,
     ) -> Result<PathBuf, Ext4Error> {
-        if !self.file_type.is_symlink() {
+        if !self.metadata.is_symlink() {
             return Err(Ext4Error::NotASymlink);
         }
 
         // An empty symlink target is not allowed.
-        if self.size_in_bytes == 0 {
+        if self.metadata.size_in_bytes == 0 {
             return Err(Ext4Error::Corrupt(Corrupt::SymlinkTarget(
                 self.index.get(),
             )));
@@ -247,9 +243,9 @@ impl Inode {
         // targets are stored as regular file data.
         const MAX_INLINE_SYMLINK_LEN: u64 = 59;
 
-        if self.size_in_bytes <= MAX_INLINE_SYMLINK_LEN {
+        if self.metadata.size_in_bytes <= MAX_INLINE_SYMLINK_LEN {
             // OK to unwrap since we checked the size above.
-            let len = usize::try_from(self.size_in_bytes).unwrap();
+            let len = usize::try_from(self.metadata.size_in_bytes).unwrap();
             let target = &self.inline_data[..len];
 
             PathBuf::try_from(target).map_err(|_| {

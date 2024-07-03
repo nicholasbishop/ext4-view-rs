@@ -123,7 +123,7 @@ pub(crate) fn resolve_path(
         // Get the component name.
         let comp = &path[index..comp_end];
 
-        if !inode.file_type.is_dir() {
+        if !inode.metadata.is_dir() {
             // Can't look up a child of a non-directory;
             // path is invalid. This handles a case like
             // "/a/b", where "a" is a regular file instead
@@ -149,7 +149,7 @@ pub(crate) fn resolve_path(
             path.drain(remove_start..comp_end_with_sep);
             index = remove_start;
             inode = child_inode;
-        } else if child_inode.file_type.is_symlink()
+        } else if child_inode.metadata.is_symlink()
             && (follow == FollowSymlinks::All || !is_last_component)
         {
             // Resolve symlink, unless this is the last component and `follow != All`.
@@ -205,7 +205,7 @@ pub(crate) fn resolve_path(
     // separator. Otherwise, it's an error since non-directories don't
     // have children.
     if path.len() > 1 && path[path.len() - 1] == Path::SEPARATOR {
-        if inode.file_type.is_dir() {
+        if inode.metadata.is_dir() {
             path.pop();
         } else {
             return Err(Ext4Error::NotADirectory);
@@ -367,7 +367,7 @@ mod tests {
         let (dir_inode, path) =
             resolve_path(fs, mkp("/dir1/dir2"), follow).unwrap();
         assert_eq!(path, "/dir1/dir2");
-        assert!(dir_inode.file_type.is_dir());
+        assert!(dir_inode.metadata.is_dir());
 
         // Check directory with trailing separator.
         let (inode, path) =
@@ -422,7 +422,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(path, "/dir1/dir2/sym_abs");
-        assert!(inode.file_type.is_symlink());
+        assert!(inode.metadata.is_symlink());
         let (inode, path) = resolve_path(
             fs,
             mkp("/dir1/dir2/sym_rel"),
@@ -430,7 +430,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(path, "/dir1/dir2/sym_rel");
-        assert!(inode.file_type.is_symlink());
+        assert!(inode.metadata.is_symlink());
 
         // Error: not absolute.
         assert!(matches!(
