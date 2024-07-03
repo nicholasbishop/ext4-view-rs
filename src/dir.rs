@@ -205,7 +205,7 @@ pub(crate) fn get_dir_entry_inode_by_name(
     dir_inode: &Inode,
     name: DirEntryName<'_>,
 ) -> Result<Inode, Ext4Error> {
-    assert!(dir_inode.file_type.is_dir());
+    assert!(dir_inode.metadata.is_dir());
 
     // TODO: add faster lookup by hash, if the inode has
     // InodeFlags::DIRECTORY_HTREE.
