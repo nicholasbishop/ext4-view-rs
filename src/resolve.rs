@@ -419,11 +419,11 @@ mod tests {
         // but difference is visible in code coverage.)
         let long_path = "a/".repeat(2030);
         assert!(matches!(
-            dbg!(resolve_path(
+            resolve_path(
                 fs,
                 mkp("/sym_long").join(long_path).as_path(),
                 follow
-            )),
+            ),
             Err(Ext4Error::PathTooLong)
         ));
 
