@@ -111,7 +111,10 @@ pub(crate) fn resolve_path(
         // or the end of the path.
         let next_sep = find_next_sep(&path, index);
         let comp_end = next_sep.unwrap_or(path.len());
-        let is_last_component = next_sep.is_none();
+        // This is the last component if there is no next '/', or if the
+        // next separator is at the end of the path.
+        let is_last_component =
+            next_sep.is_none() || comp_end == (path.len() - 1);
 
         // Index of the separator after the current component, or the
         // end of the path if there isn't a separator.
@@ -187,10 +190,25 @@ pub(crate) fn resolve_path(
             }
             path_dedup_sep(&mut path);
         } else {
-            // Normal file or directory. Continue on to the next
-            // component.
+            // Normal file or directory, or a symlink in the final
+            // component in `ExcludeFinalComponent` mode.
+
+            // Continue on to the next component.
             index = comp_end_with_sep;
             inode = child_inode;
+        }
+    }
+
+    // Handle a separator at the end of the path (unless the path is just '/').
+    //
+    // If the final component is a directory, remove the trailing
+    // separator. Otherwise, it's an error since non-directories don't
+    // have children.
+    if path.len() > 1 && path[path.len() - 1] == Path::SEPARATOR {
+        if inode.file_type.is_dir() {
+            path.pop();
+        } else {
+            return Err(Ext4Error::NotADirectory);
         }
     }
 
@@ -346,10 +364,22 @@ mod tests {
         }
 
         // Check directories.
-        let (inode, path) =
+        let (dir_inode, path) =
             resolve_path(fs, mkp("/dir1/dir2"), follow).unwrap();
         assert_eq!(path, "/dir1/dir2");
-        assert!(inode.file_type.is_dir());
+        assert!(dir_inode.file_type.is_dir());
+
+        // Check directory with trailing separator.
+        let (inode, path) =
+            resolve_path(fs, mkp("/dir1/dir2/"), follow).unwrap();
+        assert_eq!(path, "/dir1/dir2");
+        assert_eq!(inode.index, dir_inode.index);
+
+        // Check '.' with trailing separator.
+        let (inode, path) =
+            resolve_path(fs, mkp("/dir1/dir2/./"), follow).unwrap();
+        assert_eq!(path, "/dir1/dir2");
+        assert_eq!(inode.index, dir_inode.index);
 
         let small_file_path = PathBuf::new("/small_file");
 
@@ -436,6 +466,23 @@ mod tests {
         // Error: tried to lookup a child of a regular file.
         assert!(matches!(
             resolve_path(fs, mkp("/empty_file/path"), follow),
+            Err(Ext4Error::NotADirectory)
+        ));
+
+        // Error: separator after a regular file.
+        assert!(matches!(
+            resolve_path(fs, mkp("/empty_file/"), follow),
+            Err(Ext4Error::NotADirectory)
+        ));
+
+        // Error: separator after a trailing component with a symlink in
+        // `ExcludeFinalComponent` mode.
+        assert!(matches!(
+            resolve_path(
+                fs,
+                mkp("/dir1/dir2/sym_abs_dir/"),
+                FollowSymlinks::ExcludeFinalComponent
+            ),
             Err(Ext4Error::NotADirectory)
         ));
 
