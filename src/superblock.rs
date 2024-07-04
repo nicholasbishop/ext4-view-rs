@@ -205,6 +205,73 @@ mod tests {
         );
     }
 
+    /// Test that the checksum seed gets correctly calculated from the
+    /// filesystem uuid if the `CHECKSUM_SEED_IN_SUPERBLOCK` incompat
+    /// feature is not set.
+    #[test]
+    fn test_no_checksum_seed() {
+        let mut data =
+            include_bytes!("../test_data/raw_superblock.bin").to_vec();
+
+        // Byte range of `s_feature_incompat`.
+        let ifeat_range = 0x60..0x64;
+
+        // Get the current features value, remove `CHECKSUM_SEED_IN_SUPERBLOCK`,
+        // and write it back out.
+        let mut ifeat = IncompatibleFeatures::from_bits_retain(
+            u32::from_le_bytes(data[ifeat_range.clone()].try_into().unwrap()),
+        );
+        ifeat.remove(IncompatibleFeatures::CHECKSUM_SEED_IN_SUPERBLOCK);
+        data[ifeat_range].copy_from_slice(&ifeat.bits().to_le_bytes());
+
+        // Byte range of `s_checksum_seed`.
+        let seed_range = 0x270..0x274;
+
+        // Get the current seed value, then clear those bytes.
+        let expected_seed =
+            u32::from_le_bytes(data[seed_range.clone()].try_into().unwrap());
+        let fill_seed = 0u32;
+        data[seed_range].copy_from_slice(&fill_seed.to_le_bytes());
+        // Ensure that the fill seed doesn't match the existing seed,
+        // otherwise this test isn't testing anything.
+        assert_ne!(expected_seed, fill_seed);
+
+        // Update the checksum.
+        let mut checksum = Checksum::new();
+        checksum.update(&data[..0x3fc]);
+        data[0x3fc..].copy_from_slice(&checksum.finalize().to_le_bytes());
+
+        let sb = Superblock::from_bytes(&data).unwrap();
+        // Check that the correct seed was calculated.
+        assert_eq!(sb.checksum_seed, expected_seed);
+    }
+
+    #[test]
+    fn test_too_many_block_groups() {
+        let mut data =
+            include_bytes!("../test_data/raw_superblock.bin").to_vec();
+        // Set `s_blocks_count_hi` to a very large value so that
+        // `num_block_groups` no longer fits in a `u32`.
+        data[0x150..0x154].copy_from_slice(&[0xff; 4]);
+        assert!(matches!(
+            Superblock::from_bytes(&data).unwrap_err(),
+            Ext4Error::Corrupt(Corrupt::TooManyBlockGroups)
+        ));
+    }
+
+    #[test]
+    fn test_bad_superblock_checksum() {
+        let mut data =
+            include_bytes!("../test_data/raw_superblock.bin").to_vec();
+        // Modify a reserved byte. Nothing currently uses this data, but
+        // it is still part of the checksum.
+        data[0x284] = 0xff;
+        assert!(matches!(
+            Superblock::from_bytes(&data).unwrap_err(),
+            Ext4Error::Corrupt(Corrupt::SuperblockChecksum)
+        ));
+    }
+
     /// Test that an error is returned if an unknown incompatible
     /// feature bit is set. Test that the error value contains only the
     /// unknown bits.
