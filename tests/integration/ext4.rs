@@ -14,6 +14,15 @@ fn load_test_disk1() -> Ext4 {
 }
 
 #[test]
+fn test_ext4_debug() {
+    let fs = load_test_disk1();
+    let s = format!("{fs:?}");
+    // Just check the start and end to avoid over-matching on the test data.
+    assert!(s.starts_with("Ext4 { superblock: Superblock { "));
+    assert!(s.ends_with(", .. }"));
+}
+
+#[test]
 fn test_canonicalize() {
     let fs = load_test_disk1();
 

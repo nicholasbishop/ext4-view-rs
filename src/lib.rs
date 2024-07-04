@@ -122,6 +122,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
+use core::fmt::{self, Debug, Formatter};
 use extent::Extents;
 use features::ReadOnlyCompatibleFeatures;
 use inode::{Inode, InodeIndex};
@@ -468,6 +469,18 @@ impl Ext4 {
         }
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
+    }
+}
+
+impl Debug for Ext4 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // Exclude the reader field, which does not impl Debug. Even if
+        // it did, it could be annoying to print out (e.g. if the reader
+        // is a Vec it might contain many megabytes of data).
+        f.debug_struct("Ext4")
+            .field("superblock", &self.superblock)
+            .field("block_group_descriptors", &self.block_group_descriptors)
+            .finish_non_exhaustive()
     }
 }
 
