@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ext4_view::{Ext4, Ext4Error, Path, PathBuf};
+use ext4_view::{Corrupt, Ext4, Ext4Error, Path, PathBuf};
 
 fn load_test_disk1() -> Ext4 {
     const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
@@ -20,6 +20,47 @@ fn test_ext4_debug() {
     // Just check the start and end to avoid over-matching on the test data.
     assert!(s.starts_with("Ext4 { superblock: Superblock { "));
     assert!(s.ends_with(", .. }"));
+}
+
+#[test]
+fn test_load_errors() {
+    // Not enough data.
+    assert!(matches!(
+        Ext4::load(Box::new(vec![])).unwrap_err(),
+        Ext4Error::Io(_)
+    ));
+
+    // Invalid superblock.
+    assert!(matches!(
+        Ext4::load(Box::new(vec![0; 2048])).unwrap_err(),
+        Ext4Error::Corrupt(Corrupt::SuperblockMagic)
+    ));
+
+    // Not enough data to read the block group descriptors.
+    let mut fs_data = vec![0; 2048];
+    fs_data[1024..2048]
+        .copy_from_slice(include_bytes!("../../test_data/raw_superblock.bin"));
+    assert!(matches!(
+        dbg!(Ext4::load(Box::new(fs_data.clone())).unwrap_err()),
+        Ext4Error::Io(_)
+    ));
+
+    // Invalid block group descriptor checksum.
+    fs_data.resize(3048usize, 0u8);
+    assert!(matches!(
+        dbg!(Ext4::load(Box::new(fs_data.clone())).unwrap_err()),
+        Ext4Error::Corrupt(Corrupt::BlockGroupDescriptorChecksum(0))
+    ));
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn test_load_path_error() {
+    assert!(matches!(
+        Ext4::load_from_path(std::path::Path::new("/really/does/not/exist"))
+            .unwrap_err(),
+        Ext4Error::Io(_)
+    ));
 }
 
 #[test]
