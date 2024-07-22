@@ -105,6 +105,7 @@ mod dir;
 mod dir_block;
 mod dir_entry;
 mod dir_entry_hash;
+mod dir_htree;
 mod error;
 mod extent;
 mod features;
