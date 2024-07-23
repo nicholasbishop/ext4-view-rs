@@ -9,7 +9,7 @@
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::error::{Corrupt, Ext4Error};
-use crate::extent::Extents;
+use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeIndex};
 use crate::path::PathBuf;
 use crate::util::{read_u16le, read_u32le};
@@ -205,6 +205,25 @@ fn read_dot_or_dotdot(
     } else {
         Err(corrupt())
     }
+}
+
+/// Find the extent within a file that includes the given child `block`.
+fn find_extent_for_block(
+    fs: &Ext4,
+    inode: &Inode,
+    block: ChildBlock,
+) -> Result<Extent, Ext4Error> {
+    for extent in Extents::new(fs, inode)? {
+        let extent = extent?;
+
+        let start = extent.block_within_file;
+        let end = start + u32::from(extent.num_blocks);
+        if block >= start && block < end {
+            return Ok(extent);
+        }
+    }
+
+    Err(Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get())))
 }
 
 #[cfg(test)]
