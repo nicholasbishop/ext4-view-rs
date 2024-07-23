@@ -6,9 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::dir_block::DirBlock;
 use crate::error::{Corrupt, Ext4Error};
-use crate::inode::InodeIndex;
+use crate::extent::Extents;
+use crate::inode::{Inode, InodeIndex};
 use crate::util::{read_u16le, read_u32le};
+use crate::Ext4;
 
 type DirHash = u32;
 type ChildBlock = u32;
@@ -138,6 +141,32 @@ impl<'a> InternalNode<'a> {
 
         self.get_entry(left - 1).1
     }
+}
+
+/// Read the block containing the root node of an htree into
+/// `block`. This is always the first block of the file.
+fn read_root_block(
+    fs: &Ext4,
+    inode: &Inode,
+    block: &mut [u8],
+) -> Result<(), Ext4Error> {
+    let mut extents = Extents::new(fs, inode)?;
+
+    // Get the first extent.
+    let extent = extents.next().ok_or_else(|| {
+        Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
+    })??;
+
+    // Read the first block of the extent.
+    let dir_block = DirBlock {
+        fs,
+        dir_inode: inode.index,
+        extent: &extent,
+        block_within_extent: 0,
+        has_htree: true,
+        checksum_base: inode.checksum_base.clone(),
+    };
+    dir_block.read(block)
 }
 
 #[cfg(test)]
