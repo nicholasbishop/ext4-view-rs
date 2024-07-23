@@ -8,7 +8,8 @@
 
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
-use crate::error::{Corrupt, Ext4Error};
+use crate::dir_entry_hash::dir_hash_md4_half;
+use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeIndex};
 use crate::path::PathBuf;
@@ -224,6 +225,69 @@ fn find_extent_for_block(
     }
 
     Err(Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get())))
+}
+
+/// Traverse the htree to find the leaf node that might contain `name`.
+///
+/// On success, `block` will contain the leaf node's directory block
+/// data.
+fn find_leaf_node(
+    fs: &Ext4,
+    inode: &Inode,
+    name: DirEntryName<'_>,
+    block: &mut [u8],
+) -> Result<(), Ext4Error> {
+    // Read the htree's hash type from the root block. Currently only
+    // the "half MD4" algorithm is supported by this library.
+    let hash_type = block[0x1c];
+    if hash_type != 1 {
+        return Err(Ext4Error::Incompatible(Incompatible::DirectoryHash(
+            hash_type,
+        )));
+    }
+
+    // Read the htree's depth from the root block. The depth is the
+    // number of levels in the tree excluding the root and leaf
+    // levels. So for example, a depth of one means there is a root
+    // node, one level of internal nodes, and one level of leaf nodes.
+    let depth = block[0x1e];
+
+    // Get the node structure from the root block.
+    let root_node = InternalNode::from_root_block(block, inode.index)?;
+
+    let hash = dir_hash_md4_half(name, &fs.superblock.htree_hash_seed);
+    let mut child_block_relative = root_node.lookup_block_by_hash(hash);
+
+    // Descend through the tree one level at a time. The first iteration
+    // of the loop goes from the root node to a child. The last
+    // iteration (which may also be the first iteration) will read the
+    // leaf node data into `block`.
+    for level in 0..=depth {
+        // Find the extent of the child block and read the block's data.
+        let extent = find_extent_for_block(fs, inode, child_block_relative)?;
+        let dir_block = DirBlock {
+            fs,
+            dir_inode: inode.index,
+            extent: &extent,
+            block_within_extent: u64::from(
+                child_block_relative - extent.block_within_file,
+            ),
+            has_htree: true,
+            checksum_base: inode.checksum_base.clone(),
+        };
+        dir_block.read(block)?;
+
+        // If the block is an internal node, find the next child
+        // block. Otherwise, we've reached a leaf node and there's
+        // nothing more to do.
+        if level != depth {
+            let inner_node =
+                InternalNode::from_non_root_block(block, inode.index)?;
+            child_block_relative = inner_node.lookup_block_by_hash(hash);
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
