@@ -9,6 +9,7 @@
 use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
+use crate::dir_htree::get_dir_entry_via_htree;
 use crate::error::Ext4Error;
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
@@ -207,8 +208,10 @@ pub(crate) fn get_dir_entry_inode_by_name(
 ) -> Result<Inode, Ext4Error> {
     assert!(dir_inode.metadata.is_dir());
 
-    // TODO: add faster lookup by hash, if the inode has
-    // InodeFlags::DIRECTORY_HTREE.
+    if dir_inode.flags.contains(InodeFlags::DIRECTORY_HTREE) {
+        let entry = get_dir_entry_via_htree(fs, dir_inode, name)?;
+        return Inode::read(fs, entry.inode);
+    }
 
     // The entry's `path()` method is not called, so the value of the
     // base path does not matter.
