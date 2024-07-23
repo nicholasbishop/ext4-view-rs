@@ -148,17 +148,13 @@ fn create_hash_block(src: &[u8]) -> HashBlock {
 
 /// Hash `name` using the Linux kernel's bespoke "half MD4" scheme.
 ///
-/// Returns `(hash, minor_hash)`. The first value is used for the first
-/// level of hash lookup in the directory htree, the second value is
-/// used if the tree has a second level.
-///
 /// The `seed` value comes from the `s_hash_seed` field of the
 /// superblock. If the `seed` is all zeroes, it's replaced with a
 /// standard default seed.
 pub(crate) fn dir_hash_md4_half(
     name: DirEntryName<'_>,
     mut seed: &[u32; 4],
-) -> (u32, u32) {
+) -> u32 {
     // Replace all-zero seed with a standard default seed.
     if seed == &[0; 4] {
         seed = &[0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
@@ -176,9 +172,9 @@ pub(crate) fn dir_hash_md4_half(
         let inp = create_hash_block(chunk);
         md4_half(&mut state, &inp);
     }
-    let hash = state[1].0 & !1;
-    let minor_hash = state[2].0;
-    (hash, minor_hash)
+
+    // Finalize the hash.
+    state[1].0 & !1
 }
 
 #[cfg(test)]
@@ -284,26 +280,14 @@ mod tests {
 
         // Test a short name.
         let name = DirEntryName::try_from(b"abc").unwrap();
-        assert_eq!(
-            dir_hash_md4_half(name, &seed_from_uuid(seed1)),
-            (0x25783134, 0xc44d466f)
-        );
-        assert_eq!(
-            dir_hash_md4_half(name, &seed_from_uuid(seed2)),
-            (0x4599f742, 0x8f7e3666)
-        );
-        assert_eq!(
-            dir_hash_md4_half(name, &seed_from_uuid(seed0)),
-            (0xd196a868, 0xc420eb28)
-        );
+        assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed1)), 0x25783134);
+        assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed2)), 0x4599f742);
+        assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed0)), 0xd196a868);
 
         // Test a max-length name.
         let name = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU";
         assert_eq!(name.len(), 255);
         let name = DirEntryName::try_from(name).unwrap();
-        assert_eq!(
-            dir_hash_md4_half(name, &seed_from_uuid(seed1)),
-            (0xe40e82e0, 0xae67c46d)
-        );
+        assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed1)), 0xe40e82e0);
     }
 }
