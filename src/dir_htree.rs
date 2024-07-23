@@ -7,11 +7,14 @@
 // except according to those terms.
 
 use crate::dir_block::DirBlock;
+use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::error::{Corrupt, Ext4Error};
 use crate::extent::Extents;
 use crate::inode::{Inode, InodeIndex};
+use crate::path::PathBuf;
 use crate::util::{read_u16le, read_u32le};
 use crate::Ext4;
+use alloc::rc::Rc;
 
 type DirHash = u32;
 type ChildBlock = u32;
@@ -169,9 +172,47 @@ fn read_root_block(
     dir_block.read(block)
 }
 
+/// Check if name is "." or ".." and return the corresponding entry if
+/// so. These entries exist at hardcoded offsets within the root block
+/// of the htree.
+///
+/// `block` is the raw block data of the first directory block.
+///
+/// If name is neither "." nor "..", returns `None`.
+fn read_dot_or_dotdot(
+    inode: &Inode,
+    name: DirEntryName<'_>,
+    block: &[u8],
+) -> Result<Option<DirEntry>, Ext4Error> {
+    let corrupt = || Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()));
+
+    let offset = if name == "." {
+        0
+    } else if name == ".." {
+        12
+    } else {
+        return Ok(None);
+    };
+
+    let (entry, _size) = DirEntry::from_bytes(
+        &block[offset..],
+        inode.index,
+        Rc::new(PathBuf::empty()),
+    )?;
+    let entry = entry.ok_or_else(corrupt)?;
+    if entry.file_name() == name {
+        Ok(Some(entry))
+    } else {
+        Err(corrupt())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "std")]
+    use {crate::resolve::FollowSymlinks, crate::util::usize_from_u32};
 
     #[test]
     fn test_internal_node() {
@@ -226,5 +267,42 @@ mod tests {
         assert_eq!(node.lookup_block_by_hash(12), 194);
         assert_eq!(node.lookup_block_by_hash(20), 190);
         assert_eq!(node.lookup_block_by_hash(30), 189);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_read_dot_or_dotdot() {
+        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
+        let fs = Ext4::load_from_path(fs_path).unwrap();
+
+        let mut block = vec![0; usize_from_u32(fs.superblock.block_size)];
+
+        // Read the root block of an htree.
+        let inode = fs
+            .path_to_inode("/big_dir".try_into().unwrap(), FollowSymlinks::All)
+            .unwrap();
+        read_root_block(&fs, &inode, &mut block).unwrap();
+
+        // Get the "." entry.
+        let entry = read_dot_or_dotdot(&inode, ".".try_into().unwrap(), &block)
+            .unwrap()
+            .unwrap();
+        assert_eq!(entry.file_name(), ".");
+
+        // Get the ".." entry.
+        let entry =
+            read_dot_or_dotdot(&inode, "..".try_into().unwrap(), &block)
+                .unwrap()
+                .unwrap();
+        assert_eq!(entry.file_name(), "..");
+
+        // Check that an arbitrary name returns `None`.
+        assert!(read_dot_or_dotdot(
+            &inode,
+            "somename".try_into().unwrap(),
+            &block
+        )
+        .unwrap()
+        .is_none());
     }
 }
