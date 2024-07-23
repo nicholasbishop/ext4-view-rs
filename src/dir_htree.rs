@@ -11,11 +11,12 @@ use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::extent::{Extent, Extents};
-use crate::inode::{Inode, InodeIndex};
+use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
-use crate::util::{read_u16le, read_u32le};
+use crate::util::{read_u16le, read_u32le, usize_from_u32};
 use crate::Ext4;
 use alloc::rc::Rc;
+use alloc::vec;
 
 type DirHash = u32;
 type ChildBlock = u32;
@@ -290,12 +291,72 @@ fn find_leaf_node(
     Ok(())
 }
 
+/// Find a directory entry via a directory htree. The htree is a tree of
+/// nodes that use hashes for keys. The hash of `name` is used to
+/// traverse this tree to a leaf node. The leaf node is an linear array
+/// of directory entries; these are searched through in order to find
+/// the one matching `name`.
+///
+/// Returns [`Ext4Error::NotFound`] if the entry doesn't exist.
+///
+/// Panics if the directory doesn't have an htree.
+pub(crate) fn get_dir_entry_via_htree(
+    fs: &Ext4,
+    inode: &Inode,
+    name: DirEntryName<'_>,
+) -> Result<DirEntry, Ext4Error> {
+    assert!(inode.flags.contains(InodeFlags::DIRECTORY_HTREE));
+
+    let block_size = fs.superblock.block_size;
+    let mut block = vec![0; usize_from_u32(block_size)];
+
+    // Read the first block of the file, which contains the root node of
+    // the htree.
+    read_root_block(fs, inode, &mut block)?;
+
+    // Handle "." and ".." entries.
+    if let Some(entry) = read_dot_or_dotdot(inode, name, &block)? {
+        return Ok(entry);
+    }
+
+    // Find the leaf node that might contain the entry. This will update
+    // `block` to contain the leaf node's block data.
+    find_leaf_node(fs, inode, name, &mut block)?;
+
+    // The entry's `path()` method will not be called, so the value of
+    // the base path does not matter.
+    let path = Rc::new(PathBuf::empty());
+
+    // Do a linear search through the leaf block for the right entry.
+    let mut offset_within_block = 0;
+    while offset_within_block < block.len() {
+        let (dir_entry, entry_size) = DirEntry::from_bytes(
+            &block[offset_within_block..],
+            inode.index,
+            path.clone(),
+        )?;
+        offset_within_block += entry_size;
+        let Some(dir_entry) = dir_entry else {
+            continue;
+        };
+
+        if dir_entry.file_name() == name {
+            return Ok(dir_entry);
+        }
+    }
+
+    Err(Ext4Error::NotFound)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[cfg(feature = "std")]
-    use {crate::resolve::FollowSymlinks, crate::util::usize_from_u32};
+    use {
+        crate::util::usize_from_u32,
+        crate::{FollowSymlinks, Path, ReadDir},
+    };
 
     #[test]
     fn test_internal_node() {
@@ -387,5 +448,42 @@ mod tests {
         )
         .unwrap()
         .is_none());
+    }
+
+    /// Use ReadDir to iterate over all directory entries. Check that
+    /// each entry can be looked up directly via the htree.
+    ///
+    /// Returns the number of entries.
+    #[cfg(feature = "std")]
+    #[track_caller]
+    fn compare_all_entries(fs: &Ext4, dir: Path<'_>) -> usize {
+        let dir_inode = fs.path_to_inode(dir, FollowSymlinks::All).unwrap();
+        let iter = ReadDir::new(fs, &dir_inode, PathBuf::from(dir)).unwrap();
+        let mut count = 0;
+        for iter_entry in iter {
+            let iter_entry = iter_entry.unwrap();
+            let htree_entry =
+                get_dir_entry_via_htree(fs, &dir_inode, iter_entry.file_name())
+                    .unwrap();
+            assert_eq!(htree_entry.file_name(), iter_entry.file_name());
+            assert_eq!(htree_entry.inode, iter_entry.inode);
+            count += 1;
+        }
+        count
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_get_dir_entry_via_htree() {
+        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
+        let fs = Ext4::load_from_path(fs_path).unwrap();
+
+        // Resolve paths in `/medium_dir` via htree.
+        let medium_dir = Path::new("/medium_dir");
+        assert_eq!(compare_all_entries(&fs, medium_dir), 1_002);
+
+        // Resolve paths in `/big_dir` via htree.
+        let big_dir = Path::new("/big_dir");
+        assert_eq!(compare_all_entries(&fs, big_dir), 10_002);
     }
 }
