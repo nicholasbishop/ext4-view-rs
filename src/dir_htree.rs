@@ -60,7 +60,24 @@ struct InternalNode<'a> {
 impl<'a> InternalNode<'a> {
     const ENTRY_SIZE: usize = 8;
 
-    /// Create an `InternalNode` from raw directory block data.
+    /// Create an `InternalNode` from a root directory block.
+    fn from_root_block(
+        block: &'a [u8],
+        inode: InodeIndex,
+    ) -> Result<Self, Ext4Error> {
+        Self::new(&block[0x20..], inode)
+    }
+
+    /// Create an `InternalNode` from a non-root directory block.
+    fn from_non_root_block(
+        block: &'a [u8],
+        inode: InodeIndex,
+    ) -> Result<Self, Ext4Error> {
+        Self::new(&block[0x8..], inode)
+    }
+
+    /// Create an `InternalNode` from raw bytes. These bytes come from a
+    /// directory block, see [`from_root_block`] and [`from_non_root_block`].
     fn new(mut bytes: &'a [u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
         let err = Ext4Error::Corrupt(Corrupt::DirEntry(inode.get()));
 
