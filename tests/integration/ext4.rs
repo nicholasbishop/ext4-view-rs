@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ext4_view::{Ext4, Ext4Error, PathBuf};
+use ext4_view::{Ext4, Ext4Error, Path, PathBuf};
 
 fn load_test_disk1() -> Ext4 {
     const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
@@ -300,4 +300,26 @@ fn test_symlink_metadata() {
         fs.symlink_metadata("not_absolute").unwrap_err(),
         Ext4Error::NotAbsolute
     ));
+}
+
+#[test]
+fn test_htree() {
+    let fs = load_test_disk1();
+
+    // Looking up paths in these directories exercises the
+    // `get_dir_entry_via_htree` code. The external API doesn't provide
+    // any way to check which code path is taken, but code coverage can
+    // confirm it.
+
+    let medium_dir = Path::new("/medium_dir");
+    for i in 0..1_000 {
+        let i = i.to_string();
+        assert_eq!(fs.read_to_string(&medium_dir.join(&i)).unwrap(), i);
+    }
+
+    let big_dir = Path::new("/big_dir");
+    for i in 0..10_000 {
+        let i = i.to_string();
+        assert_eq!(fs.read_to_string(&big_dir.join(&i)).unwrap(), i);
+    }
 }
