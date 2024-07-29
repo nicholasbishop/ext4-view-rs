@@ -16,6 +16,11 @@ categories = ["filesystem", "embedded", "no-std"]
 description = "No-std compatible Rust library for reading ext4 filesystems"
 keywords = ["ext4", "filesystem", "no_std"]
 rust-version = "1.73"
+include = [
+    "src/*.rs",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+]
 
 [workspace]
 members = ["xtask"]
