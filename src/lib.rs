@@ -199,10 +199,16 @@ impl Ext4 {
     /// This reads and validates the superblock and block group
     /// descriptors. No other data is read.
     #[cfg(feature = "std")]
-    pub fn load_from_path(path: &std::path::Path) -> Result<Self, Ext4Error> {
-        let file = std::fs::File::open(path)
-            .map_err(|e| Ext4Error::Io(Box::new(e)))?;
-        Self::load(Box::new(file))
+    pub fn load_from_path<P: AsRef<std::path::Path>>(
+        path: P,
+    ) -> Result<Self, Ext4Error> {
+        fn inner(path: &std::path::Path) -> Result<Ext4, Ext4Error> {
+            let file = std::fs::File::open(path)
+                .map_err(|e| Ext4Error::Io(Box::new(e)))?;
+            Ext4::load(Box::new(file))
+        }
+
+        inner(path.as_ref())
     }
 
     /// Return true if the filesystem has metadata checksums enabled,
