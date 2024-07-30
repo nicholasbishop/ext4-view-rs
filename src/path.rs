@@ -8,6 +8,7 @@
 
 use crate::dir_entry::{DirEntryName, DirEntryNameError};
 use crate::format::{format_bytes_debug, BytesDisplay};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Display, Formatter};
 
@@ -130,6 +131,14 @@ impl<'a> TryFrom<&'a str> for Path<'a> {
     type Error = PathError;
 
     fn try_from(s: &'a str) -> Result<Self, PathError> {
+        Self::try_from(s.as_bytes())
+    }
+}
+
+impl<'a> TryFrom<&'a String> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(s: &'a String) -> Result<Self, PathError> {
         Self::try_from(s.as_bytes())
     }
 }
@@ -318,6 +327,22 @@ impl TryFrom<&str> for PathBuf {
 
     fn try_from(s: &str) -> Result<Self, PathError> {
         Self::try_from(s.as_bytes().to_vec())
+    }
+}
+
+impl TryFrom<&String> for PathBuf {
+    type Error = PathError;
+
+    fn try_from(s: &String) -> Result<Self, PathError> {
+        Self::try_from(s.as_bytes().to_vec())
+    }
+}
+
+impl TryFrom<String> for PathBuf {
+    type Error = PathError;
+
+    fn try_from(s: String) -> Result<Self, PathError> {
+        Self::try_from(s.into_bytes())
     }
 }
 
