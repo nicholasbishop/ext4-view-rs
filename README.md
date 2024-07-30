@@ -26,7 +26,7 @@ use ext4_view::{Ext4, Metadata};
 // implements the `Ext4Read` trait. The simplest source is a
 // `Vec<u8>` containing the whole filesystem.
 let fs_data: Vec<u8> = get_fs_data_from_somewhere();
-let fs = Ext4::load(Box::new(data_source))?;
+let fs = Ext4::load(Box::new(fs_data))?;
 
 // If the `std` feature is enabled, you can load a filesystem by path:
 let fs = Ext4::load_from_path(std::path::Path::new("some-fs.bin"))?;
