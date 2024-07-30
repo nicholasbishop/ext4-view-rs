@@ -12,8 +12,15 @@ use ext4_view::{Component, Path, PathBuf, PathError};
 fn test_path_construction() {
     let expected_path = b"abc";
 
-    // Successful construction from a string.
+    // Successful construction from a `&str`.
     let src: &str = "abc";
+    assert_eq!(Path::try_from(src).unwrap(), expected_path);
+    assert_eq!(Path::new(src), expected_path);
+    assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
+    assert_eq!(PathBuf::new(src), expected_path);
+
+    // Successful construction from a `&String`.
+    let src: &String = &"abc".to_owned();
     assert_eq!(Path::try_from(src).unwrap(), expected_path);
     assert_eq!(Path::new(src), expected_path);
     assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
@@ -35,6 +42,10 @@ fn test_path_construction() {
 
     // Successful construction from a vector (only for PathBuf).
     let src: Vec<u8> = b"abc".to_vec();
+    assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
+
+    // Successful construction from a `String` (only for PathBuf).
+    let src: String = "abc".to_owned();
     assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
 
     // Successful construction of a `Path` from a `&PathBuf`.
