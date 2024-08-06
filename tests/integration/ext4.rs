@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ext4_view::{Corrupt, Ext4, Ext4Error, Path, PathBuf};
+use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
 
 fn load_test_disk1() -> Ext4 {
     const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
@@ -372,4 +372,21 @@ fn test_htree() {
         let i = i.to_string();
         assert_eq!(fs.read_to_string(&big_dir.join(&i)).unwrap(), i);
     }
+}
+
+#[test]
+fn test_encrypted_dir() {
+    let fs = load_test_disk1();
+
+    // This covers the check in `get_dir_entry_inode_by_name`.
+    assert!(matches!(
+        fs.read("/encrypted_dir/file").unwrap_err(),
+        Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))
+    ));
+
+    // This covers the check in `ReadDir::new`.
+    assert!(matches!(
+        fs.read_dir("/encrypted_dir").unwrap_err(),
+        Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))
+    ));
 }
