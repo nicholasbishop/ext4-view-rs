@@ -10,7 +10,7 @@ use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_htree::get_dir_entry_via_htree;
-use crate::error::Ext4Error;
+use crate::error::{Ext4Error, Incompatible};
 use crate::extent::{Extent, Extents};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
@@ -71,6 +71,12 @@ impl<'a> ReadDir<'a> {
         path: PathBuf,
     ) -> Result<Self, Ext4Error> {
         let has_htree = inode.flags.contains(InodeFlags::DIRECTORY_HTREE);
+
+        if inode.flags.contains(InodeFlags::DIRECTORY_ENCRYPTED) {
+            return Err(Ext4Error::Incompatible(
+                Incompatible::DirectoryEncrypted(inode.index.get()),
+            ));
+        }
 
         Ok(Self {
             fs,
@@ -207,6 +213,12 @@ pub(crate) fn get_dir_entry_inode_by_name(
     name: DirEntryName<'_>,
 ) -> Result<Inode, Ext4Error> {
     assert!(dir_inode.metadata.is_dir());
+
+    if dir_inode.flags.contains(InodeFlags::DIRECTORY_ENCRYPTED) {
+        return Err(Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(
+            dir_inode.index.get(),
+        )));
+    }
 
     if dir_inode.flags.contains(InodeFlags::DIRECTORY_HTREE) {
         let entry = get_dir_entry_via_htree(fs, dir_inode, name)?;

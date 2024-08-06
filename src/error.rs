@@ -299,6 +299,13 @@ pub enum Incompatible {
         /// The algorithm identifier.
         u8,
     ),
+
+    /// Attempted to read an encrypted directory. Only unencrypted
+    /// directories are currently supported.
+    DirectoryEncrypted(
+        /// Inode number.
+        u32,
+    ),
 }
 
 impl Display for Incompatible {
@@ -315,6 +322,9 @@ impl Display for Incompatible {
             }
             Self::DirectoryHash(algorithm) => {
                 write!(f, "unsupported directory hash algorithm: {algorithm}")
+            }
+            Self::DirectoryEncrypted(inode) => {
+                write!(f, "directory in inode {inode} is encrypted")
             }
         }
     }

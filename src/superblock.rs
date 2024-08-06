@@ -149,8 +149,7 @@ fn check_incompat_features(
         | IncompatibleFeatures::LARGE_EXTENDED_ATTRIBUTES_IN_INODES
         | IncompatibleFeatures::DATA_IN_DIR_ENTRY
         | IncompatibleFeatures::LARGE_DIRECTORIES
-        | IncompatibleFeatures::DATA_IN_INODE
-        | IncompatibleFeatures::ENCRYPTED_INODES;
+        | IncompatibleFeatures::DATA_IN_INODE;
 
     let present_required = actual & required_features;
     if present_required != required_features {
