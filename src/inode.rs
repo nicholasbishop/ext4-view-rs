@@ -31,6 +31,9 @@ bitflags! {
         /// File is immutable.
         const IMMUTABLE = 0x10;
 
+        /// Directory is encrypted.
+        const DIRECTORY_ENCRYPTED = 0x800;
+
         /// Directory has hashed indexes.
         const DIRECTORY_HTREE = 0x1000;
 
