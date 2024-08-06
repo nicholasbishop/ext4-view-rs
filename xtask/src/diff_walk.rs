@@ -21,7 +21,10 @@ use std::process::{self, Command};
 /// additional data is stored.
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
 pub enum FileContent {
+    /// Regular directory.
     Dir,
+    /// Encrypted directory.
+    EncryptedDir,
     /// Symlink target.
     Symlink(PathBuf),
     /// SHA256 hash of a regular file's contents.
@@ -45,6 +48,7 @@ impl WalkDirEntry {
 
         match &self.content {
             FileContent::Dir => output.extend(b"dir"),
+            FileContent::EncryptedDir => output.extend(b"dir encrypted"),
             FileContent::Symlink(target) => {
                 output.extend(b"symlink=");
                 output.extend(target.as_os_str().as_bytes());

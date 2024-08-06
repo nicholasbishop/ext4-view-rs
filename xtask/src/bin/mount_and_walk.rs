@@ -25,13 +25,54 @@
 //! /big_dir/0 644 file sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9
 //! ```
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use std::ffi::CString;
 use std::io::{self, Write};
+use std::mem::MaybeUninit;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::{env, fs};
 use xtask::diff_walk::{FileContent, WalkDirEntry};
 use xtask::{calc_file_sha256, Mount, ReadOnly};
+
+/// Check if a directory is encrypted or not.
+fn is_encrypted_dir(path: &Path) -> Result<bool> {
+    // Output buffer. The `statx` struct can't be directly constructed,
+    // so create an uninitialized buffer that will be filled in by
+    // calling `statx`.
+    let mut statx_buf: MaybeUninit<libc::statx> = MaybeUninit::uninit();
+
+    // The `inode` input is unused when `path` is absolute.
+    assert!(path.is_absolute());
+    let inode = -1;
+
+    // Convert the path to a null-terminated C string.
+    let path = CString::new(path.as_os_str().as_bytes())?;
+
+    // Don't follow symlinks.
+    let flags = libc::AT_SYMLINK_NOFOLLOW;
+
+    // Request basic stats.
+    let mask = libc::STATX_BASIC_STATS;
+
+    // Call `statx` and return an error if it fails.
+    let rc = unsafe {
+        libc::statx(inode, path.as_ptr(), flags, mask, statx_buf.as_mut_ptr())
+    };
+    if rc != 0 {
+        bail!("statx failed: {}", io::Error::last_os_error());
+    }
+
+    // The call to `statx` succeeded, so the buffer should be valid now.
+    let statx = unsafe { statx_buf.assume_init() };
+
+    // Check the attributes to see if the directory is encrypted.
+    let is_encrypted = (statx.stx_attributes
+        & u64::try_from(libc::STATX_ATTR_ENCRYPTED).unwrap())
+        != 0;
+    Ok(is_encrypted)
+}
 
 fn new_dir_entry(dir_entry: fs::DirEntry) -> Result<WalkDirEntry> {
     let metadata = dir_entry.metadata()?;
@@ -71,6 +112,11 @@ fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
         content: FileContent::Dir,
         mode: mode_from_metadata(path.symlink_metadata()?),
     });
+
+    if is_encrypted_dir(path)? {
+        output[0].content = FileContent::EncryptedDir;
+        return Ok(output);
+    }
 
     for entry in fs::read_dir(path)? {
         let entry = entry?;
