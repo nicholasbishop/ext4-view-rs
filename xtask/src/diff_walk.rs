@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use anyhow::{bail, Result};
-use ext4_view::Ext4;
+use ext4_view::{Ext4, Ext4Error, Incompatible};
 use sha2::{Digest, Sha256};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
@@ -98,7 +98,16 @@ fn walk_with_lib(
         mode: fs.symlink_metadata(path)?.mode(),
     });
 
-    for entry in fs.read_dir(path)? {
+    let entry_iter = match fs.read_dir(path) {
+        Ok(entry_iter) => entry_iter,
+        Err(Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))) => {
+            output[0].content = FileContent::EncryptedDir;
+            return Ok(output);
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    for entry in entry_iter {
         let entry = entry?;
         let path = entry.path();
         let name = entry.file_name();
