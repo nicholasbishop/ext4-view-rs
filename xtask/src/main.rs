@@ -16,6 +16,7 @@ use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, str};
+use tempfile::TempDir;
 use xtask::{diff_walk, Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
@@ -52,6 +53,8 @@ impl DiskParams {
             // mounted filesystem to be edited without root permissions,
             // although the mount operation itself still requires root.
             .args(["-E", &format!("root_owner={uid}:{gid}")])
+            // Enable directory encryption.
+            .args(["-O", "encrypt"])
             .arg(&self.path)
             .arg(format!("{}k", self.size_in_kilobytes))
             .status()?;
@@ -134,6 +137,54 @@ impl DiskParams {
             // Leave an 8K hole.
             f.seek(SeekFrom::Current(8192))?;
         }
+
+        let status = Command::new("fscrypt")
+            .args(["setup", "--all-users"])
+            .arg(root)
+            .status()?;
+        if !status.success() {
+            bail!("fscrypt setup failed");
+        }
+
+        // Create an empty directory to encrypt.
+        let encrypted_dir = root.join("encrypted_dir");
+        fs::create_dir(&encrypted_dir)?;
+
+        // Create a temporary 32-byte file containing a raw key. This
+        // key is just used for test data, it is intentionally not a
+        // good key.
+        let tmp_dir = TempDir::new()?;
+        let raw_key_path = tmp_dir.path().join("raw_key");
+        fs::write(&raw_key_path, [0xab; 32])?;
+
+        // Set up encryption for the directory. This leaves the
+        // directory unlocked.
+        let status = Command::new("fscrypt")
+            .arg("encrypt")
+            // Set up the protector for this directory. The protector
+            // will be a raw key (32 bytes of data) named "protector1".
+            .args(["--name", "protector1"])
+            .args(["--source", "raw_key"])
+            .arg("--key")
+            .arg(raw_key_path)
+            .arg(&encrypted_dir)
+            .status()?;
+        if !status.success() {
+            bail!("fscrypt encrypt failed");
+        }
+
+        // Create a file in the encrypted directory.
+        fs::write(encrypted_dir.join("file"), "encrypted!")?;
+
+        // Lock the directory.
+        let status = Command::new("fscrypt")
+            .arg("lock")
+            .arg(encrypted_dir)
+            .status()?;
+        if !status.success() {
+            bail!("fscrypt lock failed");
+        }
+
         Ok(())
     }
 
