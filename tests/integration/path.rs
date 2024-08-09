@@ -8,6 +8,9 @@
 
 use ext4_view::{Component, Path, PathBuf, PathError};
 
+#[cfg(all(feature = "std", unix))]
+use std::ffi::{OsStr, OsString};
+
 #[test]
 fn test_path_construction() {
     let expected_path = b"abc";
@@ -55,6 +58,22 @@ fn test_path_construction() {
     // Successful construction of empty PathBuf.
     assert_eq!(PathBuf::empty(), []);
     assert_eq!(PathBuf::default(), []);
+
+    // Successful construction from std types.
+    #[cfg(all(feature = "std", unix))]
+    {
+        let src: &OsStr = OsStr::new("abc");
+        assert_eq!(Path::try_from(src).unwrap(), expected_path);
+
+        let src: &std::path::Path = std::path::Path::new("abc");
+        assert_eq!(Path::try_from(src).unwrap(), expected_path);
+
+        let src: OsString = OsString::from("abc");
+        assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
+
+        let src: std::path::PathBuf = std::path::PathBuf::from("abc");
+        assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
+    }
 
     // Error: contains null.
     let src: &str = "\0";
