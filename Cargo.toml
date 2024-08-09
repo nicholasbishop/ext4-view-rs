@@ -25,6 +25,10 @@ include = [
 [workspace]
 members = ["ext4-tool", "xtask"]
 
+[workspace.dependencies]
+clap = { version = "4.5.0", default-features = false, features = ["derive", "help", "std"] }
+ext4-view = { path = ".", features = ["std"] }
+
 [features]
 std = []
 
