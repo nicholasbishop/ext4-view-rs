@@ -16,3 +16,4 @@ publish = false
 [dependencies]
 clap.workspace = true
 ext4-view.workspace = true
+tabled = { version = "0.16.0", default-features = false, features = ["std"] }

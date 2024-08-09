@@ -5,7 +5,7 @@ A few notes on useful commands to run for local development.
 ## Test command
 
 ```
-cargo fmt --all && cargo check --all -F std && cargo test -F std && cargo test && cargo clippy --all
+cargo fmt --all && cargo check --all -F std && cargo test --workspace -F std && cargo test && cargo clippy --all
 ```
 
 This is not exactly the same as what CI does, but if this passes there's
@@ -24,7 +24,7 @@ browser page.
 
 ```
 cargo install --locked cargo-llvm-cov
-cargo +nightly llvm-cov --html -F std --branch --open
+cargo +nightly llvm-cov --html -F std -p ext4-view -p ext4-tool --branch --open
 ```
 
 You can drop the `--open` after the first run and just refresh the

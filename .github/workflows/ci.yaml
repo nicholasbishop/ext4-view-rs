@@ -64,7 +64,7 @@ jobs:
         with:
           lfs: true
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p ext4-view -F std
+      - run: cargo test -p ext4-view -F std -p ext4-tool
       - run: cargo xtask diff-walk test_data/test_disk1.bin
 
   test-windows:
@@ -113,7 +113,7 @@ jobs:
           lfs: true
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: Swatinem/rust-cache@v2
-      - run: cargo llvm-cov -F std --lcov --output-path lcov.info
+      - run: cargo llvm-cov -F std -p ext4-view -p ext4-tool --lcov --output-path lcov.info
       - uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
