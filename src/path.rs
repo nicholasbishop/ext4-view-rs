@@ -177,6 +177,26 @@ impl<'a> TryFrom<&'a PathBuf> for Path<'a> {
     }
 }
 
+#[cfg(all(feature = "std", unix))]
+impl<'a> TryFrom<&'a std::ffi::OsStr> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(p: &'a std::ffi::OsStr) -> Result<Self, PathError> {
+        use std::os::unix::ffi::OsStrExt;
+
+        Self::try_from(p.as_bytes())
+    }
+}
+
+#[cfg(all(feature = "std", unix))]
+impl<'a> TryFrom<&'a std::path::Path> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(p: &'a std::path::Path) -> Result<Self, PathError> {
+        Self::try_from(p.as_os_str())
+    }
+}
+
 impl<'a, T> PartialEq<T> for Path<'a>
 where
     T: AsRef<[u8]>,
@@ -370,6 +390,26 @@ impl TryFrom<Vec<u8>> for PathBuf {
         Path::try_from(s.as_slice())?;
 
         Ok(Self(s))
+    }
+}
+
+#[cfg(all(feature = "std", unix))]
+impl TryFrom<std::ffi::OsString> for PathBuf {
+    type Error = PathError;
+
+    fn try_from(p: std::ffi::OsString) -> Result<Self, PathError> {
+        use std::os::unix::ffi::OsStringExt;
+
+        Self::try_from(p.into_vec())
+    }
+}
+
+#[cfg(all(feature = "std", unix))]
+impl TryFrom<std::path::PathBuf> for PathBuf {
+    type Error = PathError;
+
+    fn try_from(p: std::path::PathBuf) -> Result<Self, PathError> {
+        Self::try_from(p.into_os_string())
     }
 }
 
