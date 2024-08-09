@@ -220,6 +220,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ext4-tool"
+version = "0.0.0"
+
+[[package]]
 name = "ext4-view"
 version = "0.4.2"
 dependencies = [

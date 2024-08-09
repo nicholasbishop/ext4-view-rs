@@ -23,7 +23,7 @@ include = [
 ]
 
 [workspace]
-members = ["xtask"]
+members = ["ext4-tool", "xtask"]
 
 [features]
 std = []
