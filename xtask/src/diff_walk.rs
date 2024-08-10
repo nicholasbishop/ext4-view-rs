@@ -37,6 +37,8 @@ pub struct WalkDirEntry {
     pub path: PathBuf,
     pub content: FileContent,
     pub mode: u16,
+    pub uid: u32,
+    pub gid: u32,
 }
 
 impl WalkDirEntry {
@@ -45,6 +47,8 @@ impl WalkDirEntry {
 
         output.push(b' ');
         output.extend(format!("{:o}", self.mode).as_bytes());
+        output.push(b' ');
+        output.extend(format!("{}:{}", self.uid, self.gid).as_bytes());
         output.push(b' ');
 
         match &self.content {
@@ -84,6 +88,8 @@ fn new_dir_entry(
         path: dir_entry.path().into(),
         content,
         mode: metadata.mode(),
+        uid: metadata.uid(),
+        gid: metadata.gid(),
     })
 }
 
@@ -93,10 +99,13 @@ fn walk_with_lib(
 ) -> Result<Vec<WalkDirEntry>> {
     let mut output = Vec::new();
 
+    let metadata = fs.symlink_metadata(path)?;
     output.push(WalkDirEntry {
         path: ext4_view::PathBuf::from(path).into(),
         content: FileContent::Dir,
-        mode: fs.symlink_metadata(path)?.mode(),
+        mode: metadata.mode(),
+        uid: metadata.uid(),
+        gid: metadata.gid(),
     });
 
     let entry_iter = match fs.read_dir(path) {
