@@ -20,6 +20,12 @@ pub struct Metadata {
 
     /// File type parsed from the `mode` bitfield.
     pub(crate) file_type: FileType,
+
+    /// Owner user ID.
+    pub(crate) uid: u32,
+
+    /// Owner group ID.
+    pub(crate) gid: u32,
 }
 
 impl Metadata {
@@ -67,5 +73,15 @@ impl Metadata {
     /// [inode]: https://www.man7.org/linux/man-pages/man7/inode.7.html
     pub fn mode(&self) -> u16 {
         self.mode.bits() & 0o7777
+    }
+
+    /// Owner user ID.
+    pub fn uid(&self) -> u32 {
+        self.uid
+    }
+
+    /// Owner group ID.
+    pub fn gid(&self) -> u32 {
+        self.gid
     }
 }

@@ -129,16 +129,22 @@ impl Inode {
         }
 
         let i_mode = read_u16le(data, 0x0);
+        let i_uid = read_u16le(data, 0x2);
         let i_size_lo = read_u32le(data, 0x4);
+        let i_gid = read_u16le(data, 0x18);
         let i_flags = read_u32le(data, 0x20);
         // OK to unwrap: already checked the length.
         let i_block = data.get(0x28..0x28 + Self::INLINE_DATA_LEN).unwrap();
         let i_generation = read_u32le(data, 0x64);
         let i_size_high = read_u32le(data, 0x6c);
+        let l_i_uid_high = read_u16le(data, 0x74 + 0x4);
+        let l_i_gid_high = read_u16le(data, 0x74 + 0x6);
         let l_i_checksum_lo = read_u16le(data, Self::L_I_CHECKSUM_LO_OFFSET);
         let i_checksum_hi = read_u16le(data, Self::I_CHECKSUM_HI_OFFSET);
 
         let size_in_bytes = u64_from_hilo(i_size_high, i_size_lo);
+        let uid = u32_from_hilo(l_i_uid_high, i_uid);
+        let gid = u32_from_hilo(l_i_gid_high, i_gid);
         let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
         let mode = InodeMode::from_bits_retain(i_mode);
 
@@ -155,6 +161,8 @@ impl Inode {
                 metadata: Metadata {
                     size_in_bytes,
                     mode,
+                    uid,
+                    gid,
                     file_type: FileType::try_from(mode).map_err(|_| {
                         Ext4Error::Corrupt(Corrupt::Inode(index.get()))
                     })?,
