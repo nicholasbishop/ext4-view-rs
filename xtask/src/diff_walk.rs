@@ -13,6 +13,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{self, Command};
+use std::time::SystemTime;
 
 /// Summary of a file's contents.
 ///
@@ -151,7 +152,12 @@ pub fn diff_walk(path: &Path) -> Result<()> {
 
     let actual = {
         let ext4 = Ext4::load_from_path(path)?;
+        let before_walk = SystemTime::now();
         let mut paths = walk_with_lib(&ext4, ext4_view::Path::ROOT)?;
+        println!(
+            "walk_with_lib took {:?}",
+            SystemTime::now().duration_since(before_walk).unwrap()
+        );
         paths.sort_unstable();
         paths
             .iter()
@@ -159,6 +165,7 @@ pub fn diff_walk(path: &Path) -> Result<()> {
             .collect::<Vec<_>>()
     };
     let expected = {
+        let before_cmd = SystemTime::now();
         let output = Command::new("sudo")
             .arg("target/release/mount_and_walk")
             .arg(path)
@@ -166,6 +173,10 @@ pub fn diff_walk(path: &Path) -> Result<()> {
         if !output.status.success() {
             bail!("mount_and_walk failed: {}", output.status);
         }
+        println!(
+            "mount_and_walk took {:?}",
+            SystemTime::now().duration_since(before_cmd).unwrap()
+        );
         let mut lines = output
             .stdout
             .split(|c| *c == b'\n')
