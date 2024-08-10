@@ -90,11 +90,13 @@ fn new_dir_entry(dir_entry: fs::DirEntry) -> Result<WalkDirEntry> {
     Ok(WalkDirEntry {
         path,
         content,
-        mode: mode_from_metadata(metadata),
+        mode: mode_from_metadata(&metadata),
+        uid: metadata.uid(),
+        gid: metadata.gid(),
     })
 }
 
-fn mode_from_metadata(metadata: fs::Metadata) -> u16 {
+fn mode_from_metadata(metadata: &fs::Metadata) -> u16 {
     // fs::Metadata::mode() returns the full st_mode field which
     // combines file type and permissions. Mask and truncate to just the
     // mode bits.
@@ -107,10 +109,13 @@ fn walk_mounted(path: &Path) -> Result<Vec<WalkDirEntry>> {
 
     let mut output = Vec::new();
 
+    let metadata = path.symlink_metadata()?;
     output.push(WalkDirEntry {
         path: path.to_path_buf(),
         content: FileContent::Dir,
-        mode: mode_from_metadata(path.symlink_metadata()?),
+        mode: mode_from_metadata(&metadata),
+        uid: metadata.uid(),
+        gid: metadata.gid(),
     });
 
     if is_encrypted_dir(path)? {
