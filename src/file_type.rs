@@ -37,6 +37,19 @@ pub enum FileType {
 }
 
 impl FileType {
+    pub(crate) fn from_dir_entry(val: u8) -> Result<Self, FileTypeError> {
+        match val {
+            1 => Ok(Self::Regular),
+            2 => Ok(Self::Directory),
+            3 => Ok(Self::CharacterDevice),
+            4 => Ok(Self::BlockDevice),
+            5 => Ok(Self::Fifo),
+            6 => Ok(Self::Socket),
+            7 => Ok(Self::Symlink),
+            _ => Err(FileTypeError),
+        }
+    }
+
     /// Returns true if the file is a block device.
     pub fn is_block_dev(self) -> bool {
         self == FileType::BlockDevice

@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::error::{Corrupt, Ext4Error};
+use crate::file_type::FileType;
 use crate::format::{format_bytes_debug, BytesDisplay};
 use crate::inode::InodeIndex;
 use crate::path::{Path, PathBuf};
@@ -209,6 +210,9 @@ pub struct DirEntry {
     /// Path that `read_dir` was called with. This is shared via `Rc` so
     /// that only one allocation is required.
     path: Rc<PathBuf>,
+
+    /// Entry file type.
+    file_type: FileType,
 }
 
 impl DirEntry {
@@ -270,11 +274,22 @@ impl DirEntry {
             .get(NAME_OFFSET..NAME_OFFSET + name_len_usize)
             .ok_or(err())?;
 
+        // Note: this value is only valid if `FILE_TYPE_IN_DIR_ENTRY` is
+        // in the incompatible features set. That requirement is checked
+        // when reading the superblock.
+        //
+        // This requirement could be relaxed in the future by passing in
+        // a filesystem reference and reading the pointed-to inode.
+        let file_type = bytes[7];
+        let file_type = FileType::from_dir_entry(file_type)
+            .map_err(|_| Ext4Error::Corrupt(Corrupt::DirEntry(inode.get())))?;
+
         let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
         let entry = DirEntry {
             inode: points_to_inode,
             name,
             path,
+            file_type,
         };
         Ok((Some(entry), rec_len))
     }
@@ -293,6 +308,15 @@ impl DirEntry {
     #[must_use]
     pub fn path(&self) -> PathBuf {
         self.path.join(self.name.as_bytes())
+    }
+
+    /// Get the entry's file type.
+    pub fn file_type(&self) -> Result<FileType, Ext4Error> {
+        // Currently this function cannot fail, but return a `Result` to
+        // preserve that option for the future (may be needed for
+        // filesystems without `FILE_TYPE_IN_DIR_ENTRY`). This also
+        // matches the `std::fs::DirEntry` API.
+        Ok(self.file_type)
     }
 }
 
@@ -415,7 +439,7 @@ mod tests {
         bytes.extend(2u32.to_le_bytes()); // inode
         bytes.extend(72u16.to_le_bytes()); // record length
         bytes.push(3u8); // name length
-        bytes.push(8u8); // file type
+        bytes.push(1u8); // file type
         bytes.extend("abc".bytes()); // name
         bytes.resize(72, 0u8);
         let (entry, len) =
@@ -428,6 +452,7 @@ mod tests {
                 inode: inode2,
                 name: DirEntryNameBuf::try_from("abc".as_bytes()).unwrap(),
                 path: path.clone(),
+                file_type: FileType::Regular,
             },
         );
         assert_eq!(entry.file_name(), "abc");

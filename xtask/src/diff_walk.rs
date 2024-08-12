@@ -116,8 +116,7 @@ fn walk_with_lib(
             continue;
         }
 
-        // TODO: use DirEntry::file_type once that exists.
-        if fs.symlink_metadata(&path)?.is_dir() {
+        if entry.file_type()?.is_dir() {
             output.extend(walk_with_lib(fs, path.as_path())?);
         } else {
             output.push(new_dir_entry(fs, entry)?);
