@@ -238,6 +238,17 @@ fn test_read_dir() {
     let mut entry_paths: Vec<PathBuf> = dir.iter().map(|e| e.path()).collect();
     entry_paths.sort_unstable();
 
+    // Check file types.
+    for entry in &dir {
+        let fname = entry.file_name();
+        let ftype = entry.file_type().unwrap();
+        if fname == "." || fname == ".." {
+            assert!(ftype.is_dir());
+        } else {
+            assert!(ftype.is_regular_file());
+        }
+    }
+
     // Get expected entry names, 0-9999.
     let mut expected_names = vec![".".to_owned(), "..".to_owned()];
     expected_names.extend((0u32..10_000u32).map(|n| n.to_string()));
