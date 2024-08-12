@@ -67,6 +67,15 @@ jobs:
       - run: cargo test -p ext4-view -F std
       - run: cargo xtask diff-walk test_data/test_disk1.bin
 
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p ext4-view -F std
+
   doc:
     runs-on: ubuntu-latest
     steps:
