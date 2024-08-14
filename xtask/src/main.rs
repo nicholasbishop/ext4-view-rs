@@ -77,6 +77,20 @@ impl DiskParams {
         // Create a small text file.
         fs::write(root.join("small_file"), "hello, world!")?;
 
+        // Create an empty file with a specific uid/gid.
+        {
+            let path = root.join("owner_file");
+            fs::write(&path, [])?;
+
+            let status = Command::new("sudo")
+                .args(["chown", "123:456"])
+                .arg(path)
+                .status()?;
+            if !status.success() {
+                bail!("chmod failed");
+            }
+        }
+
         // Create some nested directories.
         let dir1 = root.join("dir1");
         let dir2 = dir1.join("dir2");
