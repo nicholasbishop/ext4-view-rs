@@ -329,6 +329,15 @@ fn test_metadata() {
 }
 
 #[test]
+fn test_metadata_uid_gid() {
+    let fs = load_test_disk1();
+
+    let metadata = fs.metadata("/owner_file").unwrap();
+    assert_eq!(metadata.uid(), 123);
+    assert_eq!(metadata.gid(), 456);
+}
+
+#[test]
 fn test_symlink_metadata() {
     let fs = load_test_disk1();
 
