@@ -254,7 +254,7 @@ impl Ext4 {
             .map_err(|_| Ext4Error::FileTooLarge)?;
         let mut dst = vec![0; file_size_in_bytes];
 
-        for extent in Extents::new(self, inode)? {
+        for extent in Extents::new(self.clone(), inode)? {
             let extent = extent?;
 
             let dst_start =

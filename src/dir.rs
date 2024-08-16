@@ -33,7 +33,7 @@ pub struct ReadDir<'a> {
     path: Rc<PathBuf>,
 
     /// Iterator over the directory's extents.
-    extents: Extents<'a>,
+    extents: Extents,
 
     /// The current extent.
     extent: Option<Extent>,
@@ -81,7 +81,7 @@ impl<'a> ReadDir<'a> {
         Ok(Self {
             fs,
             path: Rc::new(path),
-            extents: Extents::new(fs, inode)?,
+            extents: Extents::new(fs.clone(), inode)?,
             extent: None,
             block_index: 0,
             block: vec![0; usize_from_u32(fs.0.superblock.block_size)],

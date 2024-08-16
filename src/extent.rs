@@ -137,18 +137,15 @@ impl ToVisitItem {
 }
 
 /// Iterator of an inode's extent tree.
-pub(crate) struct Extents<'a> {
-    ext4: &'a Ext4,
+pub(crate) struct Extents {
+    ext4: Ext4,
     inode: InodeIndex,
     to_visit: Vec<ToVisitItem>,
     checksum_base: Checksum,
 }
 
-impl<'a> Extents<'a> {
-    pub(crate) fn new(
-        ext4: &'a Ext4,
-        inode: &Inode,
-    ) -> Result<Self, Ext4Error> {
+impl Extents {
+    pub(crate) fn new(ext4: Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
         Ok(Self {
             ext4,
             inode: inode.index,
@@ -260,7 +257,7 @@ impl<'a> Extents<'a> {
     }
 }
 
-impl<'a> Iterator for Extents<'a> {
+impl Iterator for Extents {
     type Item = Result<Extent, Ext4Error>;
 
     fn next(&mut self) -> Option<Result<Extent, Ext4Error>> {
