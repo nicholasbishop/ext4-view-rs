@@ -408,17 +408,14 @@ impl Ext4 {
     where
         P: TryInto<Path<'p>>,
     {
-        fn inner<'a>(
-            fs: &'a Ext4,
-            path: Path<'_>,
-        ) -> Result<ReadDir<'a>, Ext4Error> {
+        fn inner(fs: &Ext4, path: Path<'_>) -> Result<ReadDir, Ext4Error> {
             let inode = fs.path_to_inode(path, FollowSymlinks::All)?;
 
             if !inode.metadata.is_dir() {
                 return Err(Ext4Error::NotADirectory);
             }
 
-            ReadDir::new(fs, &inode, path.into())
+            ReadDir::new(fs.clone(), &inode, path.into())
         }
 
         inner(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
