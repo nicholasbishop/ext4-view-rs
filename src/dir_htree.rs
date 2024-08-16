@@ -458,7 +458,8 @@ mod tests {
     #[track_caller]
     fn compare_all_entries(fs: &Ext4, dir: Path<'_>) -> usize {
         let dir_inode = fs.path_to_inode(dir, FollowSymlinks::All).unwrap();
-        let iter = ReadDir::new(fs, &dir_inode, PathBuf::from(dir)).unwrap();
+        let iter =
+            ReadDir::new(fs.clone(), &dir_inode, PathBuf::from(dir)).unwrap();
         let mut count = 0;
         for iter_entry in iter {
             let iter_entry = iter_entry.unwrap();

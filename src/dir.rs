@@ -22,8 +22,8 @@ use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
 
 /// Iterator over each [`DirEntry`] in a directory inode.
-pub struct ReadDir<'a> {
-    fs: &'a Ext4,
+pub struct ReadDir {
+    fs: Ext4,
 
     /// Path of the directory. This is stored in an `Rc` so that it can
     /// be shared with each `DirEntry` without cloning the path data.
@@ -64,9 +64,9 @@ pub struct ReadDir<'a> {
     inode: InodeIndex,
 }
 
-impl<'a> ReadDir<'a> {
+impl ReadDir {
     pub(crate) fn new(
-        fs: &'a Ext4,
+        fs: Ext4,
         inode: &Inode,
         path: PathBuf,
     ) -> Result<Self, Ext4Error> {
@@ -79,7 +79,7 @@ impl<'a> ReadDir<'a> {
         }
 
         Ok(Self {
-            fs,
+            fs: fs.clone(),
             path: Rc::new(path),
             extents: Extents::new(fs.clone(), inode)?,
             extent: None,
@@ -141,7 +141,7 @@ impl<'a> ReadDir<'a> {
         // If at the start of a new block, read it and verify the checksum.
         if self.offset_within_block == 0 {
             DirBlock {
-                fs: self.fs,
+                fs: &self.fs,
                 dir_inode: self.inode,
                 extent,
                 block_within_extent: self.block_index,
@@ -162,7 +162,7 @@ impl<'a> ReadDir<'a> {
     }
 }
 
-impl<'a> Debug for ReadDir<'a> {
+impl Debug for ReadDir {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // Only include the path field. This matches the Debug impl for
         // `std::fs::ReadDir`.
@@ -170,7 +170,7 @@ impl<'a> Debug for ReadDir<'a> {
     }
 }
 
-impl<'a> Iterator for ReadDir<'a> {
+impl Iterator for ReadDir {
     type Item = Result<DirEntry, Ext4Error>;
 
     fn next(&mut self) -> Option<Result<DirEntry, Ext4Error>> {
@@ -229,7 +229,7 @@ pub(crate) fn get_dir_entry_inode_by_name(
     // base path does not matter.
     let path = PathBuf::empty();
 
-    for entry in ReadDir::new(fs, dir_inode, path)? {
+    for entry in ReadDir::new(fs.clone(), dir_inode, path)? {
         let entry = entry?;
         if entry.file_name() == name {
             return Inode::read(fs, entry.inode);
@@ -256,7 +256,7 @@ mod tests {
         let root_path = crate::PathBuf::new("/");
 
         // Use the iterator to get all DirEntries in the root directory.
-        let entries: Vec<_> = ReadDir::new(&fs, &root_inode, root_path)
+        let entries: Vec<_> = ReadDir::new(fs, &root_inode, root_path)
             .unwrap()
             .map(|e| e.unwrap())
             .collect();
