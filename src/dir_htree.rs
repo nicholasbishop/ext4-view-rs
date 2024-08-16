@@ -155,7 +155,7 @@ fn read_root_block(
     inode: &Inode,
     block: &mut [u8],
 ) -> Result<(), Ext4Error> {
-    let mut extents = Extents::new(fs, inode)?;
+    let mut extents = Extents::new(fs.clone(), inode)?;
 
     // Get the first extent.
     let extent = extents.next().ok_or_else(|| {
@@ -215,7 +215,7 @@ fn find_extent_for_block(
     inode: &Inode,
     block: ChildBlock,
 ) -> Result<Extent, Ext4Error> {
-    for extent in Extents::new(fs, inode)? {
+    for extent in Extents::new(fs.clone(), inode)? {
         let extent = extent?;
 
         let start = extent.block_within_file;
