@@ -53,7 +53,7 @@ impl<'a> DirBlock<'a> {
     /// If checksums are enabled for the filesystem, the directory
     /// block's checksum will be verified.
     pub(crate) fn read(&self, block: &mut [u8]) -> Result<(), Ext4Error> {
-        let block_size = self.fs.superblock.block_size;
+        let block_size = self.fs.0.superblock.block_size;
         assert_eq!(block.len(), usize_from_u32(block_size));
 
         let block_index = self.extent.start_block + self.block_within_extent;
@@ -138,7 +138,7 @@ impl<'a> DirBlock<'a> {
         // Other internal nodes are identified by the first record
         // having a length equal to the whole block.
         let first_rec_len = u32::from(read_u16le(block, 4));
-        if first_rec_len == self.fs.superblock.block_size {
+        if first_rec_len == self.fs.0.superblock.block_size {
             DirBlockType::Internal
         } else {
             DirBlockType::Leaf

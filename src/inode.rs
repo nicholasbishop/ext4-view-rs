@@ -149,7 +149,7 @@ impl Inode {
         let mode = InodeMode::from_bits_retain(i_mode);
 
         let mut checksum_base =
-            Checksum::with_seed(ext4.superblock.checksum_seed);
+            Checksum::with_seed(ext4.0.superblock.checksum_seed);
         checksum_base.update_u32_le(index.get());
         checksum_base.update_u32_le(i_generation);
 
@@ -179,11 +179,12 @@ impl Inode {
         ext4: &Ext4,
         inode: InodeIndex,
     ) -> Result<Inode, Ext4Error> {
-        let sb = &ext4.superblock;
+        let sb = &ext4.0.superblock;
 
         let block_group_index = (inode.get() - 1) / sb.inodes_per_block_group;
 
         let group = ext4
+            .0
             .block_group_descriptors
             .get(usize_from_u32(block_group_index))
             .ok_or(Ext4Error::Corrupt(Corrupt::Inode(inode.get())))?;
