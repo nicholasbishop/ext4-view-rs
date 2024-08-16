@@ -216,7 +216,7 @@ impl<'a> Extents<'a> {
             // find out how much data is in the full child node.
             let mut child_header = [0; ENTRY_SIZE_IN_BYTES];
             let child_start =
-                child_block * u64::from(self.ext4.superblock.block_size);
+                child_block * u64::from(self.ext4.0.superblock.block_size);
             self.ext4.read_bytes(child_start, &mut child_header)?;
             let child_header =
                 NodeHeader::from_bytes(&child_header, self.inode)?;

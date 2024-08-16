@@ -117,6 +117,7 @@ mod superblock;
 mod util;
 
 use alloc::boxed::Box;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -139,10 +140,7 @@ pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};
 pub use reader::{Ext4Read, MemIoError};
 
-/// Read-only access to an [ext4] filesystem.
-///
-/// [ext4]: https://en.wikipedia.org/wiki/Ext4
-pub struct Ext4 {
+struct Ext4Inner {
     superblock: Superblock,
     block_group_descriptors: Vec<BlockGroupDescriptor>,
 
@@ -155,11 +153,17 @@ pub struct Ext4 {
     /// like `std::fs::File` are mutable. However, the `Ext4` API is
     /// logically const -- it provides read-only access to the
     /// filesystem. So the box is wrapped in `RefCell` to allow the
-    /// mutable method to be called with an immutable `&Ext4`
+    /// mutable method to be called with an immutable `&Ext4Inner`
     /// reference. `RefCell` enforces at runtime that only one mutable
     /// borrow exists at a time.
     reader: RefCell<Box<dyn Ext4Read>>,
 }
+
+/// Read-only access to an [ext4] filesystem.
+///
+/// [ext4]: https://en.wikipedia.org/wiki/Ext4
+#[derive(Clone)]
+pub struct Ext4(Rc<Ext4Inner>);
 
 impl Ext4 {
     /// Load an `Ext4` instance from the given `reader`.
@@ -177,14 +181,14 @@ impl Ext4 {
 
         let superblock = Superblock::from_bytes(&data)?;
 
-        Ok(Self {
+        Ok(Self(Rc::new(Ext4Inner {
             block_group_descriptors: BlockGroupDescriptor::read_all(
                 &superblock,
                 &mut *reader,
             )?,
             reader: RefCell::new(reader),
             superblock,
-        })
+        })))
     }
 
     /// Load an `Ext4` filesystem from the given `path`.
@@ -207,7 +211,8 @@ impl Ext4 {
     /// Return true if the filesystem has metadata checksums enabled,
     /// false otherwise.
     fn has_metadata_checksums(&self) -> bool {
-        self.superblock
+        self.0
+            .superblock
             .read_only_compatible_features
             .contains(ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS)
     }
@@ -224,7 +229,8 @@ impl Ext4 {
         start_byte: u64,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
-        self.reader
+        self.0
+            .reader
             .borrow_mut()
             .read(start_byte, dst)
             .map_err(Ext4Error::Io)
@@ -237,7 +243,7 @@ impl Ext4 {
     /// Fails with `FileTooLarge` if the size of the file is too large
     /// to fit in a [`usize`].
     fn read_inode_file(&self, inode: &Inode) -> Result<Vec<u8>, Ext4Error> {
-        let block_size = self.superblock.block_size;
+        let block_size = self.0.superblock.block_size;
 
         // Get the file size and preallocate the output vector.
         let file_size_in_bytes = usize::try_from(inode.metadata.size_in_bytes)
@@ -477,8 +483,8 @@ impl Debug for Ext4 {
         // it did, it could be annoying to print out (e.g. if the reader
         // is a Vec it might contain many megabytes of data).
         f.debug_struct("Ext4")
-            .field("superblock", &self.superblock)
-            .field("block_group_descriptors", &self.block_group_descriptors)
+            .field("superblock", &self.0.superblock)
+            .field("block_group_descriptors", &self.0.block_group_descriptors)
             .finish_non_exhaustive()
     }
 }

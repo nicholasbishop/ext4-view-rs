@@ -256,7 +256,7 @@ fn find_leaf_node(
     // Get the node structure from the root block.
     let root_node = InternalNode::from_root_block(block, inode.index)?;
 
-    let hash = dir_hash_md4_half(name, &fs.superblock.htree_hash_seed);
+    let hash = dir_hash_md4_half(name, &fs.0.superblock.htree_hash_seed);
     let mut child_block_relative = root_node.lookup_block_by_hash(hash);
 
     // Descend through the tree one level at a time. The first iteration
@@ -307,7 +307,7 @@ pub(crate) fn get_dir_entry_via_htree(
 ) -> Result<DirEntry, Ext4Error> {
     assert!(inode.flags.contains(InodeFlags::DIRECTORY_HTREE));
 
-    let block_size = fs.superblock.block_size;
+    let block_size = fs.0.superblock.block_size;
     let mut block = vec![0; usize_from_u32(block_size)];
 
     // Read the first block of the file, which contains the root node of
@@ -419,7 +419,7 @@ mod tests {
         let fs_path = std::path::Path::new("test_data/test_disk1.bin");
         let fs = Ext4::load_from_path(fs_path).unwrap();
 
-        let mut block = vec![0; usize_from_u32(fs.superblock.block_size)];
+        let mut block = vec![0; usize_from_u32(fs.0.superblock.block_size)];
 
         // Read the root block of an htree.
         let inode = fs

@@ -84,7 +84,7 @@ impl<'a> ReadDir<'a> {
             extents: Extents::new(fs, inode)?,
             extent: None,
             block_index: 0,
-            block: vec![0; usize_from_u32(fs.superblock.block_size)],
+            block: vec![0; usize_from_u32(fs.0.superblock.block_size)],
             offset_within_block: 0,
             is_done: false,
             has_htree,
@@ -131,7 +131,7 @@ impl<'a> ReadDir<'a> {
 
         // If a block has been fully processed, move to the next block
         // on the next iteration.
-        let block_size = self.fs.superblock.block_size;
+        let block_size = self.fs.0.superblock.block_size;
         if self.offset_within_block >= usize_from_u32(block_size) {
             self.block_index += 1;
             self.offset_within_block = 0;
