@@ -73,7 +73,7 @@ fn new_dir_entry(
     dir_entry: ext4_view::DirEntry,
 ) -> Result<WalkDirEntry> {
     let path = dir_entry.path();
-    let metadata = fs.symlink_metadata(&path)?;
+    let metadata = dir_entry.metadata()?;
 
     let content = if metadata.is_symlink() {
         let target = fs.read_link(&path)?;
