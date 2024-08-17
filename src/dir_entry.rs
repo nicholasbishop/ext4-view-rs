@@ -12,6 +12,7 @@ use crate::format::{format_bytes_debug, BytesDisplay};
 use crate::inode::InodeIndex;
 use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
+use crate::Ext4;
 use alloc::rc::Rc;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::hash::{Hash, Hasher};
@@ -201,6 +202,9 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 /// Directory entry.
 #[derive(Clone, Debug)]
 pub struct DirEntry {
+    #[allow(dead_code)] // TODO
+    fs: Ext4,
+
     /// Number of the inode that this entry points to.
     pub(crate) inode: InodeIndex,
 
@@ -226,6 +230,7 @@ impl DirEntry {
     /// * The `usize` in this tuple is the overall length of the entry's
     ///   data. This is used when iterating over raw dir entry data.
     pub(crate) fn from_bytes(
+        fs: Ext4,
         bytes: &[u8],
         inode: InodeIndex,
         path: Rc<PathBuf>,
@@ -286,6 +291,7 @@ impl DirEntry {
 
         let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
         let entry = Self {
+            fs,
             inode: points_to_inode,
             name,
             path,
@@ -428,8 +434,11 @@ mod tests {
         assert_eq!(get_hash(name), get_hash(b"abc"));
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_dir_entry_from_bytes() {
+        let fs = Ext4::load_from_path("test_data/test_disk1.bin").unwrap();
+
         let inode1 = InodeIndex::new(1).unwrap();
         let inode2 = InodeIndex::new(2).unwrap();
         let path = Rc::new(PathBuf::new("path"));
@@ -443,7 +452,8 @@ mod tests {
         bytes.extend("abc".bytes()); // name
         bytes.resize(72, 0u8);
         let (entry, len) =
-            DirEntry::from_bytes(&bytes, inode1, path.clone()).unwrap();
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
+                .unwrap();
         let entry = entry.unwrap();
         assert_eq!(len, 72);
         assert_eq!(entry.inode, inode2);
@@ -462,12 +472,14 @@ mod tests {
         bytes.extend(72u16.to_le_bytes()); // record length
         bytes.resize(72, 0u8);
         let (entry, len) =
-            DirEntry::from_bytes(&bytes, inode1, path.clone()).unwrap();
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
+                .unwrap();
         assert!(entry.is_none());
         assert_eq!(len, 72);
 
         // Error: not enough data.
-        let err = DirEntry::from_bytes(&[], inode1, path.clone()).unwrap_err();
+        let err = DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
+            .unwrap_err();
         assert_eq!(*err.as_corrupt().unwrap(), Corrupt::DirEntry(1));
 
         // Error: not enough data for the name.
@@ -477,7 +489,10 @@ mod tests {
         bytes.push(3u8); // name length
         bytes.push(8u8); // file type
         bytes.extend("a".bytes()); // name
-        assert!(DirEntry::from_bytes(&bytes, inode1, path.clone()).is_err());
+        assert!(
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
+                .is_err()
+        );
 
         // Error: name contains invalid characters.
         let mut bytes = Vec::new();
@@ -487,7 +502,7 @@ mod tests {
         bytes.push(8u8); // file type
         bytes.extend("ab/".bytes()); // name
         bytes.resize(72, 0u8);
-        assert!(DirEntry::from_bytes(&bytes, inode1, path).is_err());
+        assert!(DirEntry::from_bytes(fs.clone(), &bytes, inode1, path).is_err());
     }
 
     #[test]
