@@ -232,6 +232,25 @@ fn find_extent_for_block(
     Err(Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get())))
 }
 
+/// Convert from a block offset within a file to an absolute block index.
+fn block_from_file_block(
+    fs: &Ext4,
+    inode: &Inode,
+    relative_block: ChildBlock,
+) -> Result<u64, Ext4Error> {
+    if inode.flags.contains(InodeFlags::EXTENTS) {
+        let extent = find_extent_for_block(fs, inode, relative_block)?;
+        Ok(extent.start_block + u64::from(relative_block))
+    } else {
+        let mut block_map = FileBlocks::new(fs.clone(), inode)?;
+        block_map
+            .nth(usize_from_u32(relative_block))
+            .ok_or_else(|| {
+                Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
+            })?
+    }
+}
+
 /// Traverse the htree to find the leaf node that might contain `name`.
 ///
 /// On success, `block` will contain the leaf node's directory block
@@ -268,12 +287,13 @@ fn find_leaf_node(
     // iteration (which may also be the first iteration) will read the
     // leaf node data into `block`.
     for level in 0..=depth {
-        // Find the extent of the child block and read the block's data.
-        let extent = find_extent_for_block(fs, inode, child_block_relative)?;
+        // Get the absolute block index and read the block's data.
+        let block_index =
+            block_from_file_block(fs, inode, child_block_relative)?;
         let dir_block = DirBlock {
             fs,
             dir_inode: inode.index,
-            block_index: extent.start_block + u64::from(child_block_relative),
+            block_index,
             is_first: false,
             has_htree: true,
             checksum_base: inode.checksum_base.clone(),
