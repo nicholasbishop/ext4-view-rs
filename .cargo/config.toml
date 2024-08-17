@@ -1,2 +1,3 @@
 [alias]
+ext4-tool = "run --release --package ext4-tool --"
 xtask = "run --release --package xtask --"
