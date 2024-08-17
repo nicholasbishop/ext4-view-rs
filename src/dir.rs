@@ -152,6 +152,7 @@ impl ReadDir {
         }
 
         let (entry, entry_size) = DirEntry::from_bytes(
+            self.fs.clone(),
             &self.block[self.offset_within_block..],
             self.inode,
             self.path.clone(),
