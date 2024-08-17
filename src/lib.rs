@@ -122,6 +122,7 @@ mod superblock;
 mod util;
 
 use crate::iters::extents::Extents;
+use crate::iters::file_blocks::FileBlocks;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::String;
@@ -131,7 +132,7 @@ use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
 use features::ReadOnlyCompatibleFeatures;
-use inode::{Inode, InodeIndex};
+use inode::{Inode, InodeFlags, InodeIndex};
 use resolve::FollowSymlinks;
 use superblock::Superblock;
 use util::usize_from_u32;
@@ -255,27 +256,46 @@ impl Ext4 {
             .map_err(|_| Ext4Error::FileTooLarge)?;
         let mut dst = vec![0; file_size_in_bytes];
 
-        for extent in Extents::new(self.clone(), inode)? {
-            let extent = extent?;
+        if inode.flags.contains(InodeFlags::EXTENTS) {
+            for extent in Extents::new(self.clone(), inode)? {
+                let extent = extent?;
 
-            let dst_start =
-                usize_from_u32(extent.block_within_file * block_size);
+                let dst_start =
+                    usize_from_u32(extent.block_within_file * block_size);
 
-            // Get the length (in bytes) of the extent.
-            //
-            // This length may actually be too long, since the last
-            // block may extend past the end of the file. This is
-            // checked below.
-            let len = usize_from_u32(block_size * u32::from(extent.num_blocks));
-            let dst_end = dst_start + len;
-            // Cap to the end of the file.
-            let dst_end = dst_end.min(file_size_in_bytes);
+                // Get the length (in bytes) of the extent.
+                //
+                // This length may actually be too long, since the last
+                // block may extend past the end of the file. This is
+                // checked below.
+                let len =
+                    usize_from_u32(block_size * u32::from(extent.num_blocks));
+                let dst_end = dst_start + len;
+                // Cap to the end of the file.
+                let dst_end = dst_end.min(file_size_in_bytes);
 
-            let dst = &mut dst[dst_start..dst_end];
+                let dst = &mut dst[dst_start..dst_end];
 
-            let src_start = extent.start_block * u64::from(block_size);
+                let src_start = extent.start_block * u64::from(block_size);
 
-            self.read_bytes(src_start, dst)?;
+                self.read_bytes(src_start, dst)?;
+            }
+        } else {
+            let mut dst_start: usize = 0;
+            for block_index in FileBlocks::new(self.clone(), inode)? {
+                let block_index = block_index?;
+
+                let src_start = block_index * u64::from(block_size);
+
+                let dst_end = dst_start + usize_from_u32(block_size);
+                // Cap to the end of the file.
+                let dst_end = dst_end.min(file_size_in_bytes);
+
+                let dst = &mut dst[dst_start..dst_end];
+                dst_start += usize_from_u32(block_size);
+
+                self.read_bytes(src_start, dst)?;
+            }
         }
         Ok(dst)
     }
