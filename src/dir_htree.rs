@@ -182,6 +182,7 @@ fn read_root_block(
 ///
 /// If name is neither "." nor "..", returns `None`.
 fn read_dot_or_dotdot(
+    fs: Ext4,
     inode: &Inode,
     name: DirEntryName<'_>,
     block: &[u8],
@@ -197,6 +198,7 @@ fn read_dot_or_dotdot(
     };
 
     let (entry, _size) = DirEntry::from_bytes(
+        fs,
         &block[offset..],
         inode.index,
         Rc::new(PathBuf::empty()),
@@ -315,7 +317,7 @@ pub(crate) fn get_dir_entry_via_htree(
     read_root_block(fs, inode, &mut block)?;
 
     // Handle "." and ".." entries.
-    if let Some(entry) = read_dot_or_dotdot(inode, name, &block)? {
+    if let Some(entry) = read_dot_or_dotdot(fs.clone(), inode, name, &block)? {
         return Ok(entry);
     }
 
@@ -331,6 +333,7 @@ pub(crate) fn get_dir_entry_via_htree(
     let mut offset_within_block = 0;
     while offset_within_block < block.len() {
         let (dir_entry, entry_size) = DirEntry::from_bytes(
+            fs.clone(),
             &block[offset_within_block..],
             inode.index,
             path.clone(),
@@ -428,20 +431,30 @@ mod tests {
         read_root_block(&fs, &inode, &mut block).unwrap();
 
         // Get the "." entry.
-        let entry = read_dot_or_dotdot(&inode, ".".try_into().unwrap(), &block)
-            .unwrap()
-            .unwrap();
+        let entry = read_dot_or_dotdot(
+            fs.clone(),
+            &inode,
+            ".".try_into().unwrap(),
+            &block,
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(entry.file_name(), ".");
 
         // Get the ".." entry.
-        let entry =
-            read_dot_or_dotdot(&inode, "..".try_into().unwrap(), &block)
-                .unwrap()
-                .unwrap();
+        let entry = read_dot_or_dotdot(
+            fs.clone(),
+            &inode,
+            "..".try_into().unwrap(),
+            &block,
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(entry.file_name(), "..");
 
         // Check that an arbitrary name returns `None`.
         assert!(read_dot_or_dotdot(
+            fs.clone(),
             &inode,
             "somename".try_into().unwrap(),
             &block
