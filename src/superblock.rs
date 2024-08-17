@@ -142,12 +142,9 @@ fn check_incompat_features(
         return Err(Incompatible::Unknown(actual.difference(actual_known)));
     }
 
-    // TODO: for now, be strict on most incompat features. May be able to
+    // TODO: for now, be strict on many incompat features. May be able to
     // relax some of these in the future.
-    let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY
-        | IncompatibleFeatures::EXTENTS
-        | IncompatibleFeatures::IS_64BIT
-        | IncompatibleFeatures::FLEXIBLE_BLOCK_GROUPS;
+    let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY;
     let disallowed_features = IncompatibleFeatures::COMPRESSION
         | IncompatibleFeatures::RECOVERY
         | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
@@ -300,8 +297,6 @@ mod tests {
     #[test]
     fn test_check_incompat_features() {
         let required = (IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY
-            | IncompatibleFeatures::EXTENTS
-            | IncompatibleFeatures::IS_64BIT
             | IncompatibleFeatures::FLEXIBLE_BLOCK_GROUPS
             | IncompatibleFeatures::CHECKSUM_SEED_IN_SUPERBLOCK)
             .bits();
@@ -319,10 +314,11 @@ mod tests {
 
         assert_eq!(
             check_incompat_features(
-                required & (!IncompatibleFeatures::IS_64BIT.bits())
+                required
+                    & (!IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY.bits())
             )
             .unwrap_err(),
-            Incompatible::Missing(IncompatibleFeatures::IS_64BIT)
+            Incompatible::Missing(IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY)
         );
 
         assert_eq!(
