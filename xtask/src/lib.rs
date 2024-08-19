@@ -8,12 +8,13 @@
 
 mod mount;
 
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 use sha2::Digest;
 use sha2::Sha256;
 use std::fs::File;
 use std::io;
 use std::path::Path;
+use std::process::{Command, Output};
 
 pub mod diff_walk;
 pub use mount::{Mount, ReadOnly};
@@ -28,4 +29,37 @@ pub fn calc_file_sha256(path: &Path) -> Result<String> {
     io::copy(&mut file, &mut hasher)?;
     let hash = hasher.finalize();
     Ok(format!("{hash:x}"))
+}
+
+/// Run a command.
+///
+/// Return an error if the command fails to launch or if it exits
+/// non-zero.
+pub fn run_cmd(cmd: &mut Command) -> Result<()> {
+    let program = cmd.get_program().to_string_lossy().into_owned();
+    let status = cmd
+        .status()
+        .context(format!("failed to launch {}", program))?;
+    if !status.success() {
+        bail!("command {program} failed: {status:?}");
+    }
+    Ok(())
+}
+
+/// Run a command and capture its output.
+///
+/// Return an error if the command fails to launch or if it exits
+/// non-zero.
+pub fn capture_cmd(cmd: &mut Command) -> Result<Output> {
+    let program = cmd.get_program().to_string_lossy().into_owned();
+    let output = cmd
+        .output()
+        .context(format!("failed to launch {}", program))?;
+    if !output.status.success() {
+        bail!(
+            "command {program} failed: {status:?}",
+            status = output.status
+        );
+    }
+    Ok(output)
 }

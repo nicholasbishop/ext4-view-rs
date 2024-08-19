@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, str};
 use tempfile::TempDir;
+use xtask::{capture_cmd, run_cmd};
 use xtask::{diff_walk, Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
@@ -47,21 +48,18 @@ impl DiskParams {
         let uid = nix::unistd::getuid();
         let gid = nix::unistd::getgid();
 
-        let status = Command::new("mkfs.ext4")
-            // Set the ownership of the root directory in the filesystem
-            // to the current uid/gid instead of root. That allows the
-            // mounted filesystem to be edited without root permissions,
-            // although the mount operation itself still requires root.
-            .args(["-E", &format!("root_owner={uid}:{gid}")])
-            // Enable directory encryption.
-            .args(["-O", "encrypt"])
-            .arg(&self.path)
-            .arg(format!("{}k", self.size_in_kilobytes))
-            .status()?;
-        if !status.success() {
-            bail!("mkfs.ext4 failed");
-        }
-        Ok(())
+        run_cmd(
+            Command::new("mkfs.ext4")
+                // Set the ownership of the root directory in the filesystem
+                // to the current uid/gid instead of root. That allows the
+                // mounted filesystem to be edited without root permissions,
+                // although the mount operation itself still requires root.
+                .args(["-E", &format!("root_owner={uid}:{gid}")])
+                // Enable directory encryption.
+                .args(["-O", "encrypt"])
+                .arg(&self.path)
+                .arg(format!("{}k", self.size_in_kilobytes)),
+        )
     }
 
     /// Put some data on the disk.
@@ -152,13 +150,11 @@ impl DiskParams {
             f.seek(SeekFrom::Current(8192))?;
         }
 
-        let status = Command::new("fscrypt")
-            .args(["setup", "--all-users"])
-            .arg(root)
-            .status()?;
-        if !status.success() {
-            bail!("fscrypt setup failed");
-        }
+        run_cmd(
+            Command::new("fscrypt")
+                .args(["setup", "--all-users"])
+                .arg(root),
+        )?;
 
         // Create an empty directory to encrypt.
         let encrypted_dir = root.join("encrypted_dir");
@@ -173,31 +169,23 @@ impl DiskParams {
 
         // Set up encryption for the directory. This leaves the
         // directory unlocked.
-        let status = Command::new("fscrypt")
-            .arg("encrypt")
-            // Set up the protector for this directory. The protector
-            // will be a raw key (32 bytes of data) named "protector1".
-            .args(["--name", "protector1"])
-            .args(["--source", "raw_key"])
-            .arg("--key")
-            .arg(raw_key_path)
-            .arg(&encrypted_dir)
-            .status()?;
-        if !status.success() {
-            bail!("fscrypt encrypt failed");
-        }
+        run_cmd(
+            Command::new("fscrypt")
+                .arg("encrypt")
+                // Set up the protector for this directory. The protector
+                // will be a raw key (32 bytes of data) named "protector1".
+                .args(["--name", "protector1"])
+                .args(["--source", "raw_key"])
+                .arg("--key")
+                .arg(raw_key_path)
+                .arg(&encrypted_dir),
+        )?;
 
         // Create a file in the encrypted directory.
         fs::write(encrypted_dir.join("file"), "encrypted!")?;
 
         // Lock the directory.
-        let status = Command::new("fscrypt")
-            .arg("lock")
-            .arg(encrypted_dir)
-            .status()?;
-        if !status.success() {
-            bail!("fscrypt lock failed");
-        }
+        run_cmd(Command::new("fscrypt").arg("lock").arg(encrypted_dir))?;
 
         Ok(())
     }
@@ -215,13 +203,11 @@ impl DiskParams {
     ///
     /// [debugfs]: https://www.man7.org/linux/man-pages/man8/debugfs.8.html
     fn run_debugfs(&self, request: &str) -> Result<Vec<u8>> {
-        let output = Command::new("debugfs")
-            .args(["-R", request])
-            .arg(&self.path)
-            .output()?;
-        if !output.status.success() {
-            bail!("debugfs failed");
-        }
+        let output = capture_cmd(
+            Command::new("debugfs")
+                .args(["-R", request])
+                .arg(&self.path),
+        )?;
         Ok(output.stdout)
     }
 
