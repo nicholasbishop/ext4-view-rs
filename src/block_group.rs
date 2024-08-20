@@ -9,9 +9,11 @@
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::features::ReadOnlyCompatibleFeatures;
-use crate::util::{read_u16le, read_u32le, u64_from_hilo};
-use crate::Ext4;
+use crate::superblock::Superblock;
+use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
+use crate::Ext4Read;
 use alloc::vec;
+use alloc::vec::Vec;
 
 pub(crate) type BlockGroupIndex = u32;
 
@@ -50,12 +52,11 @@ impl BlockGroupDescriptor {
     }
 
     /// Read a block group descriptor.
-    pub(crate) fn read(
-        ext4: &Ext4,
+    fn read(
+        sb: &Superblock,
+        reader: &mut dyn Ext4Read,
         bgd_index: BlockGroupIndex,
-    ) -> Result<BlockGroupDescriptor, Ext4Error> {
-        let sb = &ext4.superblock;
-
+    ) -> Result<Self, Ext4Error> {
         // Allocate a byte vec to read the raw data into.
         let block_group_descriptor_size =
             usize::from(sb.block_group_descriptor_size);
@@ -70,13 +71,16 @@ impl BlockGroupDescriptor {
 
         let start = u64::from(block_index) * u64::from(sb.block_size)
             + u64::from(offset_within_block);
-        ext4.read_bytes(start, &mut data)?;
+        reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
-        let block_group_descriptor =
-            BlockGroupDescriptor::from_bytes(bgd_index, &data)?;
+        let block_group_descriptor = Self::from_bytes(bgd_index, &data)?;
+
+        let has_metadata_checksums = sb
+            .read_only_compatible_features
+            .contains(ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS);
 
         // Verify the descriptor checksum.
-        if ext4.has_metadata_checksums() {
+        if has_metadata_checksums {
             let mut checksum = Checksum::with_seed(sb.checksum_seed);
             checksum.update_u32_le(bgd_index);
             // Up to the checksum field.
@@ -103,5 +107,21 @@ impl BlockGroupDescriptor {
         }
 
         Ok(block_group_descriptor)
+    }
+
+    /// Read all block group descriptors.
+    pub(crate) fn read_all(
+        sb: &Superblock,
+        reader: &mut dyn Ext4Read,
+    ) -> Result<Vec<Self>, Ext4Error> {
+        let mut block_group_descriptors =
+            Vec::with_capacity(usize_from_u32(sb.num_block_groups));
+
+        for bgd_index in 0..sb.num_block_groups {
+            let bgd = Self::read(sb, reader, bgd_index)?;
+            block_group_descriptors.push(bgd);
+        }
+
+        Ok(block_group_descriptors)
     }
 }
