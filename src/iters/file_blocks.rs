@@ -6,10 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod block_map;
 mod extents_blocks;
 
-use crate::inode::Inode;
+use crate::inode::{Inode, InodeFlags};
 use crate::{Ext4, Ext4Error};
+use block_map::BlockMap;
 use extents_blocks::ExtentsBlocks;
 
 // This enum is separate from `FileBlocks` to keep the implementation
@@ -17,7 +19,7 @@ use extents_blocks::ExtentsBlocks;
 // private than the enum itself.
 enum FileBlocksInner {
     ExtentsBlocks(ExtentsBlocks),
-    // TODO: add BlockMap variant.
+    BlockMap(BlockMap),
 }
 
 /// Iterator over blocks in a file.
@@ -28,9 +30,13 @@ pub(crate) struct FileBlocks(FileBlocksInner);
 
 impl FileBlocks {
     pub(crate) fn new(fs: Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
-        Ok(Self(FileBlocksInner::ExtentsBlocks(ExtentsBlocks::new(
-            fs, inode,
-        )?)))
+        if inode.flags.contains(InodeFlags::EXTENTS) {
+            Ok(Self(FileBlocksInner::ExtentsBlocks(ExtentsBlocks::new(
+                fs, inode,
+            )?)))
+        } else {
+            Ok(Self(FileBlocksInner::BlockMap(BlockMap::new(fs, inode))))
+        }
     }
 }
 
@@ -41,6 +47,7 @@ impl Iterator for FileBlocks {
     fn next(&mut self) -> Option<Result<u64, Ext4Error>> {
         match self {
             Self(FileBlocksInner::ExtentsBlocks(iter)) => iter.next(),
+            Self(FileBlocksInner::BlockMap(iter)) => iter.next(),
         }
     }
 }
