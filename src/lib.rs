@@ -85,6 +85,10 @@
 //!   bug][issues] if you encounter an incompatibility so we know to
 //!   prioritize a fix!
 //!
+//! Some functions list specific errors that may occur. These lists are
+//! not exhaustive; calling code should be prepared to handle other
+//! errors such as [`Ext4Error::Io`].
+//!
 //! [issues]: https://github.com/nicholasbishop/ext4-view-rs/issues
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
@@ -297,6 +301,9 @@ impl Ext4 {
     /// An error will be returned if:
     /// * `path` is not absolute.
     /// * `path` does not exist.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn canonicalize<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -313,6 +320,9 @@ impl Ext4 {
     /// * `path` is not absolute.
     /// * `path` does not exist.
     /// * `path` is a directory or special file type.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn read<'p, P>(&self, path: P) -> Result<Vec<u8>, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -341,6 +351,9 @@ impl Ext4 {
     /// * `path` is not absolute.
     /// * `path` does not exist.
     /// * `path` is a directory or special file type.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn read_to_string<'p, P>(&self, path: P) -> Result<String, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -364,6 +377,9 @@ impl Ext4 {
     /// An error will be returned if:
     /// * `path` is not absolute.
     /// * The final component of `path` is not a symlink.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn read_link<'p, P>(&self, path: P) -> Result<PathBuf, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -385,6 +401,9 @@ impl Ext4 {
     /// * `path` is not absolute.
     /// * `path` does not exist
     /// * `path` is not a directory
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn read_dir<'p, P>(&self, path: P) -> Result<ReadDir, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -414,6 +433,9 @@ impl Ext4 {
     ///
     /// An error will be returned if:
     /// * `path` is not absolute.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn exists<'p, P>(&self, path: P) -> Result<bool, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -436,6 +458,9 @@ impl Ext4 {
     /// An error will be returned if:
     /// * `path` is not absolute.
     /// * `path` does not exist.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn metadata<'p, P>(&self, path: P) -> Result<Metadata, Ext4Error>
     where
         P: TryInto<Path<'p>>,
@@ -460,6 +485,9 @@ impl Ext4 {
     /// An error will be returned if:
     /// * `path` is not absolute.
     /// * `path` does not exist.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
     pub fn symlink_metadata<'p, P>(
         &self,
         path: P,
