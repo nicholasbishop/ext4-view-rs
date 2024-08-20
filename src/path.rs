@@ -317,7 +317,7 @@ impl PathBuf {
     ///
     /// Panics if the argument is not a valid path.
     #[must_use]
-    pub fn join(&self, path: impl AsRef<[u8]>) -> PathBuf {
+    pub fn join(&self, path: impl AsRef<[u8]>) -> Self {
         let mut t = self.clone();
         t.push(path);
         t
@@ -424,17 +424,17 @@ where
 
 impl<'a> From<Path<'a>> for PathBuf {
     fn from(p: Path<'a>) -> Self {
-        PathBuf(p.0.to_vec())
+        Self(p.0.to_vec())
     }
 }
 
 #[cfg(all(feature = "std", unix))]
 impl From<PathBuf> for std::path::PathBuf {
-    fn from(p: PathBuf) -> std::path::PathBuf {
+    fn from(p: PathBuf) -> Self {
         use std::os::unix::ffi::OsStringExt;
 
         let s = std::ffi::OsString::from_vec(p.0);
-        std::path::PathBuf::from(s)
+        Self::from(s)
     }
 }
 
