@@ -164,7 +164,7 @@ impl Debug for DirEntryNameBuf {
 
 // Manual implementation of `PartialEq` because we don't want to compare
 // the entire `data` array, only up to `len`.
-impl PartialEq<DirEntryNameBuf> for DirEntryNameBuf {
+impl PartialEq<Self> for DirEntryNameBuf {
     fn eq(&self, other: &Self) -> bool {
         self.as_bytes() == other.as_bytes()
     }
@@ -188,7 +188,7 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
         // This performs all the necessary validation of the input.
         DirEntryName::try_from(bytes)?;
 
-        let mut name = DirEntryNameBuf {
+        let mut name = Self {
             data: [0; DirEntryName::MAX_LEN],
             // OK to unwrap: already checked against `MAX_LEN`.
             len: u8::try_from(bytes.len()).unwrap(),
@@ -285,7 +285,7 @@ impl DirEntry {
             .map_err(|_| Ext4Error::Corrupt(Corrupt::DirEntry(inode.get())))?;
 
         let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
-        let entry = DirEntry {
+        let entry = Self {
             inode: points_to_inode,
             name,
             path,

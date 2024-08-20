@@ -123,7 +123,7 @@ impl Inode {
         ext4: &Ext4,
         index: InodeIndex,
         data: &[u8],
-    ) -> Result<(Inode, u32), Ext4Error> {
+    ) -> Result<(Self, u32), Ext4Error> {
         if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
             return Err(Ext4Error::Corrupt(Corrupt::Inode(index.get())));
         }
@@ -154,7 +154,7 @@ impl Inode {
         checksum_base.update_u32_le(i_generation);
 
         Ok((
-            Inode {
+            Self {
                 index,
                 // OK to unwap, we know `i_block` is 60 bytes.
                 inline_data: i_block.try_into().unwrap(),
@@ -178,7 +178,7 @@ impl Inode {
     pub(crate) fn read(
         ext4: &Ext4,
         inode: InodeIndex,
-    ) -> Result<Inode, Ext4Error> {
+    ) -> Result<Self, Ext4Error> {
         let sb = &ext4.0.superblock;
 
         let block_group_index = (inode.get() - 1) / sb.inodes_per_block_group;

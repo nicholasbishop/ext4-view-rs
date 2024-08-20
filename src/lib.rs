@@ -94,7 +94,7 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![forbid(unsafe_code)]
-#![warn(clippy::as_conversions)]
+#![warn(clippy::as_conversions, clippy::use_self)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 
