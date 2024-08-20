@@ -110,6 +110,7 @@ mod dir_htree;
 mod error;
 mod extent;
 mod features;
+mod file_blocks;
 mod file_type;
 mod format;
 mod inode;
