@@ -177,21 +177,14 @@ impl Ext4 {
 
         let superblock = Superblock::from_bytes(&data)?;
 
-        let mut ext4 = Self {
+        Ok(Self {
+            block_group_descriptors: BlockGroupDescriptor::read_all(
+                &superblock,
+                &mut *reader,
+            )?,
             reader: RefCell::new(reader),
-            block_group_descriptors: Vec::with_capacity(usize_from_u32(
-                superblock.num_block_groups,
-            )),
             superblock,
-        };
-
-        // Read all the block group descriptors.
-        for bgd_index in 0..ext4.superblock.num_block_groups {
-            let bgd = BlockGroupDescriptor::read(&ext4, bgd_index)?;
-            ext4.block_group_descriptors.push(bgd);
-        }
-
-        Ok(ext4)
+        })
     }
 
     /// Load an `Ext4` filesystem from the given `path`.
