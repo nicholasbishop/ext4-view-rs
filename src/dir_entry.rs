@@ -9,7 +9,8 @@
 use crate::error::{Corrupt, Ext4Error};
 use crate::file_type::FileType;
 use crate::format::{format_bytes_debug, BytesDisplay};
-use crate::inode::InodeIndex;
+use crate::inode::{Inode, InodeIndex};
+use crate::metadata::Metadata;
 use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
 use crate::Ext4;
@@ -202,7 +203,6 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 /// Directory entry.
 #[derive(Clone, Debug)]
 pub struct DirEntry {
-    #[allow(dead_code)] // TODO
     fs: Ext4,
 
     /// Number of the inode that this entry points to.
@@ -323,6 +323,15 @@ impl DirEntry {
         // filesystems without `FILE_TYPE_IN_DIR_ENTRY`). This also
         // matches the `std::fs::DirEntry` API.
         Ok(self.file_type)
+    }
+
+    /// Get [`Metadata`] for the entry.
+    ///
+    /// If the entry is a symlink, metadata for the symlink itself will
+    /// be returned, not the symlink target.
+    pub fn metadata(&self) -> Result<Metadata, Ext4Error> {
+        let inode = Inode::read(&self.fs, self.inode)?;
+        Ok(inode.metadata)
     }
 }
 
