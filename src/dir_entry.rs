@@ -199,7 +199,7 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 }
 
 /// Directory entry.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug)]
 pub struct DirEntry {
     /// Number of the inode that this entry points to.
     pub(crate) inode: InodeIndex,
@@ -446,15 +446,13 @@ mod tests {
             DirEntry::from_bytes(&bytes, inode1, path.clone()).unwrap();
         let entry = entry.unwrap();
         assert_eq!(len, 72);
+        assert_eq!(entry.inode, inode2);
         assert_eq!(
-            entry,
-            DirEntry {
-                inode: inode2,
-                name: DirEntryNameBuf::try_from("abc".as_bytes()).unwrap(),
-                path: path.clone(),
-                file_type: FileType::Regular,
-            },
+            entry.name,
+            DirEntryNameBuf::try_from("abc".as_bytes()).unwrap()
         );
+        assert_eq!(entry.path, path);
+        assert_eq!(entry.file_type, FileType::Regular);
         assert_eq!(entry.file_name(), "abc");
         assert_eq!(entry.path(), "path/abc");
 
@@ -463,10 +461,10 @@ mod tests {
         bytes.extend(0u32.to_le_bytes()); // inode
         bytes.extend(72u16.to_le_bytes()); // record length
         bytes.resize(72, 0u8);
-        assert_eq!(
-            DirEntry::from_bytes(&bytes, inode1, path.clone()).unwrap(),
-            (None, 72)
-        );
+        let (entry, len) =
+            DirEntry::from_bytes(&bytes, inode1, path.clone()).unwrap();
+        assert!(entry.is_none());
+        assert_eq!(len, 72);
 
         // Error: not enough data.
         let err = DirEntry::from_bytes(&[], inode1, path.clone()).unwrap_err();
