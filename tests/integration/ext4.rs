@@ -338,6 +338,29 @@ fn test_metadata_uid_gid() {
 }
 
 #[test]
+fn test_direntry_metadata() {
+    let fs = load_test_disk1();
+
+    let entry = fs
+        .read_dir("/")
+        .unwrap()
+        .find_map(|entry| {
+            let entry = entry.unwrap();
+            if entry.file_name() == "small_file" {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    let metadata = entry.metadata().unwrap();
+    assert_eq!(
+        metadata.len(),
+        u64::try_from("hello, world!".len()).unwrap()
+    );
+}
+
+#[test]
 fn test_symlink_metadata() {
     let fs = load_test_disk1();
 
