@@ -11,6 +11,7 @@ use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::extent::{Extent, Extents};
+use crate::file_blocks::FileBlocks;
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
 use crate::util::{read_u16le, read_u32le, usize_from_u32};
@@ -155,10 +156,10 @@ fn read_root_block(
     inode: &Inode,
     block: &mut [u8],
 ) -> Result<(), Ext4Error> {
-    let mut extents = Extents::new(fs.clone(), inode)?;
+    let mut file_blocks = FileBlocks::new(fs.clone(), inode)?;
 
-    // Get the first extent.
-    let extent = extents.next().ok_or_else(|| {
+    // Get the first block.
+    let block_index = file_blocks.next().ok_or_else(|| {
         Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
     })??;
 
@@ -166,7 +167,7 @@ fn read_root_block(
     let dir_block = DirBlock {
         fs,
         dir_inode: inode.index,
-        block_index: extent.start_block,
+        block_index,
         is_first: true,
         has_htree: true,
         checksum_base: inode.checksum_base.clone(),
