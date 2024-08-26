@@ -11,7 +11,7 @@ use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_htree::get_dir_entry_via_htree;
 use crate::error::{Ext4Error, Incompatible};
-use crate::extent::{Extent, Extents};
+use crate::file_blocks::FileBlocks;
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::path::PathBuf;
 use crate::util::usize_from_u32;
@@ -32,14 +32,15 @@ pub struct ReadDir {
     /// with an inode rather than a path.
     path: Rc<PathBuf>,
 
-    /// Iterator over the directory's extents.
-    extents: Extents,
+    /// Iterator over the blocks of the directory.
+    file_blocks: FileBlocks,
 
-    /// The current extent.
-    extent: Option<Extent>,
+    /// Current absolute block index, or `None` if the next block needs
+    /// to be fetched.
+    block_index: Option<u64>,
 
-    /// The index of the current block within the extent.
-    block_index: u64,
+    /// Whether this is the first block in the file.
+    is_first_block: bool,
 
     /// The current block's data.
     block: Vec<u8>,
@@ -81,9 +82,9 @@ impl ReadDir {
         Ok(Self {
             fs: fs.clone(),
             path: Rc::new(path),
-            extents: Extents::new(fs.clone(), inode)?,
-            extent: None,
-            block_index: 0,
+            file_blocks: FileBlocks::new(fs.clone(), inode)?,
+            block_index: None,
+            is_first_block: true,
             block: vec![0; usize_from_u32(fs.0.superblock.block_size)],
             offset_within_block: 0,
             is_done: false,
@@ -101,18 +102,16 @@ impl ReadDir {
     // When this returns `Ok(None)`, the outer loop in `Iterator::next`
     // will call it again until it reaches an actual value.
     fn next_impl(&mut self) -> Result<Option<DirEntry>, Ext4Error> {
-        // Get the extent, or get the next one if not set.
-        let extent = if let Some(extent) = &self.extent {
-            extent
+        // Get the block index, or get the next one if not set.
+        let block_index = if let Some(block_index) = self.block_index {
+            block_index
         } else {
-            match self.extents.next() {
-                Some(Ok(extent)) => {
-                    self.extent = Some(extent);
-                    self.block_index = 0;
+            match self.file_blocks.next() {
+                Some(Ok(block_index)) => {
+                    self.block_index = Some(block_index);
                     self.offset_within_block = 0;
 
-                    // OK to unwrap since we just set it.
-                    self.extent.as_ref().unwrap()
+                    block_index
                 }
                 Some(Err(err)) => return Err(err),
                 None => {
@@ -122,19 +121,12 @@ impl ReadDir {
             }
         };
 
-        // If all blocks in the extent have been processed, move to the
-        // next extent on the next iteration.
-        if self.block_index == u64::from(extent.num_blocks) {
-            self.extent = None;
-            return Ok(None);
-        }
-
         // If a block has been fully processed, move to the next block
         // on the next iteration.
         let block_size = self.fs.0.superblock.block_size;
         if self.offset_within_block >= usize_from_u32(block_size) {
-            self.block_index += 1;
-            self.offset_within_block = 0;
+            self.is_first_block = false;
+            self.block_index = None;
             return Ok(None);
         }
 
@@ -143,8 +135,8 @@ impl ReadDir {
             DirBlock {
                 fs: &self.fs,
                 dir_inode: self.inode,
-                block_index: extent.start_block + self.block_index,
-                is_first: self.block_index == 0,
+                block_index,
+                is_first: self.is_first_block,
                 has_htree: self.has_htree,
                 checksum_base: self.checksum_base.clone(),
             }
@@ -177,12 +169,10 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<Result<DirEntry, Ext4Error>> {
         // In pseudocode, here's what the iterator is doing:
         //
-        // for extent in extents(inode) {
-        //   for block in extent.blocks {
-        //     verify_checksum(block);
-        //     for dir_entry in block {
-        //       yield dir_entry;
-        //     }
+        // for block in file {
+        //   verify_checksum(block);
+        //   for dir_entry in block {
+        //     yield dir_entry;
         //   }
         // }
 
