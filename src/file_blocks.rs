@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// TODO: temporarily allow dead code to keep the commit smaller.
-#![allow(dead_code)]
-
 use crate::extent::{Extent, Extents};
 use crate::inode::Inode;
 use crate::{Ext4, Ext4Error};
