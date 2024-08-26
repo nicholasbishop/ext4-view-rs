@@ -143,8 +143,8 @@ impl ReadDir {
             DirBlock {
                 fs: &self.fs,
                 dir_inode: self.inode,
-                extent,
-                block_within_extent: self.block_index,
+                block_index: extent.start_block + self.block_index,
+                is_first: self.block_index == 0,
                 has_htree: self.has_htree,
                 checksum_base: self.checksum_base.clone(),
             }

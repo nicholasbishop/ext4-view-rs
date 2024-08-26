@@ -8,7 +8,6 @@
 
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
-use crate::extent::Extent;
 use crate::inode::InodeIndex;
 use crate::util::{read_u16le, read_u32le, usize_from_u32};
 use crate::Ext4;
@@ -31,11 +30,11 @@ enum DirBlockType {
 pub(crate) struct DirBlock<'a> {
     pub(crate) fs: &'a Ext4,
 
-    /// Extent to read from.
-    pub(crate) extent: &'a Extent,
+    /// Absolute index of the block within the filesystem.
+    pub(crate) block_index: u64,
 
-    /// Block offset within the extent.
-    pub(crate) block_within_extent: u64,
+    /// Whether this is the first block of the file.
+    pub(crate) is_first: bool,
 
     /// Directory inode index.
     pub(crate) dir_inode: InodeIndex,
@@ -56,9 +55,8 @@ impl<'a> DirBlock<'a> {
         let block_size = self.fs.0.superblock.block_size;
         assert_eq!(block.len(), usize_from_u32(block_size));
 
-        let block_index = self.extent.start_block + self.block_within_extent;
         self.fs
-            .read_bytes(block_index * u64::from(block_size), block)?;
+            .read_bytes(self.block_index * u64::from(block_size), block)?;
 
         if !self.fs.has_metadata_checksums() {
             return Ok(());
@@ -131,7 +129,7 @@ impl<'a> DirBlock<'a> {
         }
 
         // The first block of an htree is the root node.
-        if self.block_within_extent == 0 && self.extent.block_within_file == 0 {
+        if self.is_first {
             return DirBlockType::Root;
         }
 

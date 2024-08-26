@@ -166,8 +166,8 @@ fn read_root_block(
     let dir_block = DirBlock {
         fs,
         dir_inode: inode.index,
-        extent: &extent,
-        block_within_extent: 0,
+        block_index: extent.start_block,
+        is_first: true,
         has_htree: true,
         checksum_base: inode.checksum_base.clone(),
     };
@@ -271,10 +271,8 @@ fn find_leaf_node(
         let dir_block = DirBlock {
             fs,
             dir_inode: inode.index,
-            extent: &extent,
-            block_within_extent: u64::from(
-                child_block_relative - extent.block_within_file,
-            ),
+            block_index: extent.start_block + u64::from(child_block_relative),
+            is_first: false,
             has_htree: true,
             checksum_base: inode.checksum_base.clone(),
         };
