@@ -44,6 +44,8 @@ fn test_data_dir() -> Result<PathBuf> {
 /// 1024. Each block will be all zeroes, except for the first and last
 /// four bytes, which will contain the block index encoded as a
 /// little-endian `u32`.
+///
+/// This function is duplicated in `/tests/integration/ext2.rs`.
 fn gen_big_file(num_blocks: u32) -> Vec<u8> {
     let mut file = Vec::new();
     let block_size = 1024;
