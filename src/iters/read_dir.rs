@@ -93,13 +93,6 @@ impl ReadDir {
         })
     }
 
-    // Step to the next entry.
-    //
-    // This is factored out of `Iterator::next` for clarity and ease of
-    // returning errors.
-    //
-    // When this returns `Ok(None)`, the outer loop in `Iterator::next`
-    // will call it again until it reaches an actual value.
     fn next_impl(&mut self) -> Result<Option<DirEntry>, Ext4Error> {
         // Get the block index, or get the next one if not set.
         let block_index = if let Some(block_index) = self.block_index {
@@ -162,37 +155,15 @@ impl Debug for ReadDir {
     }
 }
 
-impl Iterator for ReadDir {
-    type Item = Result<DirEntry, Ext4Error>;
-
-    fn next(&mut self) -> Option<Result<DirEntry, Ext4Error>> {
-        // In pseudocode, here's what the iterator is doing:
-        //
-        // for block in file {
-        //   verify_checksum(block);
-        //   for dir_entry in block {
-        //     yield dir_entry;
-        //   }
-        // }
-
-        loop {
-            if self.is_done {
-                return None;
-            }
-
-            match self.next_impl() {
-                Ok(Some(entry)) => return Some(Ok(entry)),
-                Ok(None) => {
-                    // Continue.
-                }
-                Err(err) => {
-                    self.is_done = true;
-                    return Some(Err(err));
-                }
-            }
-        }
-    }
-}
+// In pseudocode, here's what the iterator is doing:
+//
+// for block in file {
+//   verify_checksum(block);
+//   for dir_entry in block {
+//     yield dir_entry;
+//   }
+// }
+impl_result_iter!(ReadDir, DirEntry);
 
 #[cfg(feature = "std")]
 #[cfg(test)]
