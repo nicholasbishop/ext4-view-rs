@@ -8,9 +8,22 @@
 
 use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
 
+// This function is duplicated in `/src/lib.rs`. We can't import that
+// function here because it is gated by `cfg(test)`, and integration
+// tests compile the crate-under-test without that config.
 fn load_test_disk1() -> Ext4 {
-    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
-    Ext4::load(Box::new(DATA.to_vec())).unwrap()
+    // This function executes quickly, so don't bother caching.
+    let output = std::process::Command::new("zstd")
+        .args([
+            "--decompress",
+            // Write to stdout and don't delete the input file.
+            "--stdout",
+            "test_data/test_disk1.bin.zst",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    Ext4::load(Box::new(output.stdout)).unwrap()
 }
 
 #[test]
