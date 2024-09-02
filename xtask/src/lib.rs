@@ -16,6 +16,7 @@ use std::io;
 use std::path::Path;
 use std::process::{Command, Output};
 
+pub mod compress;
 pub mod diff_walk;
 pub use mount::{Mount, ReadOnly};
 

@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, str};
 use tempfile::TempDir;
+use xtask::compress::compress_file;
 use xtask::{capture_cmd, run_cmd};
 use xtask::{diff_walk, Mount, ReadOnly};
 
@@ -190,6 +191,12 @@ impl DiskParams {
         Ok(())
     }
 
+    /// Delete the disk file.
+    fn delete(&self) -> Result<()> {
+        fs::remove_file(&self.path)?;
+        Ok(())
+    }
+
     /// Check some properties of the filesystem.
     fn check(&self) -> Result<()> {
         self.check_dir_htree_depth("/medium_dir", 0)?;
@@ -268,8 +275,10 @@ fn create_test_data() -> Result<()> {
     if !path.exists() {
         disk.create()?;
         disk.fill()?;
+        disk.check()?;
+        compress_file(&disk.path)?;
+        disk.delete()?;
     }
-    disk.check()?;
 
     Ok(())
 }
