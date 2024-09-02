@@ -6,13 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::capture_cmd;
+use crate::{capture_cmd, run_cmd};
 use anyhow::{bail, Result};
 use ext4_view::{Ext4, Ext4Error, Incompatible};
 use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::time::SystemTime;
 
@@ -136,6 +137,15 @@ fn walk_with_lib(
     Ok(output)
 }
 
+/// Check if the file at `path` starts with the magic bytes indicating
+/// its a compressed test file.
+fn is_compressed(path: &Path) -> Result<bool> {
+    let mut file = File::open(path)?;
+    let mut buf = [0; 4];
+    file.read_exact(&mut buf)?;
+    Ok(buf == [0x28, 0xb5, 0x2f, 0xfd])
+}
+
 /// Check that walking the filesystem with the `ext4-view` crate gives
 /// the same results as mounting the filesystem and walking it with
 /// [`std::fs`].
@@ -143,7 +153,7 @@ fn walk_with_lib(
 /// See `./bin/mount_and_walk.rs` for details of mounting and walking
 /// the filesystem. That program is run under `sudo` since `mount`
 /// requires elevated permissions.
-pub fn diff_walk(path: &Path) -> Result<()> {
+pub fn diff_walk(orig_path: &Path) -> Result<()> {
     // Build `mount_and_walk` in release mode.
     let status = Command::new("cargo")
         .args([
@@ -159,8 +169,31 @@ pub fn diff_walk(path: &Path) -> Result<()> {
         bail!("failed to build mount_and_walk");
     }
 
+    // If the input file is compressed, decompress it and write to a
+    // temporary file.
+    let tempdir;
+    let path = if is_compressed(orig_path)? {
+        tempdir = tempfile::tempdir()?;
+        let path = tempdir.path().join("fs.bin");
+
+        run_cmd(
+            Command::new("zstd")
+                .args([
+                    "--decompress",
+                    // Don't delete the input file.
+                    "--keep",
+                    // Set output path.
+                    "-o",
+                ])
+                .args([&path, orig_path]),
+        )?;
+        path
+    } else {
+        orig_path.to_path_buf()
+    };
+
     let actual = {
-        let ext4 = Ext4::load_from_path(path)?;
+        let ext4 = Ext4::load_from_path(&path)?;
         let before_walk = SystemTime::now();
         let mut paths = walk_with_lib(&ext4, ext4_view::Path::ROOT)?;
         println!(

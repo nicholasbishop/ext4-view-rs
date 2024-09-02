@@ -58,7 +58,7 @@ jobs:
       # Test with no features enabled.
       - run: cargo test -p ext4-view
       # Test diff-walk.
-      - run: cargo xtask diff-walk test_data/test_disk1.bin
+      - run: cargo xtask diff-walk test_data/test_disk1.bin.zst
       # Test with std enabled, and upload coverage results.
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo llvm-cov -F std --lcov --output-path lcov.info
