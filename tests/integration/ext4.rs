@@ -8,9 +8,15 @@
 
 use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
 
+mod decompress {
+    include!("../../src/decompress.rs");
+}
+
 fn load_test_disk1() -> Ext4 {
-    const DATA: &[u8] = include_bytes!("../../test_data/test_disk1.bin");
-    Ext4::load(Box::new(DATA.to_vec())).unwrap()
+    const DATA: &[u8] =
+        include_bytes!("../../test_data/test_disk1.bin.compressed");
+    let decompressed = decompress::decompress(DATA);
+    Ext4::load(Box::new(decompressed)).unwrap()
 }
 
 #[test]

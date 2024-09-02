@@ -234,11 +234,7 @@ pub(crate) fn get_dir_entry_inode_by_name(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn load_test_disk() -> Ext4 {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        Ext4::load_from_path(fs_path).unwrap()
-    }
+    use crate::load_test_disk;
 
     #[test]
     fn test_read_dir() {

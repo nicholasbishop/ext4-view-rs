@@ -418,8 +418,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_read_dot_or_dotdot() {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        let fs = Ext4::load_from_path(fs_path).unwrap();
+        let fs = crate::load_test_disk();
 
         let mut block = vec![0; usize_from_u32(fs.0.superblock.block_size)];
 
@@ -488,8 +487,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_get_dir_entry_via_htree() {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        let fs = Ext4::load_from_path(fs_path).unwrap();
+        let fs = crate::load_test_disk();
 
         // Resolve paths in `/medium_dir` via htree.
         let medium_dir = Path::new("/medium_dir");

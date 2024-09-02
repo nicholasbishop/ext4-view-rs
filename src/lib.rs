@@ -517,13 +517,25 @@ impl Debug for Ext4 {
 
 #[cfg(feature = "std")]
 #[cfg(test)]
+mod decompress;
+
+#[cfg(feature = "std")]
+#[cfg(test)]
+fn load_test_disk() -> Ext4 {
+    let compressed =
+        std::fs::read("test_data/test_disk1.bin.compressed").unwrap();
+    let decompressed = decompress::decompress(&compressed);
+    Ext4::load(Box::new(decompressed)).unwrap()
+}
+
+#[cfg(feature = "std")]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_path_to_inode() {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        let fs = Ext4::load_from_path(fs_path).unwrap();
+        let fs = load_test_disk();
 
         let follow = FollowSymlinks::All;
 
