@@ -446,7 +446,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_dir_entry_from_bytes() {
-        let fs = Ext4::load_from_path("test_data/test_disk1.bin").unwrap();
+        let fs = crate::load_test_disk1();
 
         let inode1 = InodeIndex::new(1).unwrap();
         let inode2 = InodeIndex::new(2).unwrap();

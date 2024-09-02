@@ -234,15 +234,11 @@ pub(crate) fn get_dir_entry_inode_by_name(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn load_test_disk() -> Ext4 {
-        let fs_path = std::path::Path::new("test_data/test_disk1.bin");
-        Ext4::load_from_path(fs_path).unwrap()
-    }
+    use crate::load_test_disk1;
 
     #[test]
     fn test_read_dir() {
-        let fs = load_test_disk();
+        let fs = load_test_disk1();
         let root_inode = fs.read_root_inode().unwrap();
         let root_path = crate::PathBuf::new("/");
 
@@ -264,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_get_dir_entry_inode_by_name() {
-        let fs = load_test_disk();
+        let fs = load_test_disk1();
         let root_inode = fs.read_root_inode().unwrap();
 
         let lookup = |name| {
