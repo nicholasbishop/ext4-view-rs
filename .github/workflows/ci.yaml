@@ -65,7 +65,7 @@ jobs:
           lfs: true
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p ext4-view -F std -p xtask
-      - run: cargo xtask diff-walk test_data/test_disk1.bin
+      - run: cargo xtask diff-walk test_data/test_disk1.bin.compressed
 
   test-windows:
     runs-on: windows-latest
