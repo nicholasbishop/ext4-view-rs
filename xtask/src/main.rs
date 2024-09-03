@@ -13,7 +13,7 @@ use clap::{Parser, Subcommand};
 use std::fs::{self, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::symlink;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, str};
 use tempfile::TempDir;
@@ -240,6 +240,23 @@ impl DiskParams {
     }
 }
 
+/// Use `zstd` to compress the file at `path`. A new file will be
+/// created with the same path but with ".zst" appended.
+///
+/// The original file will be deleted.
+fn zstd_compress(path: &Path) -> Result<()> {
+    run_cmd(
+        Command::new("zstd")
+            .args([
+                // Delete the input file.
+                "--rm",
+                // If the output already exists, overwrite it without asking.
+                "--force",
+            ])
+            .arg(path),
+    )
+}
+
 fn create_test_data() -> Result<()> {
     let dir = test_data_dir()?;
     if !dir.exists() {
@@ -265,11 +282,10 @@ fn create_test_data() -> Result<()> {
         path: path.to_owned(),
         size_in_kilobytes: 1024 * 64,
     };
-    if !path.exists() {
-        disk.create()?;
-        disk.fill()?;
-    }
+    disk.create()?;
+    disk.fill()?;
     disk.check()?;
+    zstd_compress(&disk.path)?;
 
     Ok(())
 }
