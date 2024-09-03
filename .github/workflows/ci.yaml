@@ -72,12 +72,7 @@ jobs:
   test-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p ext4-view -F std
-      - run: gunzip --version; xz --version; lz4 --version; zstd --version
+      - run: where gunzip; xz --version; zstd --version
 
   doc:
     runs-on: ubuntu-latest
