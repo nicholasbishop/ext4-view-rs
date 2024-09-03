@@ -3,6 +3,7 @@
   "extends": [
     "config:recommended"
   ],
+  "rangeStrategy": "replace",
   "lockFileMaintenance": {
     "enabled": true
   }
