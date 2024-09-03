@@ -55,17 +55,19 @@ jobs:
         with:
           lfs: true
       - uses: Swatinem/rust-cache@v2
+      # Test with no features enabled.
       - run: cargo test -p ext4-view
-
-  test-std:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p ext4-view -F std
+      # Test diff-walk.
       - run: cargo xtask diff-walk test_data/test_disk1.bin
+      # Test with std enabled, and upload coverage results.
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: cargo llvm-cov -F std --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: lcov.info
+          fail_ci_if_error: true
 
   test-windows:
     runs-on: windows-latest
@@ -104,19 +106,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@v1.24.3
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo llvm-cov -F std --lcov --output-path lcov.info
-      - uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: lcov.info
-          fail_ci_if_error: true
