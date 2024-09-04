@@ -29,7 +29,7 @@ members = ["xtask"]
 std = []
 
 [dependencies]
-bitflags = "2.0.0"
+bitflags = "2.6.0"
 crc = "3.0.0"
 
 [package.metadata.docs.rs]
