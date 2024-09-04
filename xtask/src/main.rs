@@ -38,9 +38,35 @@ fn test_data_dir() -> Result<PathBuf> {
     Ok(repo_root()?.join("test_data"))
 }
 
+/// Generate data for a big file.
+///
+/// The data will be `num_blocks` in size, with a block size of
+/// 1024. Each block will be all zeroes, except for the first and last
+/// four bytes, which will contain the block index encoded as a
+/// little-endian `u32`.
+fn gen_big_file(num_blocks: u32) -> Vec<u8> {
+    let mut file = Vec::new();
+    let block_size = 1024;
+    for i in 0..num_blocks {
+        let mut block = vec![0; block_size];
+        let i_le = i.to_le_bytes();
+        block[..4].copy_from_slice(&i_le);
+        block[block_size - 4..].copy_from_slice(&i_le);
+        file.extend(block);
+    }
+    file
+}
+
+#[derive(PartialEq)]
+enum FsType {
+    Ext2,
+    Ext4,
+}
+
 struct DiskParams {
     path: PathBuf,
     size_in_kilobytes: u32,
+    fs_type: FsType,
 }
 
 impl DiskParams {
@@ -48,18 +74,27 @@ impl DiskParams {
         let uid = nix::unistd::getuid();
         let gid = nix::unistd::getgid();
 
-        run_cmd(
-            Command::new("mkfs.ext4")
-                // Set the ownership of the root directory in the filesystem
-                // to the current uid/gid instead of root. That allows the
-                // mounted filesystem to be edited without root permissions,
-                // although the mount operation itself still requires root.
-                .args(["-E", &format!("root_owner={uid}:{gid}")])
-                // Enable directory encryption.
-                .args(["-O", "encrypt"])
-                .arg(&self.path)
-                .arg(format!("{}k", self.size_in_kilobytes)),
-        )
+        let mkfs = match self.fs_type {
+            FsType::Ext2 => "mkfs.ext2",
+            FsType::Ext4 => "mkfs.ext4",
+        };
+
+        let mut cmd = Command::new(mkfs);
+        cmd
+            // Set the ownership of the root directory in the filesystem
+            // to the current uid/gid instead of root. That allows the
+            // mounted filesystem to be edited without root permissions,
+            // although the mount operation itself still requires root.
+            .args(["-E", &format!("root_owner={uid}:{gid}")])
+            .arg(&self.path)
+            .arg(format!("{}k", self.size_in_kilobytes));
+
+        if self.fs_type == FsType::Ext4 {
+            // Enable directory encryption.
+            cmd.args(["-O", "encrypt"]);
+        }
+
+        run_cmd(&mut cmd)
     }
 
     /// Put some data on the disk.
@@ -190,6 +225,39 @@ impl DiskParams {
         Ok(())
     }
 
+    /// Write some data to an ext2 test filesystem.
+    ///
+    /// An ext2 filesystem is in many ways not that different from
+    /// ext4. The main thing we want to test is files stored with a
+    /// block map instead of extents.
+    fn fill_ext2(&self) -> Result<()> {
+        let mount = Mount::new(&self.path, ReadOnly(false))?;
+        let root = mount.path();
+
+        fs::write(root.join("small_file"), "hello, world!")?;
+
+        // Create a big file to exercise the BlockMap iterator. Note
+        // that the calculations below assume a 1K block size, so
+        // indirect blocks can store 256 (1024÷4) block indices.
+        let big_file_size_in_blocks =
+            // Direct blocks.
+            12 +
+            // Indirect blocks.
+            256 +
+            // Double indirect blocks.
+            (256 * 256) +
+            // Triple indirect blocks. This is the highest level of
+            // block maps. Ideally this size would be 256³, but that
+            // would require a huge filesystem.
+            (256 * 16);
+        fs::write(
+            root.join("big_file"),
+            gen_big_file(big_file_size_in_blocks),
+        )?;
+
+        Ok(())
+    }
+
     /// Check some properties of the filesystem.
     fn check(&self) -> Result<()> {
         self.check_dir_htree_depth("/medium_dir", 0)?;
@@ -270,6 +338,7 @@ fn create_test_data() -> Result<()> {
         let disk = DiskParams {
             path: path.to_owned(),
             size_in_kilobytes: 128,
+            fs_type: FsType::Ext4,
         };
         disk.create()?;
         let data = fs::read(&path)?;
@@ -281,10 +350,23 @@ fn create_test_data() -> Result<()> {
     let disk = DiskParams {
         path: path.to_owned(),
         size_in_kilobytes: 1024 * 64,
+        fs_type: FsType::Ext4,
     };
     disk.create()?;
     disk.fill()?;
     disk.check()?;
+    zstd_compress(&disk.path)?;
+
+    let path = dir.join("test_disk_ext2.bin");
+    let disk = DiskParams {
+        path: path.to_owned(),
+        // A 64MiB disk isn't quite big enough for a three-level block
+        // map, so jump up to 64+32.
+        size_in_kilobytes: 1024 * 96,
+        fs_type: FsType::Ext2,
+    };
+    disk.create()?;
+    disk.fill_ext2()?;
     zstd_compress(&disk.path)?;
 
     Ok(())
