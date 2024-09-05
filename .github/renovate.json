@@ -6,5 +6,11 @@
   "rangeStrategy": "update-lockfile",
   "lockFileMaintenance": {
     "enabled": true
-  }
+  },
+  "packageRules": [
+    {
+      "matchPackageNames": ["crate-ci/typos"],
+      "extends": ["schedule:monthly"]
+    }
+  ]
 }
