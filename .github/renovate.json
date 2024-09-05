@@ -4,6 +4,7 @@
     "config:recommended"
   ],
   "rangeStrategy": "update-lockfile",
+  "automerge": true,
   "lockFileMaintenance": {
     "enabled": true
   },
