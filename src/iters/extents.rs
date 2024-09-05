@@ -130,6 +130,7 @@ pub(crate) struct Extents {
     inode: InodeIndex,
     to_visit: Vec<ToVisitItem>,
     checksum_base: Checksum,
+    is_done: bool,
 }
 
 impl Extents {
@@ -142,6 +143,7 @@ impl Extents {
                 inode.index,
             )?],
             checksum_base: inode.checksum_base.clone(),
+            is_done: false,
         })
     }
 
@@ -149,10 +151,6 @@ impl Extents {
     //
     // This is factored out of `Iterator::next` for clarity and ease of
     // returning errors.
-    //
-    // # Preconditions
-    //
-    // * The `to_visit` vec must not be empty when `next_impl` is called.
     //
     // # Returns
     //
@@ -165,8 +163,11 @@ impl Extents {
     //   in `Iterator::next` will call `next_impl` again as long as
     //   there are nodes left to process.
     fn next_impl(&mut self) -> Result<Option<Extent>, Ext4Error> {
-        // OK to unwrap: see preconditions.
-        let item = self.to_visit.last_mut().unwrap();
+        let Some(item) = self.to_visit.last_mut() else {
+            self.is_done = true;
+            return Ok(None);
+        };
+
         // Increment at the start to ensure that early returns don't
         // accidentally skip the increment. Since entry 0 is the node
         // header, entry 1 is the first actual node entry.
@@ -245,25 +246,4 @@ impl Extents {
     }
 }
 
-impl Iterator for Extents {
-    type Item = Result<Extent, Ext4Error>;
-
-    fn next(&mut self) -> Option<Result<Extent, Ext4Error>> {
-        while !self.to_visit.is_empty() {
-            match self.next_impl() {
-                Ok(Some(extent)) => return Some(Ok(extent)),
-                Ok(None) => {
-                    // continue
-                }
-                Err(err) => {
-                    // Clear `to_visit` so that future calls to `next`
-                    // return `None`.
-                    self.to_visit.clear();
-                    return Some(Err(err));
-                }
-            }
-        }
-
-        None
-    }
-}
+impl_result_iter!(Extents, Extent);
