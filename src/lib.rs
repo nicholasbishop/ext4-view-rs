@@ -114,6 +114,7 @@ mod file_blocks;
 mod file_type;
 mod format;
 mod inode;
+mod iters;
 mod metadata;
 mod path;
 mod reader;
