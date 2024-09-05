@@ -121,6 +121,7 @@ mod resolve;
 mod superblock;
 mod util;
 
+use crate::iters::extents::Extents;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::String;
@@ -129,7 +130,6 @@ use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
-use extent::Extents;
 use features::ReadOnlyCompatibleFeatures;
 use inode::{Inode, InodeIndex};
 use resolve::FollowSymlinks;

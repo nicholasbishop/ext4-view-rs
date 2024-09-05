@@ -6,8 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::extent::{Extent, Extents};
+use crate::extent::Extent;
 use crate::inode::Inode;
+use crate::iters::extents::Extents;
 use crate::{Ext4, Ext4Error};
 
 /// Iterator over blocks in a file that uses extents.
