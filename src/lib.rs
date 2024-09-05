@@ -137,11 +137,11 @@ use resolve::FollowSymlinks;
 use superblock::Superblock;
 use util::usize_from_u32;
 
-pub use dir::ReadDir;
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible, IoError};
 pub use features::IncompatibleFeatures;
 pub use file_type::FileType;
+pub use iters::read_dir::ReadDir;
 pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};
 pub use reader::{Ext4Read, MemIoError};
