@@ -16,7 +16,7 @@ use crate::{Ext4, Ext4Error};
 /// The iterator produces absolute block indices. Note that no blocks
 /// are produced for holes in the file (i.e. parts of the file not
 /// covered by an extent).
-pub(crate) struct ExtentsBlocks {
+struct ExtentsBlocks {
     /// Extent iterator.
     extents: Extents,
 
@@ -32,7 +32,7 @@ pub(crate) struct ExtentsBlocks {
 }
 
 impl ExtentsBlocks {
-    pub(crate) fn new(fs: Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
+    fn new(fs: Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
         Ok(Self {
             extents: Extents::new(fs, inode)?,
             extent: None,
@@ -109,7 +109,35 @@ impl Iterator for ExtentsBlocks {
     }
 }
 
-// TODO: when support for files that use block maps instead of extents
-// is added, this type alias will become an enum that supports both
-// kinds of iteration.
-pub(crate) type FileBlocks = ExtentsBlocks;
+// This enum is separate from `FileBlocks` to keep the implementation
+// details private to this module; members of an enum cannot be more
+// private than the enum itself.
+enum FileBlocksInner {
+    ExtentsBlocks(ExtentsBlocks),
+    // TODO: add BlockMap variant.
+}
+
+/// Iterator over blocks in a file.
+///
+/// The iterator produces absolute block indices. Note that no blocks
+/// are produced for holes in the file.
+pub(crate) struct FileBlocks(FileBlocksInner);
+
+impl FileBlocks {
+    pub(crate) fn new(fs: Ext4, inode: &Inode) -> Result<Self, Ext4Error> {
+        Ok(Self(FileBlocksInner::ExtentsBlocks(ExtentsBlocks::new(
+            fs, inode,
+        )?)))
+    }
+}
+
+impl Iterator for FileBlocks {
+    /// Block index.
+    type Item = Result<u64, Ext4Error>;
+
+    fn next(&mut self) -> Option<Result<u64, Ext4Error>> {
+        match self {
+            Self(FileBlocksInner::ExtentsBlocks(iter)) => iter.next(),
+        }
+    }
+}
