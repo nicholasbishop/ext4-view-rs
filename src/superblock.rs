@@ -89,6 +89,13 @@ impl Superblock {
         )
         .map_err(|_| Ext4Error::Corrupt(Corrupt::TooManyBlockGroups))?;
 
+        let block_group_descriptor_size =
+            if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
+                s_desc_size
+            } else {
+                32
+            };
+
         // Validate the superblock checksum.
         if read_only_compatible_features
             .contains(ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS)
@@ -115,7 +122,7 @@ impl Superblock {
             blocks_count,
             inode_size: s_inode_size,
             inodes_per_block_group: s_inodes_per_group,
-            block_group_descriptor_size: s_desc_size,
+            block_group_descriptor_size,
             num_block_groups,
             incompatible_features,
             read_only_compatible_features,
