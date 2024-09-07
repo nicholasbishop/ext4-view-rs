@@ -77,34 +77,11 @@ impl ExtentsBlocks {
     }
 }
 
-impl Iterator for ExtentsBlocks {
-    /// Absolute block index.
-    type Item = Result<u64, Ext4Error>;
-
-    fn next(&mut self) -> Option<Result<u64, Ext4Error>> {
-        // In pseudocode, here's what the iterator is doing:
-        //
-        // for extent in extents(inode) {
-        //   for block in extent.blocks {
-        //     yield block;
-        //   }
-        // }
-
-        loop {
-            if self.is_done {
-                return None;
-            }
-
-            match self.next_impl() {
-                Ok(Some(entry)) => return Some(Ok(entry)),
-                Ok(None) => {
-                    // Continue.
-                }
-                Err(err) => {
-                    self.is_done = true;
-                    return Some(Err(err));
-                }
-            }
-        }
-    }
-}
+// In pseudocode, here's what the iterator is doing:
+//
+// for extent in extents(inode) {
+//   for block in extent.blocks {
+//     yield block;
+//   }
+// }
+impl_result_iter!(ExtentsBlocks, u64);
