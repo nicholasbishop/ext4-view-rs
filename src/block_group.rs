@@ -8,7 +8,7 @@
 
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
-use crate::features::ReadOnlyCompatibleFeatures;
+use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::superblock::Superblock;
 use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
 use crate::Ext4Read;
@@ -26,12 +26,24 @@ pub(crate) struct BlockGroupDescriptor {
 impl BlockGroupDescriptor {
     const BG_CHECKSUM_OFFSET: usize = 0x1e;
 
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Ext4Error> {
+    fn from_bytes(
+        superblock: &Superblock,
+        bytes: &[u8],
+    ) -> Result<Self, Ext4Error> {
         const BG_INODE_TABLE_HI_OFFSET: usize = 0x28;
 
         let bg_inode_table_lo = read_u32le(bytes, 0x8);
         let bg_checksum = read_u16le(bytes, Self::BG_CHECKSUM_OFFSET);
-        let bg_inode_table_hi = read_u32le(bytes, BG_INODE_TABLE_HI_OFFSET);
+
+        // Get the high bits of the inode table block.
+        let bg_inode_table_hi = if superblock
+            .incompatible_features
+            .contains(IncompatibleFeatures::IS_64BIT)
+        {
+            read_u32le(bytes, BG_INODE_TABLE_HI_OFFSET)
+        } else {
+            0
+        };
 
         let inode_table_first_block =
             u64_from_hilo(bg_inode_table_hi, bg_inode_table_lo);
@@ -64,7 +76,7 @@ impl BlockGroupDescriptor {
             + u64::from(offset_within_block);
         reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
-        let block_group_descriptor = Self::from_bytes(&data)?;
+        let block_group_descriptor = Self::from_bytes(sb, &data)?;
 
         let has_metadata_checksums = sb
             .read_only_compatible_features
