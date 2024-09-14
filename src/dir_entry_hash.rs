@@ -102,17 +102,13 @@ fn md4_half(state: &mut StateBlock, data: &HashBlock) {
 }
 
 /// Create the 32-byte block of data that will be hashed.
-///
-/// If `src` is smaller than the block size (32 bytes), the remaining
-/// bytes will be padded with the length of `src` (as a `u8`). The
-/// ordering is a little weird though (possibly due to confusion about
-/// endianness).
 fn create_hash_block(src: &[u8]) -> HashBlock {
     let mut dst = HashBlock::default();
 
-    // Get padding value.
-    // OK to unwrap: the `src` length is always less than 256.
-    let pad = u8::try_from(src.len()).unwrap();
+    // Get padding value. If `src` is smaller than the block size (32
+    // bytes), the remaining bytes will be padded with the length of
+    // `src` (as a `u8`).
+    let pad = src.len().to_le_bytes()[0];
 
     // Copy src to dst. Fill the rest with the pad byte.
     let mut src_index = 0;
