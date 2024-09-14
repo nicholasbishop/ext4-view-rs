@@ -274,6 +274,13 @@ mod tests {
         assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed2)), 0x4599f742);
         assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed0)), 0xd196a868);
 
+        // Test a name with non-ASCII characters.
+        let name = DirEntryName::try_from(
+            "NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem",
+        )
+        .unwrap();
+        assert_eq!(dir_hash_md4_half(name, &seed_from_uuid(seed1)), 0xb40a2038);
+
         // Test a max-length name.
         let name = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU";
         assert_eq!(name.len(), 255);
