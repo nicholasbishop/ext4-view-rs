@@ -101,42 +101,36 @@ fn md4_half(state: &mut StateBlock, data: &HashBlock) {
     state[3] += d;
 }
 
+// Using `as` is currently the best way to get sign extension.
+#[allow(clippy::as_conversions)]
+fn sign_extend_byte_to_u32(byte: u8) -> u32 {
+    let sbyte = byte as i8;
+    sbyte as u32
+}
+
 /// Create the 32-byte block of data that will be hashed.
-fn create_hash_block(src: &[u8]) -> HashBlock {
+fn create_hash_block(mut src: &[u8]) -> HashBlock {
     let mut dst = HashBlock::default();
 
     // Get padding value. If `src` is smaller than the block size (32
     // bytes), the remaining bytes will be padded with the length of
     // `src` (as a `u8`).
-    let pad = src.len().to_le_bytes()[0];
+    let pad = u32::from_le_bytes([src.len().to_le_bytes()[0]; 4]);
 
-    // Copy src to dst. Fill the rest with the pad byte.
-    let mut src_index = 0;
-    for elem in dst.iter_mut() {
-        let bytes = if src_index < src.len() {
-            let src = &src[src_index..];
-            src_index += 4;
+    for dst in dst.iter_mut() {
+        let mut elem = pad;
 
-            if src.len() >= 4 {
-                // At least 4 bytes remaining in `src`, copy directly.
-                src[..4].try_into().unwrap()
-            } else {
-                // Less than 4 bytes remaining in `src`, left-pad with
-                // the pad byte.
-                let mut bytes = [pad; 4];
-                let mut offset = 4 - src.len();
-                for b in src {
-                    bytes[offset] = *b;
-                    offset += 1;
-                }
-                bytes
+        // Process up to four bytes of `src`.
+        for _ in 0..4 {
+            if let Some(src_byte) = src.first() {
+                // Sign extend the byte into a `u32`.
+                let src_u32 = sign_extend_byte_to_u32(*src_byte);
+                elem = src_u32.wrapping_add(elem << 8);
+
+                src = &src[1..];
             }
-        } else {
-            // No more data to copy; fill the rest with the pad byte.
-            [pad; 4]
-        };
-
-        *elem = Wrapping(u32::from_be_bytes(bytes));
+        }
+        *dst = Wrapping(elem);
     }
 
     dst
