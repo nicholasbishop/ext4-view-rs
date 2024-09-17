@@ -235,6 +235,12 @@ impl Ext4 {
         start_byte: u64,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
+        // The first 1024 bytes are reserved for non-filesystem
+        // data. This conveniently allows for something like a null
+        // pointer check; an attempt to read from this area indicates a
+        // logic bug in the library.
+        assert!(start_byte >= 1024, "invalid read offset: {start_byte}");
+
         self.0
             .reader
             .borrow_mut()
