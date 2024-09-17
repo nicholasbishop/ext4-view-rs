@@ -48,3 +48,15 @@ fn test_read_big_file() {
     let num_blocks = 12 + 256 + (256 * 256) + (256 * 16);
     assert_eq!(fs.read("/big_file").unwrap(), gen_big_file(num_blocks));
 }
+
+#[test]
+fn test_read_file_with_holes() {
+    let fs = load_ext2();
+    let mut expected_data = vec![0xa5; 1024];
+    expected_data.extend(vec![0; 1024]);
+    expected_data.extend(vec![0xa5; 1024]);
+    expected_data.extend(vec![0; 1024]);
+    expected_data.extend(vec![0xa5; 1024]);
+
+    assert_eq!(fs.read("/holes").unwrap(), expected_data);
+}
