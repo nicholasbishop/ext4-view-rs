@@ -21,7 +21,7 @@ ext4-view = { path = "../", features = ["std"] }
 gpt_disk_io = { version = "0.16.0", features = ["std"] }
 libc = "0.2.155"
 lzma-rs = "0.3.0"
-nix = { version = "0.29.0", features = ["user"] }
+nix = { version = "0.29.0", features = ["fs", "user"] }
 sha2 = "0.10.8"
 tar = "0.4.40"
 tempfile = "3.10.1"

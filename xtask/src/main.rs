@@ -10,8 +10,10 @@ mod big_fs;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use nix::fcntl::{self, FallocateFlags};
 use std::fs::{self, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
+use std::os::fd::AsRawFd;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -256,6 +258,21 @@ impl DiskParams {
             root.join("big_file"),
             gen_big_file(big_file_size_in_blocks),
         )?;
+
+        // Create a five-block file, then punch holes in blocks 1 and 3.
+        let holes_path = root.join("holes");
+        fs::write(&holes_path, vec![0xa5; 1024 * 5])?;
+        let f = OpenOptions::new().write(true).open(&holes_path)?;
+        for offset in [1024, 1024 * 3] {
+            let len = 1024;
+            fcntl::fallocate(
+                f.as_raw_fd(),
+                FallocateFlags::FALLOC_FL_PUNCH_HOLE
+                    | FallocateFlags::FALLOC_FL_KEEP_SIZE,
+                offset,
+                len,
+            )?;
+        }
 
         Ok(())
     }
