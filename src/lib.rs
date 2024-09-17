@@ -300,7 +300,12 @@ impl Ext4 {
                 let dst = &mut dst[dst_start..dst_end];
                 dst_start += usize_from_u32(block_size);
 
-                self.read_bytes(src_start, dst)?;
+                // If the block index is zero, it's a hole, which should
+                // be filled with zeroes. The destination is already
+                // zeroed, so nothing to do in that case.
+                if block_index != 0 {
+                    self.read_bytes(src_start, dst)?;
+                }
             }
         }
         Ok(dst)
