@@ -108,3 +108,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@v1.24.5
+
+  bigdiffwalk:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+    - name: Free up disk space
+      # Adapted from:
+      # https://github.com/easimon/maximize-build-space/blob/master/action.yml
+      run: |
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        df -h
+    - run: cargo xtask download-big-filesystems
+    - run: cargo xtask diff-walk test_data/chromiumos_root.bin
+    - run: cargo xtask diff-walk test_data/chromiumos_stateful.bin
