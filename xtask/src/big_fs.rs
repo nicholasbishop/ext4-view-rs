@@ -12,23 +12,27 @@ use gpt_disk_io::gpt_disk_types::BlockSize;
 use gpt_disk_io::{BlockIoAdapter, Disk};
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom, Write};
+use std::path::Path;
 use tar::Archive;
 use tempfile::TempDir;
 use xtask::calc_file_sha256;
 
-/// Download a ChromiumOS image and extract its stateful partition,
-/// which is an Ext4 filesystem. This can be used with the `diff-walk`
-/// action to verify that the library can read the whole filesystem
-/// correctly.
+/// Download a ChromiumOS image and extract its root and stateful
+/// partitions. The root partition is ext2, the stateful partition is
+/// ext4. Each can be used with the `diff-walk` action to verify that
+/// the library can read the whole filesystem correctly.
 ///
-/// There's nothing particularly special about this filesystem, it's
-/// just a convenient way to get a big real-world example of ext4 data.
-pub fn download_big_filesystem() -> Result<()> {
-    let big_fs_path = test_data_dir()?.join("chromiumos_stateful.bin");
-    if big_fs_path.exists() {
+/// There's nothing particularly special about these filesystems, it's
+/// just a convenient way to get a big real-world example of ext2/ext4
+/// data.
+pub fn download_big_filesystems() -> Result<()> {
+    let root_path = test_data_dir()?.join("chromiumos_root.bin");
+    let stateful_path = test_data_dir()?.join("chromiumos_stateful.bin");
+    if root_path.exists() && stateful_path.exists() {
         println!(
-            "{} already exists, operation canceled",
-            big_fs_path.display()
+            "{} and {} already exist, operation canceled",
+            root_path.display(),
+            stateful_path.display()
         );
         return Ok(());
     }
@@ -103,33 +107,50 @@ pub fn download_big_filesystem() -> Result<()> {
         entry.unpack(&bin_path)?;
     }
 
-    // Extract the stateful partition from the disk image.
-    let mut bin_file = File::open(bin_path)?;
+    // Extract the root and stateful partitions from the disk image.
+    extract_partition(&bin_path, &root_path, "ROOT-A")?;
+    extract_partition(&bin_path, &stateful_path, "STATE")?;
+
+    Ok(())
+}
+
+fn extract_partition(
+    disk_path: &Path,
+    output_path: &Path,
+    partition_name: &str,
+) -> Result<()> {
+    // Extract the partition from the disk image.
+    let mut bin_file = File::open(disk_path)?;
     let bs = BlockSize::BS_512;
     let mut block_buf = vec![0; bs.to_usize().unwrap()];
-    // Parse the GPT to find the stateful partition's LBA range within
-    // the disk.
+    // Parse the GPT to find the partition's LBA range within the disk.
     let lba_range = {
         let block_io = BlockIoAdapter::new(&mut bin_file, bs);
         let mut disk = Disk::new(block_io)?;
         let gpt = disk.read_primary_gpt_header(&mut block_buf)?;
         let layout = gpt.get_partition_entry_array_layout()?;
-        let stateful_entry = disk
+        let entry = disk
             .gpt_partition_entry_array_iter(layout, &mut block_buf)?
-            .find(|e| e.as_ref().unwrap().name == "STATE".parse().unwrap())
+            .find(|e| {
+                e.as_ref().unwrap().name == partition_name.parse().unwrap()
+            })
             .unwrap()?;
-        stateful_entry.lba_range().unwrap()
+        entry.lba_range().unwrap()
     };
-    println!("stateful partition LBA range: {lba_range}");
-    // Copy the stateful partition to the output file.
+    println!("{partition_name} partition LBA range: {lba_range}");
+    // Copy the partition to the output file.
     bin_file.seek(SeekFrom::Start(
         *lba_range.to_byte_range(bs).unwrap().start(),
     ))?;
-    println!("writing stateful partition to {}", big_fs_path.display());
-    let mut output_file = File::create(big_fs_path)?;
+    println!(
+        "writing {partition_name} partition to {}",
+        output_path.display()
+    );
+    let mut output_file = File::create(output_path)?;
     for _ in 0..lba_range.num_blocks() {
         bin_file.read_exact(&mut block_buf)?;
         output_file.write_all(&block_buf)?;
     }
+
     Ok(())
 }

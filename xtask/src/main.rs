@@ -418,11 +418,11 @@ enum Action {
         path: PathBuf,
     },
 
-    /// Download a ChromiumOS image and extract its stateful partition.
+    /// Download a ChromiumOS image and extract its root & stateful partitions.
     ///
-    /// This can be used with the `diff-walk` action to verify that the
+    /// Each can be used with the `diff-walk` action to verify that the
     /// library can read the whole filesystem correctly.
-    DownloadBigFilesystem,
+    DownloadBigFilesystems,
 }
 
 fn main() -> Result<()> {
@@ -431,6 +431,6 @@ fn main() -> Result<()> {
     match &opt.action {
         Action::CreateTestData => create_test_data(),
         Action::DiffWalk { path } => diff_walk::diff_walk(path),
-        Action::DownloadBigFilesystem => big_fs::download_big_filesystem(),
+        Action::DownloadBigFilesystems => big_fs::download_big_filesystems(),
     }
 }
