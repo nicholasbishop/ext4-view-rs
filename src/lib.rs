@@ -6,10 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This crate provides read-only access to [ext4] filesystems.
+//! This crate provides read-only access to [ext4] filesystems. It also
+//! works with [ext2] filesystems.
 //!
 //! The main entry point is the [`Ext4`] struct.
 //!
+//! [ext2]: https://en.wikipedia.org/wiki/Ext2
 //! [ext4]: https://en.wikipedia.org/wiki/Ext4
 //!
 //! # Example
