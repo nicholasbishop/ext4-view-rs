@@ -1,2 +1,2 @@
 /target
-/test_data/chromiumos_stateful.bin
+/test_data/chromiumos_*.bin
