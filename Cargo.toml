@@ -18,6 +18,7 @@ keywords = ["ext4", "filesystem", "no_std"]
 rust-version = "1.73"
 include = [
     "src/*.rs",
+    "src/iters",
     "LICENSE-APACHE",
     "LICENSE-MIT",
 ]
