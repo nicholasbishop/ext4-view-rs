@@ -103,6 +103,7 @@
 extern crate alloc;
 
 mod block_group;
+mod block_index;
 mod checksum;
 mod dir;
 mod dir_block;
@@ -268,8 +269,8 @@ impl Ext4 {
             for extent in Extents::new(self.clone(), inode)? {
                 let extent = extent?;
 
-                let dst_start =
-                    usize_from_u32(extent.block_within_file * block_size);
+                let dst_start = extent.block_within_file.to_usize()
+                    * usize_from_u32(block_size);
 
                 // Get the length (in bytes) of the extent.
                 //
@@ -284,7 +285,7 @@ impl Ext4 {
 
                 let dst = &mut dst[dst_start..dst_end];
 
-                let src_start = extent.start_block * u64::from(block_size);
+                let src_start = extent.start_block.to_byte(block_size);
 
                 self.read_bytes(src_start, dst)?;
             }
@@ -293,7 +294,7 @@ impl Ext4 {
             for block_index in FileBlocks::new(self.clone(), inode)? {
                 let block_index = block_index?;
 
-                let src_start = block_index * u64::from(block_size);
+                let src_start = block_index.to_byte(block_size);
 
                 let dst_end = dst_start + usize_from_u32(block_size);
                 // Cap to the end of the file.
@@ -305,7 +306,7 @@ impl Ext4 {
                 // If the block index is zero, it's a hole, which should
                 // be filled with zeroes. The destination is already
                 // zeroed, so nothing to do in that case.
-                if block_index != 0 {
+                if !block_index.is_zero() {
                     self.read_bytes(src_start, dst)?;
                 }
             }

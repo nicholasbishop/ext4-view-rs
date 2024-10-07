@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::inode::Inode;
 use crate::util::{read_u32le, usize_from_u32};
 use crate::{Ext4, Ext4Error};
@@ -91,7 +92,7 @@ impl BlockMap {
         }
     }
 
-    fn next_impl(&mut self) -> Result<Option<u64>, Ext4Error> {
+    fn next_impl(&mut self) -> Result<Option<FsBlockIndex>, Ext4Error> {
         if self.num_blocks_yielded >= self.num_blocks_total {
             self.is_done = true;
             return Ok(None);
@@ -110,7 +111,7 @@ impl BlockMap {
             if let Some(level_1) = &mut self.level_1 {
                 if let Some(block_index) = level_1.next() {
                     self.num_blocks_yielded += 1;
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_1 = None;
                     self.level_0_index += 1;
@@ -126,7 +127,7 @@ impl BlockMap {
                 if let Some(block_index) = level_2.next() {
                     let block_index = block_index?;
                     self.num_blocks_yielded += 1;
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_2 = None;
                     self.level_0_index += 1;
@@ -144,7 +145,7 @@ impl BlockMap {
                 if let Some(block_index) = level_3.next() {
                     let block_index = block_index?;
                     self.num_blocks_yielded += 1;
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_3 = None;
                     self.level_0_index += 1;
@@ -161,11 +162,11 @@ impl BlockMap {
             todo!();
         };
 
-        Ok(Some(u64::from(ret)))
+        Ok(Some(FsBlockIndex::from(ret)))
     }
 }
 
-impl_result_iter!(BlockMap, u64);
+impl_result_iter!(BlockMap, FsBlockIndex);
 
 struct IndirectBlockIter {
     /// Indirect block data. The block contains an array of `u32`, each

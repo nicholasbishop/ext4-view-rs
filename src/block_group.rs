@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
@@ -65,12 +66,13 @@ impl BlockGroupDescriptor {
         let bgd_start_block = if sb.block_size == 1024 { 2 } else { 1 };
         let bgd_per_block =
             sb.block_size / u32::from(sb.block_group_descriptor_size);
-        let block_index = bgd_start_block + (bgd_index / bgd_per_block);
+        let block_index =
+            FsBlockIndex::from(bgd_start_block + (bgd_index / bgd_per_block));
         let offset_within_block = (bgd_index % bgd_per_block)
             * u32::from(sb.block_group_descriptor_size);
 
-        let start = u64::from(block_index) * u64::from(sb.block_size)
-            + u64::from(offset_within_block);
+        let start =
+            block_index.to_byte(sb.block_size) + u64::from(offset_within_block);
         reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
         let block_group_descriptor = Self::from_bytes(sb, &data);
