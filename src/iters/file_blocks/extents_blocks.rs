@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::extent::Extent;
 use crate::inode::Inode;
 use crate::iters::extents::Extents;
@@ -41,7 +42,7 @@ impl ExtentsBlocks {
         })
     }
 
-    fn next_impl(&mut self) -> Result<Option<u64>, Ext4Error> {
+    fn next_impl(&mut self) -> Result<Option<FsBlockIndex>, Ext4Error> {
         // Get the extent, or get the next one if not set.
         let extent = if let Some(extent) = &self.extent {
             extent
@@ -84,4 +85,4 @@ impl ExtentsBlocks {
 //     yield block;
 //   }
 // }
-impl_result_iter!(ExtentsBlocks, u64);
+impl_result_iter!(ExtentsBlocks, FsBlockIndex);

@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::inode::InodeIndex;
@@ -31,7 +32,7 @@ pub(crate) struct DirBlock<'a> {
     pub(crate) fs: &'a Ext4,
 
     /// Absolute index of the block within the filesystem.
-    pub(crate) block_index: u64,
+    pub(crate) block_index: FsBlockIndex,
 
     /// Whether this is the first block of the file.
     pub(crate) is_first: bool,
@@ -56,7 +57,7 @@ impl<'a> DirBlock<'a> {
         assert_eq!(block.len(), usize_from_u32(block_size));
 
         self.fs
-            .read_bytes(self.block_index * u64::from(block_size), block)?;
+            .read_bytes(self.block_index.to_byte(block_size), block)?;
 
         if !self.fs.has_metadata_checksums() {
             return Ok(());

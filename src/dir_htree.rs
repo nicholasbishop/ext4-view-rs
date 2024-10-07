@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::{FileBlockIndex, FsBlockIndex};
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
@@ -21,7 +22,6 @@ use alloc::rc::Rc;
 use alloc::vec;
 
 type DirHash = u32;
-type ChildBlock = u32;
 
 // Internal node of an htree.
 //
@@ -110,7 +110,7 @@ impl<'a> InternalNode<'a> {
     /// Panics if `index` is out of range.
     ///
     /// For `index` zero, the `hash` key is implicitly zero.
-    fn get_entry(&self, index: usize) -> (DirHash, ChildBlock) {
+    fn get_entry(&self, index: usize) -> (DirHash, FileBlockIndex) {
         let offset = Self::ENTRY_SIZE * index;
         let block = read_u32le(self.entries, offset + 4);
 
@@ -120,7 +120,7 @@ impl<'a> InternalNode<'a> {
             read_u32le(self.entries, offset)
         };
 
-        (hash, block)
+        (hash, FileBlockIndex::from(block))
     }
 
     /// Get the number of entries (this is based on the `count` field,
@@ -131,7 +131,7 @@ impl<'a> InternalNode<'a> {
 
     /// Perform a binary search to find the child block index for the
     /// `lookup_hash`.
-    fn lookup_block_by_hash(&self, lookup_hash: DirHash) -> ChildBlock {
+    fn lookup_block_by_hash(&self, lookup_hash: DirHash) -> FileBlockIndex {
         // Left/right entry index.
         let mut left = 0;
         let mut right = self.num_entries() - 1;
@@ -217,14 +217,12 @@ fn read_dot_or_dotdot(
 fn find_extent_for_block(
     fs: &Ext4,
     inode: &Inode,
-    block: ChildBlock,
+    block: FileBlockIndex,
 ) -> Result<Extent, Ext4Error> {
     for extent in Extents::new(fs.clone(), inode)? {
         let extent = extent?;
 
-        let start = extent.block_within_file;
-        let end = start + u32::from(extent.num_blocks);
-        if block >= start && block < end {
+        if block.is_within_extent(&extent) {
             return Ok(extent);
         }
     }
@@ -236,19 +234,17 @@ fn find_extent_for_block(
 fn block_from_file_block(
     fs: &Ext4,
     inode: &Inode,
-    relative_block: ChildBlock,
-) -> Result<u64, Ext4Error> {
+    relative_block: FileBlockIndex,
+) -> Result<FsBlockIndex, Ext4Error> {
     if inode.flags.contains(InodeFlags::EXTENTS) {
         let extent = find_extent_for_block(fs, inode, relative_block)?;
         Ok(extent.start_block
             + u64::from(relative_block - extent.block_within_file))
     } else {
         let mut block_map = FileBlocks::new(fs.clone(), inode)?;
-        block_map
-            .nth(usize_from_u32(relative_block))
-            .ok_or_else(|| {
-                Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
-            })?
+        block_map.nth(relative_block.to_usize()).ok_or_else(|| {
+            Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
+        })?
     }
 }
 
@@ -387,11 +383,10 @@ mod tests {
         let inode = InodeIndex::new(1).unwrap();
 
         let mut bytes = Vec::new();
-        let add_entry =
-            |bytes: &mut Vec<u8>, hash: DirHash, block: ChildBlock| {
-                bytes.extend(hash.to_le_bytes());
-                bytes.extend(block.to_le_bytes());
-            };
+        let add_entry = |bytes: &mut Vec<u8>, hash: DirHash, block: u32| {
+            bytes.extend(hash.to_le_bytes());
+            bytes.extend(block.to_le_bytes());
+        };
         bytes.extend(20u16.to_le_bytes()); // limit
         bytes.extend(11u16.to_le_bytes()); // count
         bytes.extend(100u32.to_le_bytes()); // block
@@ -411,15 +406,15 @@ mod tests {
         // Test search with an odd number of entries.
         let node = InternalNode::new(&bytes, inode).unwrap();
         assert_eq!(node.num_entries(), 11);
-        assert_eq!(node.get_entry(0), (0, 100));
-        assert_eq!(node.get_entry(10), (20, 190));
-        assert_eq!(node.lookup_block_by_hash(0), 100);
-        assert_eq!(node.lookup_block_by_hash(9), 196);
-        assert_eq!(node.lookup_block_by_hash(10), 195);
-        assert_eq!(node.lookup_block_by_hash(11), 195);
-        assert_eq!(node.lookup_block_by_hash(12), 194);
-        assert_eq!(node.lookup_block_by_hash(20), 190);
-        assert_eq!(node.lookup_block_by_hash(30), 190);
+        assert_eq!(node.get_entry(0), (0, 100.into()));
+        assert_eq!(node.get_entry(10), (20, 190.into()));
+        assert_eq!(node.lookup_block_by_hash(0), 100.into());
+        assert_eq!(node.lookup_block_by_hash(9), 196.into());
+        assert_eq!(node.lookup_block_by_hash(10), 195.into());
+        assert_eq!(node.lookup_block_by_hash(11), 195.into());
+        assert_eq!(node.lookup_block_by_hash(12), 194.into());
+        assert_eq!(node.lookup_block_by_hash(20), 190.into());
+        assert_eq!(node.lookup_block_by_hash(30), 190.into());
 
         // Add one more entry.
         bytes[2..4].copy_from_slice(&12u16.to_le_bytes()); // count
@@ -428,13 +423,13 @@ mod tests {
         // Test search with an even number of entries.
         let node = InternalNode::new(&bytes, inode).unwrap();
         assert_eq!(node.num_entries(), 12);
-        assert_eq!(node.lookup_block_by_hash(0), 100);
-        assert_eq!(node.lookup_block_by_hash(9), 196);
-        assert_eq!(node.lookup_block_by_hash(10), 195);
-        assert_eq!(node.lookup_block_by_hash(11), 195);
-        assert_eq!(node.lookup_block_by_hash(12), 194);
-        assert_eq!(node.lookup_block_by_hash(20), 190);
-        assert_eq!(node.lookup_block_by_hash(30), 189);
+        assert_eq!(node.lookup_block_by_hash(0), 100.into());
+        assert_eq!(node.lookup_block_by_hash(9), 196.into());
+        assert_eq!(node.lookup_block_by_hash(10), 195.into());
+        assert_eq!(node.lookup_block_by_hash(11), 195.into());
+        assert_eq!(node.lookup_block_by_hash(12), 194.into());
+        assert_eq!(node.lookup_block_by_hash(20), 190.into());
+        assert_eq!(node.lookup_block_by_hash(30), 189.into());
     }
 
     #[cfg(feature = "std")]
@@ -586,29 +581,47 @@ mod tests {
             extents,
             [
                 Extent {
-                    start_block: 2543,
+                    start_block: 2543u64.into(),
                     num_blocks: 23,
-                    block_within_file: 0,
+                    block_within_file: 0.into(),
                 },
                 Extent {
-                    start_block: 11,
+                    start_block: 11u64.into(),
                     num_blocks: 47,
-                    block_within_file: 23,
+                    block_within_file: 23.into(),
                 }
             ]
         );
 
         // Blocks in extent 0.
-        assert_eq!(block_from_file_block(&fs, &inode, 0).unwrap(), 2543);
-        assert_eq!(block_from_file_block(&fs, &inode, 1).unwrap(), 2544);
-        assert_eq!(block_from_file_block(&fs, &inode, 22).unwrap(), 2565);
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 0.into()).unwrap(),
+            2543u64.into()
+        );
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 1.into()).unwrap(),
+            2544u64.into()
+        );
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 22.into()).unwrap(),
+            2565u64.into()
+        );
 
         // Blocks in extent 1.
-        assert_eq!(block_from_file_block(&fs, &inode, 23).unwrap(), 11);
-        assert_eq!(block_from_file_block(&fs, &inode, 24).unwrap(), 12);
-        assert_eq!(block_from_file_block(&fs, &inode, 69).unwrap(), 57);
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 23.into()).unwrap(),
+            11u64.into()
+        );
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 24.into()).unwrap(),
+            12u64.into()
+        );
+        assert_eq!(
+            block_from_file_block(&fs, &inode, 69.into()).unwrap(),
+            57u64.into()
+        );
 
         // Invalid block.
-        assert!(block_from_file_block(&fs, &inode, 70).is_err());
+        assert!(block_from_file_block(&fs, &inode, 70.into()).is_err());
     }
 }

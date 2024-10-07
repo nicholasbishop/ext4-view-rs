@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::{FileBlockIndex, FsBlockIndex};
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::extent::Extent;
@@ -189,8 +190,8 @@ impl Extents {
                 u64_from_hilo(u32::from(ee_start_hi), ee_start_low);
 
             return Ok(Some(Extent {
-                block_within_file: ee_block,
-                start_block,
+                block_within_file: FileBlockIndex::from(ee_block),
+                start_block: FsBlockIndex::from(start_block),
                 num_blocks: ee_len,
             }));
         } else {

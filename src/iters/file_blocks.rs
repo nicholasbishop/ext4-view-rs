@@ -9,6 +9,7 @@
 mod block_map;
 mod extents_blocks;
 
+use crate::block_index::FsBlockIndex;
 use crate::inode::{Inode, InodeFlags};
 use crate::{Ext4, Ext4Error};
 use block_map::BlockMap;
@@ -42,9 +43,9 @@ impl FileBlocks {
 
 impl Iterator for FileBlocks {
     /// Block index.
-    type Item = Result<u64, Ext4Error>;
+    type Item = Result<FsBlockIndex, Ext4Error>;
 
-    fn next(&mut self) -> Option<Result<u64, Ext4Error>> {
+    fn next(&mut self) -> Option<Result<FsBlockIndex, Ext4Error>> {
         match self {
             Self(FileBlocksInner::ExtentsBlocks(iter)) => iter.next(),
             Self(FileBlocksInner::BlockMap(iter)) => iter.next(),
