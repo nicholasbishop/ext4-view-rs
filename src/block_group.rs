@@ -26,10 +26,7 @@ pub(crate) struct BlockGroupDescriptor {
 impl BlockGroupDescriptor {
     const BG_CHECKSUM_OFFSET: usize = 0x1e;
 
-    fn from_bytes(
-        superblock: &Superblock,
-        bytes: &[u8],
-    ) -> Result<Self, Ext4Error> {
+    fn from_bytes(superblock: &Superblock, bytes: &[u8]) -> Self {
         const BG_INODE_TABLE_HI_OFFSET: usize = 0x28;
 
         let bg_inode_table_lo = read_u32le(bytes, 0x8);
@@ -48,10 +45,10 @@ impl BlockGroupDescriptor {
         let inode_table_first_block =
             u64_from_hilo(bg_inode_table_hi, bg_inode_table_lo);
 
-        Ok(Self {
+        Self {
             inode_table_first_block,
             checksum: bg_checksum,
-        })
+        }
     }
 
     /// Read a block group descriptor.
@@ -76,7 +73,7 @@ impl BlockGroupDescriptor {
             + u64::from(offset_within_block);
         reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
-        let block_group_descriptor = Self::from_bytes(sb, &data)?;
+        let block_group_descriptor = Self::from_bytes(sb, &data);
 
         let has_metadata_checksums = sb
             .read_only_compatible_features
