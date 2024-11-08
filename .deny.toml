@@ -10,13 +10,14 @@
 allow = [
   "Apache-2.0",
   "MIT",
-  "Unicode-DFS-2016",
 
   # Needed for xtask only.
   "BSD-3-Clause",
   "ISC",
   "MPL-2.0",
   "OpenSSL",
+  "Unicode-DFS-2016",
+  "Unicode-3.0",
 ]
 
 
@@ -30,6 +31,5 @@ license-files = [
 [bans]
 multiple-versions = "deny"
 skip = [
-     { name = "bitflags", version = "1.3.2" },
      { name = "windows-sys", version = "0.52.0" },
 ]
