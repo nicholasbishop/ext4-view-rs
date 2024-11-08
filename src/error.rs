@@ -9,6 +9,7 @@
 use crate::features::IncompatibleFeatures;
 use alloc::boxed::Box;
 use core::any::Any;
+use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 
 /// Underlying error type for [`Ext4Error::Io`].
@@ -140,8 +141,7 @@ impl Display for Ext4Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Ext4Error {}
+impl Error for Ext4Error {}
 
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
