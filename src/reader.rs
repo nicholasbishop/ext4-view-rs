@@ -9,6 +9,7 @@
 use crate::error::IoError;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::error::Error;
 use core::fmt::{self, Display, Formatter};
 
 #[cfg(feature = "std")]
@@ -76,8 +77,7 @@ impl Display for MemIoError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for MemIoError {}
+impl Error for MemIoError {}
 
 impl Ext4Read for Vec<u8> {
     fn read(

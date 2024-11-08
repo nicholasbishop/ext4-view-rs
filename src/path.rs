@@ -10,6 +10,7 @@ use crate::dir_entry::{DirEntryName, DirEntryNameError};
 use crate::format::{format_bytes_debug, BytesDisplay};
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 
 /// Error returned when [`Path`] or [`PathBuf`] construction fails.
@@ -34,8 +35,7 @@ impl Display for PathError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for PathError {}
+impl Error for PathError {}
 
 /// Reference path type.
 ///

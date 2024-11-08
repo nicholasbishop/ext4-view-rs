@@ -15,6 +15,7 @@ use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
 use crate::Ext4;
 use alloc::rc::Rc;
+use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::hash::{Hash, Hasher};
 use core::str::Utf8Error;
@@ -53,8 +54,7 @@ impl Display for DirEntryNameError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for DirEntryNameError {}
+impl Error for DirEntryNameError {}
 
 /// Name of a [`DirEntry`], stored as a reference.
 ///
