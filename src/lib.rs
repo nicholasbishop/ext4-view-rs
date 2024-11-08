@@ -140,7 +140,7 @@ use superblock::Superblock;
 use util::usize_from_u32;
 
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
-pub use error::{Corrupt, Ext4Error, Incompatible, IoError};
+pub use error::{Corrupt, Ext4Error, Incompatible};
 pub use features::IncompatibleFeatures;
 pub use file_type::FileType;
 pub use iters::read_dir::ReadDir;
