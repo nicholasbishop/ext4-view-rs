@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::error::IoError;
+use crate::error::BoxedError;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::error::Error;
@@ -17,13 +17,6 @@ use {
     std::fs::File,
     std::io::{Seek, SeekFrom},
 };
-
-#[cfg(feature = "std")]
-impl IoError for std::io::Error {}
-
-fn box_err<E: IoError>(err: E) -> Box<dyn IoError> {
-    Box::new(err)
-}
 
 /// Interface used by [`Ext4`] to read the filesystem data from a storage
 /// file or device.
@@ -39,7 +32,7 @@ pub trait Ext4Read {
         &mut self,
         start_byte: u64,
         dst: &mut [u8],
-    ) -> Result<(), Box<dyn IoError>>;
+    ) -> Result<(), BoxedError>;
 }
 
 #[cfg(feature = "std")]
@@ -48,11 +41,11 @@ impl Ext4Read for File {
         &mut self,
         start_byte: u64,
         dst: &mut [u8],
-    ) -> Result<(), Box<dyn IoError>> {
+    ) -> Result<(), BoxedError> {
         use std::io::Read;
 
-        self.seek(SeekFrom::Start(start_byte)).map_err(box_err)?;
-        self.read_exact(dst).map_err(box_err)?;
+        self.seek(SeekFrom::Start(start_byte)).map_err(Box::new)?;
+        self.read_exact(dst).map_err(Box::new)?;
         Ok(())
     }
 }
@@ -64,8 +57,6 @@ pub struct MemIoError {
     read_len: usize,
     src_len: usize,
 }
-
-impl IoError for MemIoError {}
 
 impl Display for MemIoError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -84,9 +75,9 @@ impl Ext4Read for Vec<u8> {
         &mut self,
         start_byte: u64,
         dst: &mut [u8],
-    ) -> Result<(), Box<dyn IoError>> {
+    ) -> Result<(), BoxedError> {
         let start = usize::try_from(start_byte).map_err(|_| {
-            box_err(MemIoError {
+            Box::new(MemIoError {
                 start: start_byte,
                 read_len: dst.len(),
                 src_len: self.len(),
@@ -94,7 +85,7 @@ impl Ext4Read for Vec<u8> {
         })?;
 
         let end = start + dst.len();
-        let src = self.get(start..end).ok_or(box_err(MemIoError {
+        let src = self.get(start..end).ok_or(Box::new(MemIoError {
             start: start_byte,
             read_len: dst.len(),
             src_len: self.len(),

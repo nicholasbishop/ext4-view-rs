@@ -8,12 +8,12 @@
 
 use crate::features::IncompatibleFeatures;
 use alloc::boxed::Box;
-use core::any::Any;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 
-/// Underlying error type for [`Ext4Error::Io`].
-pub trait IoError: Any + Debug + Display + Send + Sync {}
+/// Boxed error, used for IO errors. This is similar in spirit to
+/// `anyhow::Error`, although a much simpler implementation.
+pub(crate) type BoxedError = Box<dyn Error + Send + Sync + 'static>;
 
 /// Common error type for all [`Ext4`] operations.
 ///
@@ -72,7 +72,7 @@ pub enum Ext4Error {
     /// [`Ext4Read`]: crate::Ext4Read
     Io(
         /// Underlying error.
-        Box<dyn IoError>,
+        BoxedError,
     ),
 
     /// The filesystem is not supported by this library. This does not
@@ -105,7 +105,7 @@ impl Ext4Error {
     }
 
     /// If the error type is [`Ext4Error::Io`], get the underlying error.
-    pub fn as_io(&self) -> Option<&dyn IoError> {
+    pub fn as_io(&self) -> Option<&(dyn Error + Send + Sync + 'static)> {
         if let Self::Io(err) = self {
             Some(&**err)
         } else {
