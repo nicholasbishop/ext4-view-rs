@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 * MSRV increased to `1.81`.
 * The error types now unconditionally implement `core::error::Error`.
