@@ -4,9 +4,10 @@
 2. `git checkout -b <some-branch-name>`
 3. Update the `version` field in `Cargo.toml`.
 4. Run `cargo build` so that `Cargo.lock` gets updated.
-5. Commit `Cargo.toml` and `Cargo.lock`. The commit message must start
-   with `release:`.
-6. Push the branch and create a PR.
+5. Update `CHANGELOG.md`.
+6. Commit `Cargo.toml`, `Cargo.lock`, and `CHANGELOG.md`. The commit
+   message must start with `release:`.
+7. Push the branch and create a PR.
 
 When the PR is merged, the new release will automatically be created on
 <https://crates.io>. A git tag will also be created automatically.
