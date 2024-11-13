@@ -65,7 +65,8 @@ impl Superblock {
 
         let blocks_count = u64_from_hilo(s_blocks_count_hi, s_blocks_count_lo);
 
-        let block_size = 2u32.pow(10 + s_log_block_size);
+        let block_size = calc_block_size(s_log_block_size)
+            .ok_or(Ext4Error::Corrupt(Corrupt::InvalidBlockSize))?;
 
         if s_magic != 0xef53 {
             return Err(Ext4Error::Corrupt(Corrupt::SuperblockMagic));
@@ -130,6 +131,11 @@ impl Superblock {
             htree_hash_seed: s_hash_seed,
         })
     }
+}
+
+fn calc_block_size(s_log_block_size: u32) -> Option<u32> {
+    let exp = s_log_block_size.checked_add(10)?;
+    2u32.checked_pow(exp)
 }
 
 fn check_incompat_features(

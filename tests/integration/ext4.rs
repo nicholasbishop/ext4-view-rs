@@ -76,6 +76,24 @@ fn test_load_path_error() {
     ));
 }
 
+/// Test that loading the data from
+/// https://github.com/nicholasbishop/ext4-view-rs/issues/280 does not
+/// panic.
+#[test]
+fn test_invalid_ext4_data() {
+    // Fill in zeros for the first 1024 bytes, then add the test data.
+    let mut data = vec![0; 1024];
+    data.extend(include_bytes!("../../test_data/not_ext4.bin"));
+
+    assert_eq!(
+        *Ext4::load(Box::new(data))
+            .unwrap_err()
+            .as_corrupt()
+            .unwrap(),
+        Corrupt::InvalidBlockSize
+    );
+}
+
 #[test]
 fn test_canonicalize() {
     let fs = load_test_disk1();
