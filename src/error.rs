@@ -154,6 +154,9 @@ pub enum Corrupt {
     /// Superblock checksum is invalid.
     SuperblockChecksum,
 
+    /// The block size in the superblock is invalid.
+    InvalidBlockSize,
+
     /// The number of block groups does not fit in a [`u32`].
     TooManyBlockGroups,
 
@@ -232,6 +235,7 @@ impl Display for Corrupt {
             Self::SuperblockChecksum => {
                 write!(f, "invalid superblock checksum")
             }
+            Self::InvalidBlockSize => write!(f, "invalid block size"),
             Self::TooManyBlockGroups => write!(f, "too many block groups"),
             Self::BlockGroupDescriptor(block_group_num) => {
                 write!(f, "block group descriptor {block_group_num} is invalid")

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Fixed a panic when loading an invalid superblock.
+
 ## 0.6.0
 
 * MSRV increased to `1.81`.
