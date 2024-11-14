@@ -64,7 +64,7 @@ jobs:
       # Test with std enabled, and upload coverage results.
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo llvm-cov -F std --lcov --output-path lcov.info
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
