@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1
 
 * Fixed a panic when loading an invalid superblock.
 
