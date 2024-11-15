@@ -160,6 +160,12 @@ pub enum Corrupt {
     /// The number of block groups does not fit in a [`u32`].
     TooManyBlockGroups,
 
+    /// Invalid first data block.
+    FirstDataBlock(
+        /// First data block.
+        u32,
+    ),
+
     /// Invalid block group descriptor.
     BlockGroupDescriptor(
         /// Block group number.
@@ -237,6 +243,9 @@ impl Display for Corrupt {
             }
             Self::InvalidBlockSize => write!(f, "invalid block size"),
             Self::TooManyBlockGroups => write!(f, "too many block groups"),
+            Self::FirstDataBlock(block) => {
+                write!(f, "invalid first data block: {block}")
+            }
             Self::BlockGroupDescriptor(block_group_num) => {
                 write!(f, "block group descriptor {block_group_num} is invalid")
             }
