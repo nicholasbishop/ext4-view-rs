@@ -51,6 +51,26 @@ impl BlockGroupDescriptor {
         }
     }
 
+    /// Map from a block group descriptor index to the absolute byte
+    /// within the file where the descriptor starts.
+    fn get_start_byte(
+        sb: &Superblock,
+        bgd_index: BlockGroupIndex,
+    ) -> Option<u64> {
+        let bgd_start_block: u32 = if sb.block_size == 1024 { 2 } else { 1 };
+        let bgd_per_block = sb
+            .block_size
+            .checked_div(u32::from(sb.block_group_descriptor_size))?;
+        let block_index = bgd_start_block
+            .checked_add(bgd_index.checked_div(bgd_per_block)?)?;
+        let offset_within_block = (bgd_index.checked_rem(bgd_per_block)?)
+            .checked_mul(u32::from(sb.block_group_descriptor_size))?;
+
+        u64::from(block_index)
+            .checked_mul(u64::from(sb.block_size))?
+            .checked_add(u64::from(offset_within_block))
+    }
+
     /// Read a block group descriptor.
     fn read(
         sb: &Superblock,
@@ -62,15 +82,8 @@ impl BlockGroupDescriptor {
             usize::from(sb.block_group_descriptor_size);
         let mut data = vec![0; block_group_descriptor_size];
 
-        let bgd_start_block = if sb.block_size == 1024 { 2 } else { 1 };
-        let bgd_per_block =
-            sb.block_size / u32::from(sb.block_group_descriptor_size);
-        let block_index = bgd_start_block + (bgd_index / bgd_per_block);
-        let offset_within_block = (bgd_index % bgd_per_block)
-            * u32::from(sb.block_group_descriptor_size);
-
-        let start = u64::from(block_index) * u64::from(sb.block_size)
-            + u64::from(offset_within_block);
+        let start = Self::get_start_byte(sb, bgd_index)
+            .ok_or(Corrupt::BlockGroupDescriptor(bgd_index))?;
         reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
         let block_group_descriptor = Self::from_bytes(sb, &data);
@@ -93,9 +106,9 @@ impl BlockGroupDescriptor {
             let checksum = u16::try_from(checksum.finalize() & 0xffff).unwrap();
 
             if checksum != block_group_descriptor.checksum {
-                return Err(Ext4Error::Corrupt(
-                    Corrupt::BlockGroupDescriptorChecksum(bgd_index),
-                ));
+                return Err(
+                    Corrupt::BlockGroupDescriptorChecksum(bgd_index).into()
+                );
             }
         } else if sb
             .read_only_compatible_features
