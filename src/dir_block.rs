@@ -55,8 +55,11 @@ impl<'a> DirBlock<'a> {
         let block_size = self.fs.0.superblock.block_size;
         assert_eq!(block.len(), usize_from_u32(block_size));
 
-        self.fs
-            .read_bytes(self.block_index * u64::from(block_size), block)?;
+        let start_byte = self
+            .block_index
+            .checked_mul(u64::from(block_size))
+            .ok_or(Corrupt::DirEntry(self.dir_inode.get()))?;
+        self.fs.read_bytes(start_byte, block)?;
 
         if !self.fs.has_metadata_checksums() {
             return Ok(());
