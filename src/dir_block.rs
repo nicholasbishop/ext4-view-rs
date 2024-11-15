@@ -80,14 +80,19 @@ impl<'a> DirBlock<'a> {
 
     /// Get the stored checksum from the last four bytes of the block.
     fn read_expected_checksum(&self, block: &[u8]) -> u32 {
-        let offset = block.len() - 4;
+        // OK to unwrap: minimum block size is 1024.
+        let offset = block.len().checked_sub(4).unwrap();
+
         read_u32le(block, offset)
     }
 
     /// Calculate the checksum of a leaf block.
     fn calc_leaf_checksum(&self, block: &[u8]) -> Checksum {
         let tail_entry_size = 12;
-        let tail_entry_offset = block.len() - tail_entry_size;
+
+        // OK to unwrap: minimum block size is 1024.
+        let tail_entry_offset =
+            block.len().checked_sub(tail_entry_size).unwrap();
 
         let mut checksum = self.checksum_base.clone();
         checksum.update(&block[..tail_entry_offset]);
@@ -102,15 +107,28 @@ impl<'a> DirBlock<'a> {
         block_type: DirBlockType,
     ) -> Checksum {
         let tail_entry_size = 8;
-        let tail_entry_offset = block.len() - tail_entry_size;
 
-        let limit_offset = if block_type == DirBlockType::Root {
+        // OK to unwrap: minimum block size is 1024.
+        let tail_entry_offset =
+            block.len().checked_sub(tail_entry_size).unwrap();
+
+        let limit_offset: usize = if block_type == DirBlockType::Root {
             0x20
         } else {
             0x8
         };
-        let count = read_u16le(block, limit_offset + 2);
-        let num_bytes = limit_offset + (usize::from(count) * 8);
+
+        // OK to unwrap: `limit_offset` is at most 0x20.
+        let count_offset = limit_offset.checked_add(2).unwrap();
+
+        let count = read_u16le(block, count_offset);
+
+        // OK to unwrap: `count` is at most 2^16, `limit_offset` is
+        // at most 0x20, so the maximum result is 524_320. This fits in
+        // a `u32`, and we assume that `usize` is at least that large.
+        let num_bytes = limit_offset
+            .checked_add(usize::from(count).checked_mul(8).unwrap())
+            .unwrap();
 
         let mut checksum = self.checksum_base.clone();
         checksum.update(&block[..num_bytes]);
