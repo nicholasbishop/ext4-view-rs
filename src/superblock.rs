@@ -79,7 +79,9 @@ impl Superblock {
 
         // s_first_data_block is usually 1 if the block size is 1KiB,
         // and otherwise its usually 0.
-        let num_data_blocks = blocks_count - u64::from(s_first_data_block);
+        let num_data_blocks = blocks_count
+            .checked_sub(u64::from(s_first_data_block))
+            .ok_or(Corrupt::FirstDataBlock(s_first_data_block))?;
         // Use div_ceil to round up in case `num_data_blocks` isn't an
         // even multiple of `s_blocks_per_group`. (Consider for example
         // `num_data_blocks = 3` and `s_blocks_per_group = 4`; that is
