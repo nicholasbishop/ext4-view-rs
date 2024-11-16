@@ -274,6 +274,18 @@ impl Display for Corrupt {
     }
 }
 
+impl From<Corrupt> for Ext4Error {
+    fn from(c: Corrupt) -> Self {
+        Self::Corrupt(c)
+    }
+}
+
+impl From<Incompatible> for Ext4Error {
+    fn from(i: Incompatible) -> Self {
+        Self::Incompatible(i)
+    }
+}
+
 /// Error type used in [`Ext4Error::Incompatible`] when the filesystem
 /// cannot be read due to incomplete support in this library.
 #[derive(Clone, Debug, Eq, PartialEq)]
