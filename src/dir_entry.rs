@@ -274,10 +274,13 @@ impl DirEntry {
         let name_len = *bytes.get(6).unwrap();
         let name_len_usize = usize::from(name_len);
 
+        // OK to unwrap: `NAME_OFFSET` is 8 and `name_len_usize` is
+        // at most 255, so the result fits in a `u16`, which is the
+        // minimum size of `usize`.
+        let name_end: usize = NAME_OFFSET.checked_add(name_len_usize).unwrap();
+
         // Get the entry's name.
-        let name_slice = bytes
-            .get(NAME_OFFSET..NAME_OFFSET + name_len_usize)
-            .ok_or(err())?;
+        let name_slice = bytes.get(NAME_OFFSET..name_end).ok_or(err())?;
 
         // Note: this value is only valid if `FILE_TYPE_IN_DIR_ENTRY` is
         // in the incompatible features set. That requirement is checked
