@@ -55,9 +55,7 @@ impl NodeHeader {
     /// Read a `NodeHeader` from a byte slice.
     fn from_bytes(data: &[u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
         if data.len() < ENTRY_SIZE_IN_BYTES {
-            return Err(Ext4Error::Corrupt(Corrupt::ExtentNotEnoughData(
-                inode.get(),
-            )));
+            return Err(Corrupt::ExtentNotEnoughData(inode.get()).into());
         }
 
         let eh_magic = read_u16le(data, 0);
@@ -66,11 +64,11 @@ impl NodeHeader {
         let eh_depth = read_u16le(data, 6);
 
         if eh_magic != 0xf30a {
-            return Err(Ext4Error::Corrupt(Corrupt::ExtentMagic(inode.get())));
+            return Err(Corrupt::ExtentMagic(inode.get()).into());
         }
 
         if eh_depth > 5 {
-            return Err(Ext4Error::Corrupt(Corrupt::ExtentDepth(inode.get())));
+            return Err(Corrupt::ExtentDepth(inode.get()).into());
         }
 
         Ok(Self {
@@ -103,9 +101,7 @@ impl ToVisitItem {
         // The node data must be large enough to contain the number of
         // entries specified in the header.
         if node.len() < header.node_size_in_bytes() {
-            return Err(Ext4Error::Corrupt(Corrupt::ExtentNotEnoughData(
-                inode.get(),
-            )));
+            return Err(Corrupt::ExtentNotEnoughData(inode.get()).into());
         }
 
         // Remove unused data at the end (e.g. checksum data).
@@ -230,9 +226,9 @@ impl Extents {
                 checksum.update(&child_node[..checksum_offset]);
                 let actual_checksum = checksum.finalize();
                 if expected_checksum != actual_checksum {
-                    return Err(Ext4Error::Corrupt(Corrupt::ExtentChecksum(
-                        self.inode.get(),
-                    )));
+                    return Err(
+                        Corrupt::ExtentChecksum(self.inode.get()).into()
+                    );
                 }
             }
 
