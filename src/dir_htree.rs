@@ -145,22 +145,23 @@ impl<'a> InternalNode<'a> {
 
     /// Perform a binary search to find the child block index for the
     /// `lookup_hash`.
-    fn lookup_block_by_hash(&self, lookup_hash: DirHash) -> ChildBlock {
+    fn lookup_block_by_hash(&self, lookup_hash: DirHash) -> Option<ChildBlock> {
         // Left/right entry index.
         let mut left = 0;
-        let mut right = self.num_entries() - 1;
+        let mut right = self.num_entries().checked_sub(1)?;
 
         while left <= right {
-            let mid = (left + right) / 2;
+            let mid = left.checked_add(right)? / 2;
             let mid_hash = self.get_entry(mid).0;
             if mid_hash <= lookup_hash {
-                left = mid + 1;
+                left = mid.checked_add(1)?;
             } else {
-                right = mid - 1;
+                right = mid.checked_sub(1)?;
             }
         }
 
-        self.get_entry(left - 1).1
+        let index = left.checked_sub(1)?;
+        Some(self.get_entry(index).1)
     }
 }
 
@@ -299,7 +300,9 @@ fn find_leaf_node(
     let root_node = InternalNode::from_root_block(block, inode.index)?;
 
     let hash = dir_hash_md4_half(name, &fs.0.superblock.htree_hash_seed);
-    let mut child_block_relative = root_node.lookup_block_by_hash(hash);
+    let mut child_block_relative = root_node
+        .lookup_block_by_hash(hash)
+        .ok_or(Corrupt::DirEntry(inode.index.get()))?;
 
     // Descend through the tree one level at a time. The first iteration
     // of the loop goes from the root node to a child. The last
@@ -325,7 +328,9 @@ fn find_leaf_node(
         if level != depth {
             let inner_node =
                 InternalNode::from_non_root_block(block, inode.index)?;
-            child_block_relative = inner_node.lookup_block_by_hash(hash);
+            child_block_relative = inner_node
+                .lookup_block_by_hash(hash)
+                .ok_or(Corrupt::DirEntry(inode.index.get()))?;
         }
     }
 
@@ -436,13 +441,13 @@ mod tests {
         assert_eq!(node.num_entries(), 11);
         assert_eq!(node.get_entry(0), (0, 100));
         assert_eq!(node.get_entry(10), (20, 190));
-        assert_eq!(node.lookup_block_by_hash(0), 100);
-        assert_eq!(node.lookup_block_by_hash(9), 196);
-        assert_eq!(node.lookup_block_by_hash(10), 195);
-        assert_eq!(node.lookup_block_by_hash(11), 195);
-        assert_eq!(node.lookup_block_by_hash(12), 194);
-        assert_eq!(node.lookup_block_by_hash(20), 190);
-        assert_eq!(node.lookup_block_by_hash(30), 190);
+        assert_eq!(node.lookup_block_by_hash(0), Some(100));
+        assert_eq!(node.lookup_block_by_hash(9), Some(196));
+        assert_eq!(node.lookup_block_by_hash(10), Some(195));
+        assert_eq!(node.lookup_block_by_hash(11), Some(195));
+        assert_eq!(node.lookup_block_by_hash(12), Some(194));
+        assert_eq!(node.lookup_block_by_hash(20), Some(190));
+        assert_eq!(node.lookup_block_by_hash(30), Some(190));
 
         // Add one more entry.
         bytes[2..4].copy_from_slice(&12u16.to_le_bytes()); // count
@@ -451,13 +456,13 @@ mod tests {
         // Test search with an even number of entries.
         let node = InternalNode::new(&bytes, inode).unwrap();
         assert_eq!(node.num_entries(), 12);
-        assert_eq!(node.lookup_block_by_hash(0), 100);
-        assert_eq!(node.lookup_block_by_hash(9), 196);
-        assert_eq!(node.lookup_block_by_hash(10), 195);
-        assert_eq!(node.lookup_block_by_hash(11), 195);
-        assert_eq!(node.lookup_block_by_hash(12), 194);
-        assert_eq!(node.lookup_block_by_hash(20), 190);
-        assert_eq!(node.lookup_block_by_hash(30), 189);
+        assert_eq!(node.lookup_block_by_hash(0), Some(100));
+        assert_eq!(node.lookup_block_by_hash(9), Some(196));
+        assert_eq!(node.lookup_block_by_hash(10), Some(195));
+        assert_eq!(node.lookup_block_by_hash(11), Some(195));
+        assert_eq!(node.lookup_block_by_hash(12), Some(194));
+        assert_eq!(node.lookup_block_by_hash(20), Some(190));
+        assert_eq!(node.lookup_block_by_hash(30), Some(189));
     }
 
     #[cfg(feature = "std")]
