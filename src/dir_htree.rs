@@ -99,9 +99,14 @@ impl<'a> InternalNode<'a> {
         // Get number of in-use entries from the header.
         let count = usize::from(read_u16le(bytes, 2));
 
+        // OK to unwrap: `ENTRY_SIZE` is 8 and `count` is at most
+        // 2^16, so the result is at most 2^19. That fits in a `u32`,
+        // and we assume that `usize` is at least that large.
+        let end_byte: usize = Self::ENTRY_SIZE.checked_mul(count).unwrap();
+
         // Shrink raw data to exactly the valid length, or return an
         // error if not enough data.
-        bytes = bytes.get(..Self::ENTRY_SIZE * count).ok_or(err)?;
+        bytes = bytes.get(..end_byte).ok_or(err)?;
 
         Ok(Self { entries: bytes })
     }
@@ -111,8 +116,17 @@ impl<'a> InternalNode<'a> {
     ///
     /// For `index` zero, the `hash` key is implicitly zero.
     fn get_entry(&self, index: usize) -> (DirHash, ChildBlock) {
-        let offset = Self::ENTRY_SIZE * index;
-        let block = read_u32le(self.entries, offset + 4);
+        // OK to unwrap: `ENTRY_SIZE` is 8 and `index` is at most
+        // 2^16, so the result is at most 2^19. That fits in a `u32`,
+        // and we assume that `usize` is at least that large.
+        let offset: usize = Self::ENTRY_SIZE.checked_mul(index).unwrap();
+
+        // OK to unwrap: `offset` is at most 2^19, so the result still
+        // fits in a `u32` and we assume that `usize` is at least that
+        // large.
+        let block_offset: usize = offset.checked_add(4).unwrap();
+
+        let block = read_u32le(self.entries, block_offset);
 
         let hash = if index == 0 {
             0
