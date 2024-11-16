@@ -89,7 +89,7 @@ impl<'a> InternalNode<'a> {
     /// Create an `InternalNode` from raw bytes. These bytes come from a
     /// directory block, see [`from_root_block`] and [`from_non_root_block`].
     fn new(mut bytes: &'a [u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
-        let err = Ext4Error::Corrupt(Corrupt::DirEntry(inode.get()));
+        let err = Corrupt::DirEntry(inode.get()).into();
 
         // At least the header entry must be present.
         if bytes.len() < Self::ENTRY_SIZE {
@@ -160,9 +160,9 @@ fn read_root_block(
     let mut file_blocks = FileBlocks::new(fs.clone(), inode)?;
 
     // Get the first block.
-    let block_index = file_blocks.next().ok_or_else(|| {
-        Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
-    })??;
+    let block_index = file_blocks
+        .next()
+        .ok_or_else(|| Corrupt::DirEntry(inode.index.get()))??;
 
     // Read the first block of the extent.
     let dir_block = DirBlock {
@@ -189,7 +189,7 @@ fn read_dot_or_dotdot(
     name: DirEntryName<'_>,
     block: &[u8],
 ) -> Result<Option<DirEntry>, Ext4Error> {
-    let corrupt = || Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()));
+    let corrupt = || Corrupt::DirEntry(inode.index.get()).into();
 
     let offset = if name == "." {
         0
@@ -229,7 +229,7 @@ fn find_extent_for_block(
         }
     }
 
-    Err(Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get())))
+    Err(Corrupt::DirEntry(inode.index.get()).into())
 }
 
 /// Convert from a block offset within a file to an absolute block index.
@@ -246,9 +246,7 @@ fn block_from_file_block(
         let mut block_map = FileBlocks::new(fs.clone(), inode)?;
         block_map
             .nth(usize_from_u32(relative_block))
-            .ok_or_else(|| {
-                Ext4Error::Corrupt(Corrupt::DirEntry(inode.index.get()))
-            })?
+            .ok_or_else(|| Corrupt::DirEntry(inode.index.get()))?
     }
 }
 
@@ -266,9 +264,7 @@ fn find_leaf_node(
     // the "half MD4" algorithm is supported by this library.
     let hash_type = block[0x1c];
     if hash_type != 1 {
-        return Err(Ext4Error::Incompatible(Incompatible::DirectoryHash(
-            hash_type,
-        )));
+        return Err(Incompatible::DirectoryHash(hash_type).into());
     }
 
     // Read the htree's depth from the root block. The depth is the

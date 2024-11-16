@@ -125,7 +125,7 @@ impl Inode {
         data: &[u8],
     ) -> Result<(Self, u32), Ext4Error> {
         if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
-            return Err(Ext4Error::Corrupt(Corrupt::Inode(index.get())));
+            return Err(Corrupt::Inode(index.get()).into());
         }
 
         let i_mode = read_u16le(data, 0x0);
@@ -163,9 +163,8 @@ impl Inode {
                     mode,
                     uid,
                     gid,
-                    file_type: FileType::try_from(mode).map_err(|_| {
-                        Ext4Error::Corrupt(Corrupt::Inode(index.get()))
-                    })?,
+                    file_type: FileType::try_from(mode)
+                        .map_err(|_| Corrupt::Inode(index.get()))?,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,
@@ -187,7 +186,7 @@ impl Inode {
             .0
             .block_group_descriptors
             .get(usize_from_u32(block_group_index))
-            .ok_or(Ext4Error::Corrupt(Corrupt::Inode(inode.get())))?;
+            .ok_or(Corrupt::Inode(inode.get()))?;
 
         let index_within_group = (inode.get() - 1) % sb.inodes_per_block_group;
 
@@ -227,9 +226,7 @@ impl Inode {
 
             let actual_checksum = checksum.finalize();
             if actual_checksum != expected_checksum {
-                return Err(Ext4Error::Corrupt(Corrupt::InodeChecksum(
-                    inode.index.get(),
-                )));
+                return Err(Corrupt::InodeChecksum(inode.index.get()).into());
             }
         }
 
@@ -246,9 +243,7 @@ impl Inode {
 
         // An empty symlink target is not allowed.
         if self.metadata.size_in_bytes == 0 {
-            return Err(Ext4Error::Corrupt(Corrupt::SymlinkTarget(
-                self.index.get(),
-            )));
+            return Err(Corrupt::SymlinkTarget(self.index.get()).into());
         }
 
         // Symlink targets of up to 59 bytes are stored inline. Longer
@@ -260,14 +255,12 @@ impl Inode {
             let len = usize::try_from(self.metadata.size_in_bytes).unwrap();
             let target = &self.inline_data[..len];
 
-            PathBuf::try_from(target).map_err(|_| {
-                Ext4Error::Corrupt(Corrupt::SymlinkTarget(self.index.get()))
-            })
+            PathBuf::try_from(target)
+                .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
         } else {
             let data = ext4.read_inode_file(self)?;
-            PathBuf::try_from(data).map_err(|_| {
-                Ext4Error::Corrupt(Corrupt::SymlinkTarget(self.index.get()))
-            })
+            PathBuf::try_from(data)
+                .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
         }
     }
 }

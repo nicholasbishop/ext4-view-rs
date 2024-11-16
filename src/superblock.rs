@@ -66,10 +66,10 @@ impl Superblock {
         let blocks_count = u64_from_hilo(s_blocks_count_hi, s_blocks_count_lo);
 
         let block_size = calc_block_size(s_log_block_size)
-            .ok_or(Ext4Error::Corrupt(Corrupt::InvalidBlockSize))?;
+            .ok_or(Corrupt::InvalidBlockSize)?;
 
         if s_magic != 0xef53 {
-            return Err(Ext4Error::Corrupt(Corrupt::SuperblockMagic));
+            return Err(Corrupt::SuperblockMagic.into());
         }
 
         let incompatible_features = check_incompat_features(s_feature_incompat)
@@ -88,7 +88,7 @@ impl Superblock {
         let num_block_groups = u32::try_from(
             num_data_blocks.div_ceil(u64::from(s_blocks_per_group)),
         )
-        .map_err(|_| Ext4Error::Corrupt(Corrupt::TooManyBlockGroups))?;
+        .map_err(|_| Corrupt::TooManyBlockGroups)?;
 
         let block_group_descriptor_size =
             if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
@@ -104,7 +104,7 @@ impl Superblock {
             let mut checksum = Checksum::new();
             checksum.update(&bytes[..S_CHECKSUM_OFFSET]);
             if s_checksum != checksum.finalize() {
-                return Err(Ext4Error::Corrupt(Corrupt::SuperblockChecksum));
+                return Err(Corrupt::SuperblockChecksum.into());
             }
         }
 

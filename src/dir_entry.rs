@@ -237,7 +237,7 @@ impl DirEntry {
     ) -> Result<(Option<Self>, usize), Ext4Error> {
         const NAME_OFFSET: usize = 8;
 
-        let err = || Ext4Error::Corrupt(Corrupt::DirEntry(inode.get()));
+        let err = || Corrupt::DirEntry(inode.get()).into();
 
         // Check size (the full entry will usually be larger than this),
         // but these header fields must be present.
@@ -286,8 +286,8 @@ impl DirEntry {
         // This requirement could be relaxed in the future by passing in
         // a filesystem reference and reading the pointed-to inode.
         let file_type = bytes[7];
-        let file_type = FileType::from_dir_entry(file_type)
-            .map_err(|_| Ext4Error::Corrupt(Corrupt::DirEntry(inode.get())))?;
+        let file_type =
+            FileType::from_dir_entry(file_type).map_err(|_| err())?;
 
         let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
         let entry = Self {

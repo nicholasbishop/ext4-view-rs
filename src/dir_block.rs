@@ -74,9 +74,7 @@ impl<'a> DirBlock<'a> {
         if actual_checksum.finalize() == expected_checksum {
             Ok(())
         } else {
-            Err(Ext4Error::Corrupt(Corrupt::DirBlockChecksum(
-                self.dir_inode.get(),
-            )))
+            Err(Corrupt::DirBlockChecksum(self.dir_inode.get()).into())
         }
     }
 
