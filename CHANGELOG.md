@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+* Add `impl From<Corrupt> for Ext4Error`.
+* Add `impl From<Incompatible> for Ext4Error`.
+
 ## 0.6.1
 
 * Fixed a panic when loading an invalid superblock.
