@@ -361,7 +361,12 @@ pub(crate) fn get_dir_entry_via_htree(
             inode.index,
             path.clone(),
         )?;
-        offset_within_block += entry_size;
+        offset_within_block =
+            if let Some(offset) = offset_within_block.checked_add(entry_size) {
+                offset
+            } else {
+                return Err(Corrupt::DirEntry(inode.index.get()).into());
+            };
         let Some(dir_entry) = dir_entry else {
             continue;
         };
