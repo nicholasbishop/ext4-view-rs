@@ -71,28 +71,30 @@ fn md4_half(state: &mut StateBlock, data: &HashBlock) {
     let mut c = state[2];
     let mut d = state[3];
 
+    // OK to unwrap `i + N` below: both operands are small.
+
     // round 1
-    for i in [0, 4] {
+    for i in [0usize, 4] {
         a = op(f, a, b, c, d, data[i], 3);
-        d = op(f, d, a, b, c, data[i + 1], 7);
-        c = op(f, c, d, a, b, data[i + 2], 11);
-        b = op(f, b, c, d, a, data[i + 3], 19);
+        d = op(f, d, a, b, c, data[i.checked_add(1).unwrap()], 7);
+        c = op(f, c, d, a, b, data[i.checked_add(2).unwrap()], 11);
+        b = op(f, b, c, d, a, data[i.checked_add(3).unwrap()], 19);
     }
 
     // round 2
-    for &i in &[1, 0] {
+    for &i in &[1usize, 0] {
         a = op(g, a, b, c, d, data[i] + K1, 3);
-        d = op(g, d, a, b, c, data[i + 2] + K1, 5);
-        c = op(g, c, d, a, b, data[i + 4] + K1, 9);
-        b = op(g, b, c, d, a, data[i + 6] + K1, 13);
+        d = op(g, d, a, b, c, data[i.checked_add(2).unwrap()] + K1, 5);
+        c = op(g, c, d, a, b, data[i.checked_add(4).unwrap()] + K1, 9);
+        b = op(g, b, c, d, a, data[i.checked_add(6).unwrap()] + K1, 13);
     }
 
     // round 3
-    for &i in &[2, 0] {
-        a = op(h, a, b, c, d, data[i + 1] + K2, 3);
-        d = op(h, d, a, b, c, data[i + 5] + K2, 9);
+    for &i in &[2usize, 0] {
+        a = op(h, a, b, c, d, data[i.checked_add(1).unwrap()] + K2, 3);
+        d = op(h, d, a, b, c, data[i.checked_add(5).unwrap()] + K2, 9);
         c = op(h, c, d, a, b, data[i] + K2, 11);
-        b = op(h, b, c, d, a, data[i + 4] + K2, 15);
+        b = op(h, b, c, d, a, data[i.checked_add(4).unwrap()] + K2, 15);
     }
 
     state[0] += a;
