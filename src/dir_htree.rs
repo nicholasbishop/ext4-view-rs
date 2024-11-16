@@ -223,7 +223,9 @@ fn find_extent_for_block(
         let extent = extent?;
 
         let start = extent.block_within_file;
-        let end = start + u32::from(extent.num_blocks);
+        let end = start
+            .checked_add(u32::from(extent.num_blocks))
+            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
         if block >= start && block < end {
             return Ok(extent);
         }
