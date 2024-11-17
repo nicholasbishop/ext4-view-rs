@@ -76,23 +76,24 @@ impl Ext4Read for Vec<u8> {
         start_byte: u64,
         dst: &mut [u8],
     ) -> Result<(), BoxedError> {
-        let start = usize::try_from(start_byte).map_err(|_| {
+        read_from_bytes(self, start_byte, dst).ok_or_else(|| {
             Box::new(MemIoError {
                 start: start_byte,
                 read_len: dst.len(),
                 src_len: self.len(),
             })
-        })?;
-
-        let end = start + dst.len();
-        let src = self.get(start..end).ok_or(Box::new(MemIoError {
-            start: start_byte,
-            read_len: dst.len(),
-            src_len: self.len(),
-        }))?;
-        dst.copy_from_slice(src);
-        Ok(())
+            .into()
+        })
     }
+}
+
+fn read_from_bytes(src: &[u8], start_byte: u64, dst: &mut [u8]) -> Option<()> {
+    let start = usize::try_from(start_byte).ok()?;
+    let end = start.checked_add(dst.len())?;
+    let src = src.get(start..end)?;
+    dst.copy_from_slice(src);
+
+    Some(())
 }
 
 #[cfg(test)]
