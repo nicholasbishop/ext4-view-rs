@@ -195,7 +195,7 @@ impl Inode {
             + u64::from(index_within_group * u32::from(sb.inode_size));
 
         let mut data = vec![0; usize::from(sb.inode_size)];
-        ext4.read_bytes(src_offset, &mut data).unwrap();
+        ext4.read_bytes(src_offset, &mut data)?;
 
         let (inode, expected_checksum) = Self::from_bytes(ext4, inode, &data)?;
 
