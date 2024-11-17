@@ -178,23 +178,10 @@ impl Inode {
         ext4: &Ext4,
         inode: InodeIndex,
     ) -> Result<Self, Ext4Error> {
-        let sb = &ext4.0.superblock;
-
-        let block_group_index = (inode.get() - 1) / sb.inodes_per_block_group;
-
-        let group = ext4
-            .0
-            .block_group_descriptors
-            .get(usize_from_u32(block_group_index))
+        let src_offset = get_inode_start_byte(ext4, inode)
             .ok_or(Corrupt::Inode(inode.get()))?;
 
-        let index_within_group = (inode.get() - 1) % sb.inodes_per_block_group;
-
-        let src_offset = (u64::from(sb.block_size)
-            * group.inode_table_first_block)
-            + u64::from(index_within_group * u32::from(sb.inode_size));
-
-        let mut data = vec![0; usize::from(sb.inode_size)];
+        let mut data = vec![0; usize::from(ext4.0.superblock.inode_size)];
         ext4.read_bytes(src_offset, &mut data)?;
 
         let (inode, expected_checksum) = Self::from_bytes(ext4, inode, &data)?;
@@ -263,4 +250,28 @@ impl Inode {
                 .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
         }
     }
+}
+
+fn get_inode_start_byte(ext4: &Ext4, inode: InodeIndex) -> Option<u64> {
+    let sb = &ext4.0.superblock;
+
+    // OK to unwrap: `inode` is nonzero.
+    let inode_minus_1 = inode.get().checked_sub(1).unwrap();
+
+    let block_group_index = inode_minus_1 / sb.inodes_per_block_group;
+
+    let group = ext4
+        .0
+        .block_group_descriptors
+        .get(usize_from_u32(block_group_index))?;
+
+    let index_within_group = inode_minus_1 % sb.inodes_per_block_group;
+
+    let byte_offset_within_group =
+        u64::from(index_within_group).checked_mul(u64::from(sb.inode_size))?;
+
+    let byte_offset_of_group =
+        u64::from(sb.block_size).checked_mul(group.inode_table_first_block)?;
+
+    byte_offset_of_group.checked_add(byte_offset_within_group)
 }
