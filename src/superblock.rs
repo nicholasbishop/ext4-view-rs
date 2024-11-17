@@ -10,6 +10,7 @@ use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::util::{read_u16le, read_u32le, u64_from_hilo};
+use core::num::NonZero;
 
 /// Information about the filesystem.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -17,7 +18,7 @@ pub(crate) struct Superblock {
     pub(crate) block_size: u32,
     pub(crate) blocks_count: u64,
     pub(crate) inode_size: u16,
-    pub(crate) inodes_per_block_group: u32,
+    pub(crate) inodes_per_block_group: NonZero<u32>,
     pub(crate) block_group_descriptor_size: u16,
     pub(crate) num_block_groups: u32,
     pub(crate) incompatible_features: IncompatibleFeatures,
@@ -92,6 +93,9 @@ impl Superblock {
         )
         .map_err(|_| Corrupt::TooManyBlockGroups)?;
 
+        let inodes_per_block_group = NonZero::new(s_inodes_per_group)
+            .ok_or(Corrupt::InodesPerBlockGroup)?;
+
         let block_group_descriptor_size =
             if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
                 s_desc_size
@@ -124,7 +128,7 @@ impl Superblock {
             block_size,
             blocks_count,
             inode_size: s_inode_size,
-            inodes_per_block_group: s_inodes_per_group,
+            inodes_per_block_group,
             block_group_descriptor_size,
             num_block_groups,
             incompatible_features,
@@ -192,7 +196,7 @@ mod tests {
                 block_size: 1024,
                 blocks_count: 128,
                 inode_size: 256,
-                inodes_per_block_group: 16,
+                inodes_per_block_group: NonZero::new(16).unwrap(),
                 block_group_descriptor_size: 64,
                 num_block_groups: 1,
                 incompatible_features:

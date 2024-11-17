@@ -160,6 +160,9 @@ pub enum Corrupt {
     /// The number of block groups does not fit in a [`u32`].
     TooManyBlockGroups,
 
+    /// The number of inodes per block group is zero.
+    InodesPerBlockGroup,
+
     /// Invalid first data block.
     FirstDataBlock(
         /// First data block.
@@ -243,6 +246,9 @@ impl Display for Corrupt {
             }
             Self::InvalidBlockSize => write!(f, "invalid block size"),
             Self::TooManyBlockGroups => write!(f, "too many block groups"),
+            Self::InodesPerBlockGroup => {
+                write!(f, "inodes per block group is zero")
+            }
             Self::FirstDataBlock(block) => {
                 write!(f, "invalid first data block: {block}")
             }
