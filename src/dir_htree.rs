@@ -240,8 +240,14 @@ fn block_from_file_block(
 ) -> Result<u64, Ext4Error> {
     if inode.flags.contains(InodeFlags::EXTENTS) {
         let extent = find_extent_for_block(fs, inode, relative_block)?;
-        Ok(extent.start_block
-            + u64::from(relative_block - extent.block_within_file))
+        let block_within_extent = relative_block
+            .checked_sub(extent.block_within_file)
+            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+        let absolute_block = extent
+            .start_block
+            .checked_add(u64::from(block_within_extent))
+            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+        Ok(absolute_block)
     } else {
         let mut block_map = FileBlocks::new(fs.clone(), inode)?;
         block_map
