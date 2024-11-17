@@ -36,26 +36,30 @@ pub(crate) fn u32_from_hilo(hi: u16, lo: u16) -> u32 {
     (u32::from(hi) << 16) | u32::from(lo)
 }
 
-/// Read the first two bytes from `bytes` as a little-endian [`u16`].
+/// Read a little-endian [`u16`] from `bytes` at `offset`.
 ///
 /// # Panics
 ///
-/// Panics if `bytes` is less than two bytes in length.
+/// Panics if `bytes` is not large enough to read two bytes at `offset`.
 #[inline]
 #[must_use]
 pub(crate) fn read_u16le(bytes: &[u8], offset: usize) -> u16 {
-    let bytes = bytes.get(offset..offset + size_of::<u16>()).unwrap();
+    // OK to unwrap: these panics are described in the docstring.
+    let end = offset.checked_add(size_of::<u16>()).unwrap();
+    let bytes = bytes.get(offset..end).unwrap();
     u16::from_le_bytes(bytes.try_into().unwrap())
 }
 
-/// Read the first four bytes from `bytes` as a little-endian [`u32`].
+/// Read a little-endian [`u32`] from `bytes` at `offset`.
 ///
 /// # Panics
 ///
-/// Panics if `bytes` is less than four bytes in length.
+/// Panics if `bytes` is not large enough to read four bytes at `offset`.
 #[inline]
 #[must_use]
 pub(crate) fn read_u32le(bytes: &[u8], offset: usize) -> u32 {
-    let bytes = bytes.get(offset..offset + size_of::<u32>()).unwrap();
+    // OK to unwrap: these panics are described in the docstring.
+    let end = offset.checked_add(size_of::<u32>()).unwrap();
+    let bytes = bytes.get(offset..end).unwrap();
     u32::from_le_bytes(bytes.try_into().unwrap())
 }
