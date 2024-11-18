@@ -273,7 +273,8 @@ impl PathBuf {
     ///
     /// # Panics
     ///
-    /// Panics if the argument is not a valid path.
+    /// Panics if the argument is not a valid path, or if memory cannot
+    /// be allocated for the resulting path.
     #[track_caller]
     pub fn push(&mut self, path: impl AsRef<[u8]>) {
         #[track_caller]
@@ -296,7 +297,10 @@ impl PathBuf {
             };
 
             if add_sep {
-                this.0.reserve(p.0.len() + 1);
+                // OK to unwrap: docstring says panic is allowed for
+                // memory allocation failure.
+                let len = p.0.len().checked_add(1).unwrap();
+                this.0.reserve(len);
                 this.0.push(Path::SEPARATOR);
             } else {
                 this.0.reserve(p.0.len());
@@ -510,26 +514,30 @@ impl<'a> Iterator for Components<'a> {
         }
 
         if self.offset == 0 && path[0] == Path::SEPARATOR {
-            self.offset += 1;
+            self.offset = 1;
             return Some(Component::RootDir);
         }
 
         // Coalesce repeated separators like "a//b".
         while self.offset < path.len() && path[self.offset] == Path::SEPARATOR {
-            self.offset += 1;
+            // OK to unwrap: `offset` is less than `path.len()`, which
+            // is also a `usize`, so adding `1` cannot fail.
+            self.offset = self.offset.checked_add(1).unwrap();
         }
         if self.offset >= path.len() {
             return None;
         }
 
-        let end = if let Some(index) = self
+        let end: usize = if let Some(index) = self
             .path
             .0
             .iter()
             .skip(self.offset)
             .position(|b| *b == Path::SEPARATOR)
         {
-            self.offset + index
+            // OK to unwrap: this sum is a valid index within `path`,
+            // so it must fit in a `usize`.
+            self.offset.checked_add(index).unwrap()
         } else {
             path.len()
         };
