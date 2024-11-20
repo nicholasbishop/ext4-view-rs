@@ -90,8 +90,8 @@ pub(crate) fn resolve_path(
     // Remove duplicate separators to make the rest of the logic simpler.
     path_dedup_sep(&mut path);
 
-    let mut num_symlinks = 0;
-    let mut num_iterations = 0;
+    let mut num_symlinks: usize = 0;
+    let mut num_iterations: usize = 0;
 
     // Current inode, starting at the root.
     let mut inode = fs.read_root_inode()?;
@@ -104,21 +104,30 @@ pub(crate) fn resolve_path(
         // reachable in practice due to the other restrictions
         // (MAX_SYMLINKS and MAX_PATH_LEN), so panic rather than
         // returning an error.
-        num_iterations += 1;
+        //
+        // OK to unwrap: never exceeds `MAX_ITERATIONS`, which is much
+        // less than `usize::MAX`.
+        num_iterations = num_iterations.checked_add(1).unwrap();
         assert!(num_iterations <= MAX_ITERATIONS);
 
         // Find the end of the component. This is either the next '/',
         // or the end of the path.
         let next_sep = find_next_sep(&path, index);
         let comp_end = next_sep.unwrap_or(path.len());
+        // OK to unwrap: `path` cannot be empty because this function
+        // rejects relative paths.
+        let last_index = path.len().checked_sub(1).unwrap();
         // This is the last component if there is no next '/', or if the
         // next separator is at the end of the path.
-        let is_last_component =
-            next_sep.is_none() || comp_end == (path.len() - 1);
+        let is_last_component = next_sep.is_none() || comp_end == last_index;
 
+        // OK to unwrap: `comp_end` is an index in the path, which is
+        // limited to `MAX_PATH_LEN`, which is much less than
+        // `usize::MAX`.
+        let comp_plus_1: usize = comp_end.checked_add(1).unwrap();
         // Index of the separator after the current component, or the
         // end of the path if there isn't a separator.
-        let comp_end_with_sep = (comp_end + 1).min(path.len());
+        let comp_end_with_sep = comp_plus_1.min(path.len());
 
         // Get the component name.
         let comp = &path[index..comp_end];
@@ -154,7 +163,9 @@ pub(crate) fn resolve_path(
         {
             // Resolve symlink, unless this is the last component and `follow != All`.
 
-            num_symlinks += 1;
+            // OK to unwrap: never exceeds `MAX_SYMLINKS`, which is much
+            // less than `usize::MAX`.
+            num_symlinks = num_symlinks.checked_add(1).unwrap();
             if num_symlinks > MAX_SYMLINKS {
                 return Err(Ext4Error::TooManySymlinks);
             }
@@ -204,7 +215,9 @@ pub(crate) fn resolve_path(
     // If the final component is a directory, remove the trailing
     // separator. Otherwise, it's an error since non-directories don't
     // have children.
-    if path.len() > 1 && path[path.len() - 1] == Path::SEPARATOR {
+    //
+    // OK to unwrap: if path is non-empty then `last` is not None.
+    if path.len() > 1 && *path.last().unwrap() == Path::SEPARATOR {
         if inode.metadata.is_dir() {
             path.pop();
         } else {
@@ -250,8 +263,7 @@ fn find_prev_sep(path: &[u8], start: usize) -> Option<usize> {
 /// `start` because there is no parent component ("/.." resolves to
 /// "/").
 ///
-/// If found, the return value is the absolute index, not an offset from
-/// `start`.
+/// The return value is the absolute index, not an offset from `start`.
 ///
 /// Panics if any of these is true:
 /// * `start` is zero.
@@ -259,7 +271,7 @@ fn find_prev_sep(path: &[u8], start: usize) -> Option<usize> {
 /// * The byte before `start` is not a separator.
 fn find_parent_component_start(path: &[u8], start: usize) -> usize {
     assert!(start != 0 && start < path.len());
-    assert!(path[start - 1] == Path::SEPARATOR);
+    assert!(path[start.checked_sub(1).unwrap()] == Path::SEPARATOR);
 
     if start == 1 {
         // This is the first component after the root, and the
@@ -270,14 +282,18 @@ fn find_parent_component_start(path: &[u8], start: usize) -> usize {
 
         // Minus 2: minus 1 is the separator before this component,
         // so we want to start searching back from one earlier.
-        let start_search_from = start - 2;
+        // OK to unwrap: `start` is at least `2` in this branch.
+        let start_search_from = start.checked_sub(2).unwrap();
 
         // OK to unwrap: this is not the first component after
         // the root, so there must be an earlier separator.
         let prev_sep = find_prev_sep(path, start_search_from).unwrap();
 
         // Advance to the first byte after the separator.
-        prev_sep + 1
+
+        // OK to unwrap: `prev_sep` is less than `path.len()`, so the
+        // sum still fits in a `usize`.
+        prev_sep.checked_add(1).unwrap()
     }
 }
 
@@ -285,12 +301,16 @@ fn find_parent_component_start(path: &[u8], start: usize) -> usize {
 /// separator. E.g. "a///b" becomes "a/b".
 fn path_dedup_sep(path: &mut Vec<u8>) {
     // TODO: would be more efficient to go from end, and to delete in chunks.
-    let mut i = 1;
+    let mut i: usize = 1;
     while i < path.len() {
-        if path[i - 1] == Path::SEPARATOR && path[i] == Path::SEPARATOR {
+        // OK to unwrap: `i` is always larger than `1`.
+        let prev = i.checked_sub(1).unwrap();
+        if path[prev] == Path::SEPARATOR && path[i] == Path::SEPARATOR {
             path.remove(i);
         } else {
-            i += 1;
+            // OK to unwrap: `i` is less than `path.len()`, so the sum
+            // still fits in a `usize`.
+            i = i.checked_add(1).unwrap();
         }
     }
 }
