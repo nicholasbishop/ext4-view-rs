@@ -257,34 +257,41 @@ impl Ext4 {
     /// Fails with `FileTooLarge` if the size of the file is too large
     /// to fit in a [`usize`].
     fn read_inode_file(&self, inode: &Inode) -> Result<Vec<u8>, Ext4Error> {
+        use Ext4Error::FileTooLarge;
+
         let block_size = self.0.superblock.block_size;
 
         // Get the file size and preallocate the output vector.
         let file_size_in_bytes = usize::try_from(inode.metadata.size_in_bytes)
-            .map_err(|_| Ext4Error::FileTooLarge)?;
+            .map_err(|_| FileTooLarge)?;
         let mut dst = vec![0; file_size_in_bytes];
 
         if inode.flags.contains(InodeFlags::EXTENTS) {
             for extent in Extents::new(self.clone(), inode)? {
                 let extent = extent?;
 
-                let dst_start =
-                    usize_from_u32(extent.block_within_file * block_size);
+                let dst_start = usize_from_u32(extent.block_within_file)
+                    .checked_mul(usize_from_u32(block_size))
+                    .ok_or(FileTooLarge)?;
 
                 // Get the length (in bytes) of the extent.
                 //
                 // This length may actually be too long, since the last
                 // block may extend past the end of the file. This is
                 // checked below.
-                let len =
-                    usize_from_u32(block_size * u32::from(extent.num_blocks));
-                let dst_end = dst_start + len;
+                let len = usize_from_u32(block_size)
+                    .checked_mul(usize::from(extent.num_blocks))
+                    .ok_or(FileTooLarge)?;
+                let dst_end = dst_start.checked_add(len).ok_or(FileTooLarge)?;
                 // Cap to the end of the file.
                 let dst_end = dst_end.min(file_size_in_bytes);
 
                 let dst = &mut dst[dst_start..dst_end];
 
-                let src_start = extent.start_block * u64::from(block_size);
+                let src_start = extent
+                    .start_block
+                    .checked_mul(u64::from(block_size))
+                    .ok_or(FileTooLarge)?;
 
                 self.read_bytes(src_start, dst)?;
             }
@@ -293,14 +300,20 @@ impl Ext4 {
             for block_index in FileBlocks::new(self.clone(), inode)? {
                 let block_index = block_index?;
 
-                let src_start = block_index * u64::from(block_size);
+                let src_start = block_index
+                    .checked_mul(u64::from(block_size))
+                    .ok_or(FileTooLarge)?;
 
-                let dst_end = dst_start + usize_from_u32(block_size);
+                let dst_end = dst_start
+                    .checked_add(usize_from_u32(block_size))
+                    .ok_or(FileTooLarge)?;
                 // Cap to the end of the file.
                 let dst_end = dst_end.min(file_size_in_bytes);
 
                 let dst = &mut dst[dst_start..dst_end];
-                dst_start += usize_from_u32(block_size);
+                dst_start = dst_start
+                    .checked_add(usize_from_u32(block_size))
+                    .ok_or(FileTooLarge)?;
 
                 // If the block index is zero, it's a hole, which should
                 // be filled with zeroes. The destination is already
