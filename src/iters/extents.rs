@@ -39,15 +39,33 @@ struct NodeHeader {
     depth: u16,
 }
 
+/// Returns `(n + 1) * ENTRY_SIZE_IN_BYTES`.
+///
+/// The maximum value this returns is 786432.
+fn add_one_mul_entry_size(n: u16) -> usize {
+    // OK to unwrap: the maximum value of `n` is `2^16-1`, so the
+    // maximum value of this sum is `2^16`. That fits in a `u32`, and we
+    // assume `usize` is at least as big as a `u32`.
+    let n_plus_one = usize::from(n).checked_add(1).unwrap();
+    // OK to unwrap: `n_plus_one` is at most `2^16` and
+    // `ENTRY_SIZE_IN_BYTES` is 12, so the maximum product is 786432,
+    // which fits in a `u32`. We assume `usize` is at least as big as a
+    // `u32`.
+    n_plus_one.checked_mul(ENTRY_SIZE_IN_BYTES).unwrap()
+}
+
 impl NodeHeader {
     /// Size of the node, including the header.
     fn node_size_in_bytes(&self) -> usize {
-        (usize::from(self.num_entries) + 1) * ENTRY_SIZE_IN_BYTES
+        add_one_mul_entry_size(self.num_entries)
     }
 
     /// Offset of the node's extent data.
+    ///
+    /// Per `add_one_mul_entry_size`, the maximum value this returns is
+    /// 786432.
     fn checksum_offset(&self) -> usize {
-        (usize::from(self.max_entries) + 1) * ENTRY_SIZE_IN_BYTES
+        add_one_mul_entry_size(self.max_entries)
     }
 }
 
@@ -115,8 +133,18 @@ impl ToVisitItem {
     }
 
     fn entry(&self) -> Option<&[u8]> {
-        let start = usize_from_u32(self.entry) * ENTRY_SIZE_IN_BYTES;
-        self.node.get(start..start + ENTRY_SIZE_IN_BYTES)
+        // OK to unwrap: `self.entry` is a `u16` and
+        // `ENTRY_SIZE_IN_BYTES` is `12`, so the maximum value of this
+        // product is `(2^16-1)*12 = 786420`, which fits in a `u32. We
+        // assume `usize` is at least as big as a `u32`.
+        let start = usize_from_u32(self.entry)
+            .checked_mul(ENTRY_SIZE_IN_BYTES)
+            .unwrap();
+        // OK to unwrap: `start` is at most 786420, so this sum is at
+        // most `786420+12 = 786432`, which fits in a `u32`. We assume
+        // `usize` is at least as big as a `u32`.
+        let end = start.checked_add(ENTRY_SIZE_IN_BYTES).unwrap();
+        self.node.get(start..end)
     }
 }
 
@@ -173,7 +201,7 @@ impl Extents {
         // `2^16+1`. This fits in `item.entry` since it is a `u32`.
         item.entry = item.entry.checked_add(1).unwrap();
 
-        let Some(entry) = &item.entry() else {
+        let Some(entry) = item.entry() else {
             // Reached end of this node.
             self.to_visit.pop();
             return Ok(None);
@@ -201,8 +229,9 @@ impl Extents {
             // Read just the header of the child node. This is needed to
             // find out how much data is in the full child node.
             let mut child_header = [0; ENTRY_SIZE_IN_BYTES];
-            let child_start =
-                child_block * u64::from(self.ext4.0.superblock.block_size);
+            let child_start = child_block
+                .checked_mul(u64::from(self.ext4.0.superblock.block_size))
+                .ok_or_else(|| Corrupt::ExtentBlock(self.inode.get()))?;
             self.ext4.read_bytes(child_start, &mut child_header)?;
             let child_header =
                 NodeHeader::from_bytes(&child_header, self.inode)?;
@@ -216,7 +245,13 @@ impl Extents {
                 0
             };
 
-            let mut child_node = vec![0; checksum_offset + checksum_size];
+            // OK to unwrap: per `checksum_offset()` the maximum offset
+            // is 786432, so the maximum sum here is 786436, which fits
+            // in a `u32`. We assume `usize` is at least as big as a
+            // `u32`.
+            let child_node_size: usize =
+                checksum_offset.checked_add(checksum_size).unwrap();
+            let mut child_node = vec![0; child_node_size];
             self.ext4.read_bytes(child_start, &mut child_node)?;
 
             // Validating the checksum here covers everything but the
