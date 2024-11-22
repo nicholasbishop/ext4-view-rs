@@ -9,7 +9,7 @@
 use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::DirEntry;
-use crate::error::{Ext4Error, Incompatible};
+use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::file_blocks::FileBlocks;
 use crate::path::PathBuf;
@@ -141,7 +141,11 @@ impl ReadDir {
             self.inode,
             self.path.clone(),
         )?;
-        self.offset_within_block += entry_size;
+
+        self.offset_within_block = self
+            .offset_within_block
+            .checked_add(entry_size)
+            .ok_or(Corrupt::DirEntry(self.inode.get()))?;
 
         Ok(entry)
     }
