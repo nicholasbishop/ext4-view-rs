@@ -126,8 +126,8 @@ impl<'a> DirBlock<'a> {
 
         let count = read_u16le(block, count_offset);
 
-        // OK to unwrap: `count` is at most 2^16, `limit_offset` is
-        // at most 0x20, so the maximum result is 524_320. This fits in
+        // OK to unwrap: `count` is at most 2^16-1, `limit_offset` is
+        // at most 0x20, so the maximum result is 524,312. This fits in
         // a `u32`, and we assume that `usize` is at least that large.
         let num_bytes = limit_offset
             .checked_add(usize::from(count).checked_mul(8).unwrap())
