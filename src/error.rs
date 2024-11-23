@@ -199,6 +199,9 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// A block map is invalid.
+    BlockMap,
+
     /// An extent's magic is invalid.
     ExtentMagic(
         /// Inode number.
@@ -271,6 +274,9 @@ impl Display for Corrupt {
             Self::Inode(inode) => write!(f, "inode {inode} is invalid"),
             Self::SymlinkTarget(inode) => {
                 write!(f, "inode {inode} has an invalid symlink path")
+            }
+            Self::BlockMap => {
+                write!(f, "block map is invalid")
             }
             Self::ExtentMagic(inode) => {
                 write!(f, "extent in inode {inode} has invalid magic")
