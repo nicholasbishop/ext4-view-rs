@@ -7,9 +7,9 @@
 // except according to those terms.
 
 use crate::extent::Extent;
-use crate::inode::Inode;
+use crate::inode::{Inode, InodeIndex};
 use crate::iters::extents::Extents;
-use crate::{Ext4, Ext4Error};
+use crate::{Corrupt, Ext4, Ext4Error};
 
 /// Iterator over blocks in a file that uses extents.
 ///
@@ -29,6 +29,9 @@ pub(super) struct ExtentsBlocks {
 
     /// Whether the iterator is done (all calls to `next` will return `None`).
     is_done: bool,
+
+    /// Just used for errors.
+    inode: InodeIndex,
 }
 
 impl ExtentsBlocks {
@@ -38,6 +41,7 @@ impl ExtentsBlocks {
             extent: None,
             block_within_extent: 0,
             is_done: false,
+            inode: inode.index,
         })
     }
 
@@ -69,9 +73,15 @@ impl ExtentsBlocks {
             return Ok(None);
         }
 
-        let block = extent.start_block + u64::from(self.block_within_extent);
+        let block = extent
+            .start_block
+            .checked_add(u64::from(self.block_within_extent))
+            .ok_or(Corrupt::ExtentBlock(self.inode.get()))?;
 
-        self.block_within_extent += 1;
+        // OK to unwrap: `block_within_extent` is less than `num_blocks`
+        // (checked above) so adding `1` cannot fail.
+        self.block_within_extent =
+            self.block_within_extent.checked_add(1).unwrap();
 
         Ok(Some(block))
     }
