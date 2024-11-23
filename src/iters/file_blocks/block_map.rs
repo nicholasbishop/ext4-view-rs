@@ -8,10 +8,10 @@
 
 use crate::inode::Inode;
 use crate::util::{read_u32le, usize_from_u32};
-use crate::{Ext4, Ext4Error};
+use crate::{Corrupt, Ext4, Ext4Error};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::mem;
+use core::num::NonZero;
 
 /// Block map iterator.
 ///
@@ -70,7 +70,10 @@ impl BlockMap {
     pub(super) fn new(fs: Ext4, inode: &Inode) -> Self {
         let mut level_0 = [0; Self::NUM_ENTRIES];
         for (i, dst) in level_0.iter_mut().enumerate() {
-            *dst = read_u32le(&inode.inline_data, i * mem::size_of::<u32>());
+            // OK to unwrap: `i` is at most 14, so the product is at
+            // most `14*4=56`, which fits in a `usize`.
+            let src_offset: usize = i.checked_mul(size_of::<u32>()).unwrap();
+            *dst = read_u32le(&inode.inline_data, src_offset);
         }
 
         let num_blocks = inode
@@ -191,14 +194,20 @@ struct IndirectBlockIter {
 impl IndirectBlockIter {
     fn new(fs: Ext4, block_index: u32) -> Result<Self, Ext4Error> {
         let block_size = fs.0.superblock.block_size;
-        assert_eq!(usize_from_u32(block_size) % mem::size_of::<u32>(), 0);
+        // Ensure that the block size is a multiple of the size of `u32`.
+        assert_eq!(
+            usize_from_u32(block_size)
+                % NonZero::new(size_of::<u32>()).unwrap(),
+            0
+        );
+
+        let start = u64::from(block_index)
+            .checked_mul(u64::from(block_size))
+            .ok_or(Corrupt::BlockMap)?;
 
         let mut block = vec![0u8; usize_from_u32(block_size)];
 
-        fs.read_bytes(
-            u64::from(block_index) * u64::from(block_size),
-            &mut block,
-        )?;
+        fs.read_bytes(start, &mut block)?;
 
         Ok(Self {
             block,
@@ -217,7 +226,16 @@ impl Iterator for IndirectBlockIter {
         }
 
         let block_index = read_u32le(&self.block, self.index_within_block);
-        self.index_within_block += mem::size_of::<u32>();
+
+        // OK to unwrap: `index_within_block` is less than `block.len()`
+        // (checked above). The index is always incremented by 4, and in
+        // `IndirectBlockIter::new`, we verify that the block length is
+        // an even multiple of 4, so the index is at most `block.len() -
+        // 4` at this point.
+        self.index_within_block = self
+            .index_within_block
+            .checked_add(size_of::<u32>())
+            .unwrap();
 
         Some(block_index)
     }
