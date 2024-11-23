@@ -103,7 +103,8 @@ impl BlockMap {
         };
 
         let ret: u32 = if self.level_0_index <= 11 {
-            self.level_0_index += 1;
+            // OK to unwrap: `level_0_index` is at most `11`.
+            self.level_0_index = self.level_0_index.checked_add(1).unwrap();
             self.num_blocks_yielded += 1;
             *block_0
         } else if self.level_0_index == 12 {
@@ -113,7 +114,7 @@ impl BlockMap {
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_1 = None;
-                    self.level_0_index += 1;
+                    self.level_0_index = 13;
                     return Ok(None);
                 }
             } else {
@@ -129,7 +130,7 @@ impl BlockMap {
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_2 = None;
-                    self.level_0_index += 1;
+                    self.level_0_index = 14;
                     return Ok(None);
                 }
             } else {
@@ -147,7 +148,7 @@ impl BlockMap {
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_3 = None;
-                    self.level_0_index += 1;
+                    self.level_0_index = 15;
                     return Ok(None);
                 }
             } else {
