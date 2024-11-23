@@ -100,8 +100,8 @@ impl<'a> InternalNode<'a> {
         let count = usize::from(read_u16le(bytes, 2));
 
         // OK to unwrap: `ENTRY_SIZE` is 8 and `count` is at most
-        // 2^16, so the result is at most 2^19. That fits in a `u32`,
-        // and we assume that `usize` is at least that large.
+        // 2^16-1, so the result is at most 524,280. That fits in a
+        // `u32`, and we assume that `usize` is at least that large.
         let end_byte: usize = Self::ENTRY_SIZE.checked_mul(count).unwrap();
 
         // Shrink raw data to exactly the valid length, or return an
@@ -117,7 +117,7 @@ impl<'a> InternalNode<'a> {
     /// For `index` zero, the `hash` key is implicitly zero.
     fn get_entry(&self, index: usize) -> (DirHash, ChildBlock) {
         // OK to unwrap: `ENTRY_SIZE` is 8 and `index` is at most
-        // 2^16, so the result is at most 2^19. That fits in a `u32`,
+        // 2^16-1, so the result is at most 524,280. That fits in a `u32`,
         // and we assume that `usize` is at least that large.
         let offset: usize = Self::ENTRY_SIZE.checked_mul(index).unwrap();
 
