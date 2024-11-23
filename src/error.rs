@@ -223,6 +223,12 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// An extent points to an invalid block.
+    ExtentBlock(
+        /// Inode number.
+        u32,
+    ),
+
     /// A directory block's checksum is invalid.
     DirBlockChecksum(
         /// Inode number.
@@ -277,6 +283,9 @@ impl Display for Corrupt {
             }
             Self::ExtentNotEnoughData(inode) => {
                 write!(f, "extent data in inode {inode} is invalid")
+            }
+            Self::ExtentBlock(inode) => {
+                write!(f, "extent in inode {inode} points to an invalid block")
             }
             Self::DirBlockChecksum(inode) => write!(
                 f,
