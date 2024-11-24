@@ -10,7 +10,7 @@ use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeIndex};
-use crate::util::{read_u16le, read_u32le, u64_from_hilo};
+use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
 use crate::Ext4;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -88,7 +88,7 @@ struct ToVisitItem {
 
     // Current index within the node. 0 is the node header, 1 is the
     // first entry, etc.
-    entry: u16,
+    entry: u32,
 
     // Node depth, copied from the node header.
     depth: u16,
@@ -115,7 +115,7 @@ impl ToVisitItem {
     }
 
     fn entry(&self) -> Option<&[u8]> {
-        let start = usize::from(self.entry) * ENTRY_SIZE_IN_BYTES;
+        let start = usize_from_u32(self.entry) * ENTRY_SIZE_IN_BYTES;
         self.node.get(start..start + ENTRY_SIZE_IN_BYTES)
     }
 }
@@ -167,7 +167,11 @@ impl Extents {
         // Increment at the start to ensure that early returns don't
         // accidentally skip the increment. Since entry 0 is the node
         // header, entry 1 is the first actual node entry.
-        item.entry += 1;
+        //
+        // OK to unwrap: there are at most `2^16-1` entries, plus 1 for
+        // the header. Adding 1 here brings the maximum value to
+        // `2^16+1`. This fits in `item.entry` since it is a `u32`.
+        item.entry = item.entry.checked_add(1).unwrap();
 
         let Some(entry) = &item.entry() else {
             // Reached end of this node.
