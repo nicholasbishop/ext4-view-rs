@@ -91,6 +91,15 @@ impl BlockMap {
         }
     }
 
+    #[track_caller]
+    fn increment_num_blocks_yielded(&mut self) {
+        // OK to unwrap: `num_blocks_yielded` is less than
+        // `num_blocks_total` (checked at the beginning of `next_impl`),
+        // so adding 1 cannot fail.
+        self.num_blocks_yielded =
+            self.num_blocks_yielded.checked_add(1).unwrap();
+    }
+
     fn next_impl(&mut self) -> Result<Option<u64>, Ext4Error> {
         if self.num_blocks_yielded >= self.num_blocks_total {
             self.is_done = true;
@@ -106,12 +115,12 @@ impl BlockMap {
         let ret: u32 = if self.level_0_index <= 11 {
             // OK to unwrap: `level_0_index` is at most `11`.
             self.level_0_index = self.level_0_index.checked_add(1).unwrap();
-            self.num_blocks_yielded += 1;
+            self.increment_num_blocks_yielded();
             block_0
         } else if self.level_0_index == 12 {
             if let Some(level_1) = &mut self.level_1 {
                 if let Some(block_index) = level_1.next() {
-                    self.num_blocks_yielded += 1;
+                    self.increment_num_blocks_yielded();
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_1 = None;
@@ -127,7 +136,7 @@ impl BlockMap {
             if let Some(level_2) = &mut self.level_2 {
                 if let Some(block_index) = level_2.next() {
                     let block_index = block_index?;
-                    self.num_blocks_yielded += 1;
+                    self.increment_num_blocks_yielded();
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_2 = None;
@@ -145,7 +154,7 @@ impl BlockMap {
             if let Some(level_3) = &mut self.level_3 {
                 if let Some(block_index) = level_3.next() {
                     let block_index = block_index?;
-                    self.num_blocks_yielded += 1;
+                    self.increment_num_blocks_yielded();
                     return Ok(Some(u64::from(block_index)));
                 } else {
                     self.level_3 = None;
