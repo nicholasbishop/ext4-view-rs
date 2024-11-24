@@ -97,7 +97,8 @@ impl BlockMap {
             return Ok(None);
         }
 
-        let Some(block_0) = self.level_0.get(self.level_0_index) else {
+        let Some(block_0) = self.level_0.get(self.level_0_index).copied()
+        else {
             self.is_done = true;
             return Ok(None);
         };
@@ -106,7 +107,7 @@ impl BlockMap {
             // OK to unwrap: `level_0_index` is at most `11`.
             self.level_0_index = self.level_0_index.checked_add(1).unwrap();
             self.num_blocks_yielded += 1;
-            *block_0
+            block_0
         } else if self.level_0_index == 12 {
             if let Some(level_1) = &mut self.level_1 {
                 if let Some(block_index) = level_1.next() {
@@ -119,7 +120,7 @@ impl BlockMap {
                 }
             } else {
                 self.level_1 =
-                    Some(IndirectBlockIter::new(self.fs.clone(), *block_0)?);
+                    Some(IndirectBlockIter::new(self.fs.clone(), block_0)?);
                 return Ok(None);
             }
         } else if self.level_0_index == 13 {
@@ -136,7 +137,7 @@ impl BlockMap {
             } else {
                 self.level_2 = Some(DoubleIndirectBlockIter::new(
                     self.fs.clone(),
-                    *block_0,
+                    block_0,
                 )?);
                 return Ok(None);
             }
@@ -154,7 +155,7 @@ impl BlockMap {
             } else {
                 self.level_3 = Some(TripleIndirectBlockIter::new(
                     self.fs.clone(),
-                    *block_0,
+                    block_0,
                 )?);
                 return Ok(None);
             }
