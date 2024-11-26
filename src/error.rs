@@ -214,6 +214,33 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// Journal size is invalid.
+    JournalSize,
+
+    /// Journal magic is invalid.
+    JournalMagic,
+
+    /// Journal contains a block of unknown type.
+    JournalBlockType(
+        /// Raw block type.
+        u32,
+    ),
+
+    /// Journal superblock checksum is invalid.
+    JournalSuperblockChecksum,
+
+    /// Journal block size does not match the filesystem block size.
+    JournalBlockSize,
+
+    /// Journal does not have the expected number of blocks.
+    JournalTruncated,
+
+    /// Journal first commit doesn't match the sequence number in the superblock.
+    JournalSequence,
+
+    /// Journal has a descriptor block that contains no tag with the last-tag flag set.
+    JournalDescriptorBlockMissingLastTag,
+
     /// An inode's checksum is invalid.
     InodeChecksum(
         /// Inode number.
@@ -324,6 +351,36 @@ impl Display for Corrupt {
                 f,
                 "invalid checksum for block group descriptor {block_group_num}"
             ),
+            Self::JournalSize => {
+                write!(f, "journal size is invalid")
+            }
+            Self::JournalMagic => {
+                write!(f, "journal magic is invalid")
+            }
+            Self::JournalBlockType(block_type) => {
+                write!(
+                    f,
+                    "journal contains an unknown block type: {block_type}"
+                )
+            }
+            Self::JournalSuperblockChecksum => {
+                write!(f, "journal superblock checksum is invalid")
+            }
+            Self::JournalBlockSize => {
+                write!(
+                    f,
+                    "journal block size does not match filesystem block size"
+                )
+            }
+            Self::JournalTruncated => write!(f, "journal is truncated"),
+            Self::JournalSequence => write!(
+                f,
+                "journal's first commit doesn't match the expected sequence"
+            ),
+            Self::JournalDescriptorBlockMissingLastTag => write!(
+                f,
+                "a journal descriptor block has no tag with the last-tag flag set"
+            ),
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
             }
@@ -422,6 +479,24 @@ pub enum Incompatible {
         /// Inode number.
         u32,
     ),
+
+    /// The journal superblock type is not supported.
+    JournalSuperblockType(
+        /// Raw journal block type.
+        u32,
+    ),
+
+    /// The journal checksum type is not supported.
+    JournalChecksumType(
+        /// Raw journal checksum type.
+        u8,
+    ),
+
+    /// The journal uses features not supported by this library.
+    JournalIncompatibleFeatures(
+        /// Raw feature bits.
+        u32,
+    ),
 }
 
 impl Display for Incompatible {
@@ -441,6 +516,15 @@ impl Display for Incompatible {
             }
             Self::DirectoryEncrypted(inode) => {
                 write!(f, "directory in inode {inode} is encrypted")
+            }
+            Self::JournalSuperblockType(val) => {
+                write!(f, "journal superblock type is not supported: {val}")
+            }
+            Self::JournalChecksumType(val) => {
+                write!(f, "journal checksum type is not supported: {val}")
+            }
+            Self::JournalIncompatibleFeatures(val) => {
+                write!(f, "unsupported journal features: {val:08x}")
             }
         }
     }
