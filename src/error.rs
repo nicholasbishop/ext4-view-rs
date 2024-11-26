@@ -190,6 +190,9 @@ pub enum Corrupt {
     /// The number of inodes per block group is zero.
     InodesPerBlockGroup,
 
+    /// The journal inode in the superblock is invalid.
+    JournalInode,
+
     /// Invalid first data block.
     FirstDataBlock(
         /// First data block.
@@ -288,6 +291,7 @@ impl Display for Corrupt {
             Self::InodesPerBlockGroup => {
                 write!(f, "inodes per block group is zero")
             }
+            Self::JournalInode => write!(f, "invalid journal inode"),
             Self::FirstDataBlock(block) => {
                 write!(f, "invalid first data block: {block}")
             }
