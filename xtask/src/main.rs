@@ -7,13 +7,13 @@
 // except according to those terms.
 
 mod big_fs;
-#[expect(unused)] // TODO
 mod dmsetup;
-#[expect(unused)] // TODO
 mod losetup;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use dmsetup::{DmDevice, DmFlakey};
+use losetup::LoopDevice;
 use nix::fcntl::{self, FallocateFlags};
 use std::fs::{self, OpenOptions};
 use std::os::fd::AsRawFd;
@@ -258,6 +258,103 @@ impl DiskParams {
         Ok(())
     }
 
+    /// Create a filesystem that was not unmounted cleanly. The root
+    /// directory contains a number of subdirectories that are only in
+    /// the journal.
+    fn create_with_journal(&self) -> Result<()> {
+        // Multiple attempts may be needed to get a filesystem with the
+        // desired journal state.
+        for i in 1..=10 {
+            println!("creating filesystem with journal, attempt {i}");
+
+            self.create()?;
+            self.make_filesystem_need_recovery()?;
+
+            // Verify that the journal contains at least one block. The
+            // full output should look something like this:
+            //
+            // ```
+            // Journal starts at block 1, transaction 2
+            // Found expected sequence 2, type 1 (descriptor block) at block 1
+            // [...]
+            // Found expected sequence 2, type 1 (descriptor block) at block 1303
+            // Found expected sequence 2, type 2 (commit block) at block 1311
+            // ```
+            let logdump = self.run_debugfs("logdump")?;
+            let logdump = str::from_utf8(&logdump)?;
+            if logdump.contains("Found expected sequence") {
+                return Ok(());
+            }
+        }
+
+        bail!("failed to create filesystem");
+    }
+
+    /// Modify the filesystem so that some data is written to the
+    /// journal, but not yet flushed to the main filesystem.
+    ///
+    /// This uses losetup and dmsetup to simulate a power failure after
+    /// data is written to the journal.
+    fn make_filesystem_need_recovery(&self) -> Result<()> {
+        // Get the number of sectors in the filesystem.
+        let num_sectors = {
+            let sector_size = 512;
+            u64::from(self.size_in_kilobytes) * 1024 / sector_size
+        };
+
+        // Use losetup to create a block device from the file containing
+        // the filesystem.
+        let loop_dev = LoopDevice::new(&self.path)?;
+
+        // Create a device-mapper device using the dm-flakey
+        // target. This target allows us to cut off writes at a certain
+        // point, simulating a power failure. In its initial state
+        // however, this acts as a simple pass-through device.
+        let table = DmFlakey {
+            start_sector: 0,
+            num_sectors,
+            block_dev: loop_dev.path().to_owned(),
+            offset: 0,
+            up_interval: 100,
+            down_interval: 0,
+            features: Vec::new(),
+        };
+        let dm_device = DmDevice::create("flakey-dev", &table.as_string())?;
+
+        // Mount the filesystem from the flakey device, and create a
+        // bunch of directories.
+        let mount = Mount::new(&dm_device.path(), ReadOnly(false))?;
+        for i in 0..1000 {
+            fs::create_dir(mount.path().join(format!("dir{i}")))?;
+        }
+
+        // At this point, the directory blocks have likely been written
+        // to the journal, but not yet written to their final locations
+        // on disk. (This is somewhat timing dependant however, so this
+        // whole function is called in a loop until the desired
+        // conditions are met.)
+
+        // Change the device configuration so that all writes are
+        // dropped. When the filesystem is unmounted below, any data not
+        // already written will be lost.
+        dm_device.suspend()?;
+        let drop_writes_table = DmFlakey {
+            up_interval: 0,
+            down_interval: 100,
+            features: vec!["drop_writes"],
+            ..table
+        };
+        dm_device.load_table(&drop_writes_table.as_string())?;
+        dm_device.resume()?;
+
+        // Clean up.
+        mount.unmount()?;
+        dm_device.remove()?;
+        loop_dev.detach()?;
+
+        Ok(())
+    }
+
     /// Check some properties of the filesystem.
     fn check(&self) -> Result<()> {
         self.check_dir_htree_depth("/medium_dir", 0)?;
@@ -410,6 +507,16 @@ fn create_test_data() -> Result<()> {
     };
     disk.create()?;
     disk.fill_ext2()?;
+    zstd_compress(&disk.path)?;
+
+    let path = dir.join("test_disk_4k_block_journal.bin");
+    let disk = DiskParams {
+        path: path.to_owned(),
+        size_in_kilobytes: 1024 * 64,
+        fs_type: FsType::Ext4,
+        block_size: 4096,
+    };
+    disk.create_with_journal()?;
     zstd_compress(&disk.path)?;
 
     Ok(())
