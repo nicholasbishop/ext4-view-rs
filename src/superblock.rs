@@ -9,7 +9,10 @@
 use crate::block_size::BlockSize;
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
-use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
+use crate::features::{
+    CompatibleFeatures, IncompatibleFeatures, ReadOnlyCompatibleFeatures,
+};
+use crate::inode::InodeIndex;
 use crate::util::{read_u16le, read_u32le, u64_from_hilo};
 use core::num::NonZero;
 
@@ -26,6 +29,7 @@ pub(crate) struct Superblock {
     pub(crate) read_only_compatible_features: ReadOnlyCompatibleFeatures,
     pub(crate) checksum_seed: u32,
     pub(crate) htree_hash_seed: [u32; 4],
+    pub(crate) journal_inode: Option<InodeIndex>,
 }
 
 impl Superblock {
@@ -49,9 +53,11 @@ impl Superblock {
         let s_inodes_per_group = read_u32le(bytes, 0x28);
         let s_magic = read_u16le(bytes, 0x38);
         let s_inode_size = read_u16le(bytes, 0x58);
+        let s_feature_compat = read_u32le(bytes, 0x5c);
         let s_feature_incompat = read_u32le(bytes, 0x60);
         let s_feature_ro_compat = read_u32le(bytes, 0x64);
         let s_uuid = &bytes[0x68..0x68 + 16];
+        let s_journal_inum = read_u32le(bytes, 0xe0);
         const S_HASH_SEED_OFFSET: usize = 0xec;
         let s_hash_seed = [
             read_u32le(bytes, S_HASH_SEED_OFFSET),
@@ -78,6 +84,8 @@ impl Superblock {
             .map_err(Ext4Error::Incompatible)?;
         let read_only_compatible_features =
             ReadOnlyCompatibleFeatures::from_bits_retain(s_feature_ro_compat);
+        let compatible_features =
+            CompatibleFeatures::from_bits_retain(s_feature_compat);
 
         // s_first_data_block is usually 1 if the block size is 1KiB,
         // and otherwise its usually 0.
@@ -103,6 +111,21 @@ impl Superblock {
             } else {
                 32
             };
+
+        let journal_inode = if compatible_features
+            .contains(CompatibleFeatures::HAS_JOURNAL)
+        {
+            // For now a separate journal device is not supported, so
+            // assert that feature is not present. This assert cannot
+            // fail because of the call to `check_incompat_features`
+            // above.
+            assert!(!incompatible_features
+                .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
+
+            Some(InodeIndex::new(s_journal_inum).ok_or(Corrupt::JournalInode)?)
+        } else {
+            None
+        };
 
         // Validate the superblock checksum.
         if read_only_compatible_features
@@ -136,6 +159,7 @@ impl Superblock {
             read_only_compatible_features,
             checksum_seed,
             htree_hash_seed: s_hash_seed,
+            journal_inode,
         })
     }
 }
@@ -212,6 +236,7 @@ mod tests {
                 htree_hash_seed: [
                     0xbb071441, 0x7746982f, 0x6007bb8f, 0xb61a9b7
                 ],
+                journal_inode: None,
             }
         );
     }

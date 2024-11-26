@@ -72,3 +72,11 @@ bitflags! {
         const ORPHAN_PRESENT = 0x1_0000;
     }
 }
+
+bitflags! {
+    /// Optional file system features.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    pub struct CompatibleFeatures: u32 {
+        const HAS_JOURNAL = 0x4;
+    }
+}
