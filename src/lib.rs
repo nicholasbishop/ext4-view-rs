@@ -303,6 +303,8 @@ impl Ext4 {
             })
         };
 
+        let block_index = self.0.journal.map_block_index(block_index);
+
         // The first 1024 bytes are reserved for non-filesystem
         // data. This conveniently allows for something like a null
         // pointer check.
