@@ -114,6 +114,7 @@ impl Superblock {
 
         let journal_inode = if compatible_features
             .contains(CompatibleFeatures::HAS_JOURNAL)
+            && incompatible_features.contains(IncompatibleFeatures::RECOVERY)
         {
             // For now a separate journal device is not supported, so
             // assert that feature is not present. This assert cannot
@@ -178,7 +179,6 @@ fn check_incompat_features(
     // relax some of these in the future.
     let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY;
     let disallowed_features = IncompatibleFeatures::COMPRESSION
-        | IncompatibleFeatures::RECOVERY
         | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
         | IncompatibleFeatures::META_BLOCK_GROUPS
         | IncompatibleFeatures::MULTIPLE_MOUNT_PROTECTION
@@ -356,10 +356,12 @@ mod tests {
 
         assert_eq!(
             check_incompat_features(
-                required | IncompatibleFeatures::RECOVERY.bits()
+                required | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE.bits()
             )
             .unwrap_err(),
-            Incompatible::Incompatible(IncompatibleFeatures::RECOVERY)
+            Incompatible::Incompatible(
+                IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
+            )
         );
     }
 }
