@@ -235,6 +235,18 @@ pub(crate) enum CorruptKind {
     /// Journal superblock checksum is invalid.
     JournalSuperblockChecksum,
 
+    /// Journal block size does not match the filesystem block size.
+    JournalBlockSize,
+
+    /// Journal does not have the expected number of blocks.
+    JournalTruncated,
+
+    /// Journal first commit doesn't match the sequence number in the superblock.
+    JournalSequence,
+
+    /// Journal has a descriptor block that contains no tag with the last-tag flag set.
+    JournalDescriptorBlockMissingLastTag,
+
     /// An inode's checksum is invalid.
     InodeChecksum(
         /// Inode number.
@@ -351,6 +363,21 @@ impl Display for CorruptKind {
             Self::JournalSuperblockChecksum => {
                 write!(f, "journal superblock checksum is invalid")
             }
+            Self::JournalBlockSize => {
+                write!(
+                    f,
+                    "journal block size does not match filesystem block size"
+                )
+            }
+            Self::JournalTruncated => write!(f, "journal is truncated"),
+            Self::JournalSequence => write!(
+                f,
+                "journal's first commit doesn't match the expected sequence"
+            ),
+            Self::JournalDescriptorBlockMissingLastTag => write!(
+                f,
+                "a journal descriptor block has no tag with the last-tag flag set"
+            ),
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
             }
