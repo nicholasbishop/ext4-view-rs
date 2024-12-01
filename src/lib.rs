@@ -143,6 +143,7 @@ pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible};
 pub use features::IncompatibleFeatures;
 pub use file_type::FileType;
+pub use format::BytesDisplay;
 pub use iters::read_dir::ReadDir;
 pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};

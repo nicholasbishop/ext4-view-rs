@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-* Add `impl From<Corrupt> for Ext4Error`.
-* Add `impl From<Incompatible> for Ext4Error`.
+* Added `impl From<Corrupt> for Ext4Error`.
+* Added `impl From<Incompatible> for Ext4Error`.
+* Made `BytesDisplay` public.
 
 ## 0.6.1
 
