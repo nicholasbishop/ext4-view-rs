@@ -46,7 +46,7 @@ pub(crate) struct DirBlock<'a> {
     pub(crate) checksum_base: Checksum,
 }
 
-impl<'a> DirBlock<'a> {
+impl DirBlock<'_> {
     /// Read the directory block's contents into `block`.
     ///
     /// If checksums are enabled for the filesystem, the directory

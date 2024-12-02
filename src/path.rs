@@ -121,7 +121,7 @@ impl<'a> AsRef<[u8]> for Path<'a> {
     }
 }
 
-impl<'a> Debug for Path<'a> {
+impl Debug for Path<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_bytes_debug(self.0, f)
     }
@@ -197,7 +197,7 @@ impl<'a> TryFrom<&'a std::path::Path> for Path<'a> {
     }
 }
 
-impl<'a, T> PartialEq<T> for Path<'a>
+impl<T> PartialEq<T> for Path<'_>
 where
     T: AsRef<[u8]>,
 {
@@ -467,7 +467,7 @@ impl<'a> Component<'a> {
     }
 }
 
-impl<'a> Debug for Component<'a> {
+impl Debug for Component<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Component::RootDir => write!(f, "RootDir"),
@@ -482,7 +482,7 @@ impl<'a> Debug for Component<'a> {
     }
 }
 
-impl<'a, T> PartialEq<T> for Component<'a>
+impl<T> PartialEq<T> for Component<'_>
 where
     T: AsRef<[u8]>,
 {

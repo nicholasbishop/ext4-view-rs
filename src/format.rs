@@ -37,7 +37,7 @@ pub(crate) fn format_bytes_debug(
 /// converted to '�'.
 pub struct BytesDisplay<'a>(pub(crate) &'a [u8]);
 
-impl<'a> Display for BytesDisplay<'a> {
+impl Display for BytesDisplay<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(self.0))
     }
