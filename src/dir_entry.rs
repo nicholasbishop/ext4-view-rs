@@ -89,13 +89,13 @@ impl<'a> AsRef<[u8]> for DirEntryName<'a> {
     }
 }
 
-impl<'a> Debug for DirEntryName<'a> {
+impl Debug for DirEntryName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_bytes_debug(self.0, f)
     }
 }
 
-impl<'a, T> PartialEq<T> for DirEntryName<'a>
+impl<T> PartialEq<T> for DirEntryName<'_>
 where
     T: AsRef<[u8]>,
 {
