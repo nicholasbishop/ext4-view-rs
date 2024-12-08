@@ -199,6 +199,46 @@ fn test_read_to_string() {
 }
 
 #[test]
+fn test_file() {
+    let fs = load_test_disk1();
+
+    // TODO
+
+    // Empty file.
+    let mut file = fs.open("/empty_file").unwrap();
+    let mut buf = [0];
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+
+    // Small file.
+    let mut file = fs.open("/small_file").unwrap();
+
+    let mut buf = [0];
+    assert_eq!(file.read(&mut buf).unwrap(), 1);
+    assert_eq!(buf, [b'h']);
+
+    let mut buf = [0; 11];
+    assert_eq!(file.read(&mut buf).unwrap(), 11);
+    assert_eq!(buf, b"ello, world".as_slice());
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+
+    let mut buf = [0; 5];
+    file.seek(7).unwrap();
+    assert_eq!(file.read(&mut buf).unwrap(), 5);
+    assert_eq!(buf, b"world".as_slice());
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+
+    // File with holes.
+    let mut file = fs.open("/holes").unwrap();
+    let mut buf = vec![0xff; 1024 * 10];
+    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, expected_holes_data());
+
+    // Errors.
+    assert!(fs.read("not_absolute").is_err());
+    assert!(fs.read("/does_not_exist").is_err());
+}
+
+#[test]
 fn test_read_link() {
     let fs = load_test_disk1();
 
