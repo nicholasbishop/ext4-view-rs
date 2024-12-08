@@ -38,6 +38,11 @@ impl BlockSize {
         }
     }
 
+    pub(crate) const fn to_nz_u64(self) -> NonZero<u64> {
+        // OK to unwrap: block size is always non-zero.
+        NonZero::new(self.to_u64()).unwrap()
+    }
+
     pub(crate) const fn to_usize(self) -> usize {
         usize_from_u32(self.0.get())
     }
