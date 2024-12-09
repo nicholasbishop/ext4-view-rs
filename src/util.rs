@@ -18,8 +18,14 @@ use core::mem::size_of;
 /// Panics if `val` does not fit in this platform's `usize`.
 #[inline]
 #[must_use]
-pub(crate) fn usize_from_u32(val: u32) -> usize {
-    usize::try_from(val).unwrap()
+pub(crate) const fn usize_from_u32(val: u32) -> usize {
+    assert!(size_of::<usize>() >= size_of::<u32>());
+
+    // Cannot use `usize::try_from` in a `const fn`.
+    #[expect(clippy::as_conversions)]
+    {
+        val as usize
+    }
 }
 
 /// Create a `u64` from two `u32` values.
