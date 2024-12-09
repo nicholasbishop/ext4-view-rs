@@ -230,7 +230,7 @@ impl Extents {
             // find out how much data is in the full child node.
             let mut child_header = [0; ENTRY_SIZE_IN_BYTES];
             let child_start = child_block
-                .checked_mul(u64::from(self.ext4.0.superblock.block_size))
+                .checked_mul(self.ext4.0.superblock.block_size.to_u64())
                 .ok_or_else(|| Corrupt::ExtentBlock(self.inode.get()))?;
             self.ext4.read_bytes(child_start, &mut child_header)?;
             let child_header =

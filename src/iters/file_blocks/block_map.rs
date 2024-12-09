@@ -7,11 +7,10 @@
 // except according to those terms.
 
 use crate::inode::Inode;
-use crate::util::{read_u32le, usize_from_u32};
+use crate::util::read_u32le;
 use crate::{Corrupt, Ext4, Ext4Error};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::num::NonZero;
 
 /// Block map iterator.
 ///
@@ -79,7 +78,7 @@ impl BlockMap {
         let num_blocks = inode
             .metadata
             .size_in_bytes
-            .div_ceil(u64::from(fs.0.superblock.block_size));
+            .div_ceil(fs.0.superblock.block_size.to_u64());
 
         Self {
             fs,
@@ -194,18 +193,12 @@ struct IndirectBlockIter {
 impl IndirectBlockIter {
     fn new(fs: Ext4, block_index: u32) -> Result<Self, Ext4Error> {
         let block_size = fs.0.superblock.block_size;
-        // Ensure that the block size is a multiple of the size of `u32`.
-        assert_eq!(
-            usize_from_u32(block_size)
-                % NonZero::new(size_of::<u32>()).unwrap(),
-            0
-        );
 
         let start = u64::from(block_index)
-            .checked_mul(u64::from(block_size))
+            .checked_mul(block_size.to_u64())
             .ok_or(Corrupt::BlockMap)?;
 
-        let mut block = vec![0u8; usize_from_u32(block_size)];
+        let mut block = vec![0u8; block_size.to_usize()];
 
         fs.read_bytes(start, &mut block)?;
 
@@ -228,10 +221,9 @@ impl Iterator for IndirectBlockIter {
         let block_index = read_u32le(&self.block, self.index_within_block);
 
         // OK to unwrap: `index_within_block` is less than `block.len()`
-        // (checked above). The index is always incremented by 4, and in
-        // `IndirectBlockIter::new`, we verify that the block length is
-        // an even multiple of 4, so the index is at most `block.len() -
-        // 4` at this point.
+        // (checked above). The index is always incremented by 4, and
+        // the `BlockSize` is guaranteed to be an even multiple of 4, so
+        // the index is at most `block.len() - 4` at this point.
         self.index_within_block = self
             .index_within_block
             .checked_add(size_of::<u32>())

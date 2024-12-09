@@ -107,6 +107,7 @@
 extern crate alloc;
 
 mod block_group;
+mod block_size;
 mod checksum;
 mod dir;
 mod dir_block;
@@ -276,7 +277,7 @@ impl Ext4 {
                 let extent = extent?;
 
                 let dst_start = usize_from_u32(extent.block_within_file)
-                    .checked_mul(usize_from_u32(block_size))
+                    .checked_mul(block_size.to_usize())
                     .ok_or(FileTooLarge)?;
 
                 // Get the length (in bytes) of the extent.
@@ -284,7 +285,8 @@ impl Ext4 {
                 // This length may actually be too long, since the last
                 // block may extend past the end of the file. This is
                 // checked below.
-                let len = usize_from_u32(block_size)
+                let len = block_size
+                    .to_usize()
                     .checked_mul(usize::from(extent.num_blocks))
                     .ok_or(FileTooLarge)?;
                 let dst_end = dst_start.checked_add(len).ok_or(FileTooLarge)?;
@@ -295,7 +297,7 @@ impl Ext4 {
 
                 let src_start = extent
                     .start_block
-                    .checked_mul(u64::from(block_size))
+                    .checked_mul(block_size.to_u64())
                     .ok_or(FileTooLarge)?;
 
                 self.read_bytes(src_start, dst)?;
@@ -306,18 +308,18 @@ impl Ext4 {
                 let block_index = block_index?;
 
                 let src_start = block_index
-                    .checked_mul(u64::from(block_size))
+                    .checked_mul(block_size.to_u64())
                     .ok_or(FileTooLarge)?;
 
                 let dst_end = dst_start
-                    .checked_add(usize_from_u32(block_size))
+                    .checked_add(block_size.to_usize())
                     .ok_or(FileTooLarge)?;
                 // Cap to the end of the file.
                 let dst_end = dst_end.min(file_size_in_bytes);
 
                 let dst = &mut dst[dst_start..dst_end];
                 dst_start = dst_start
-                    .checked_add(usize_from_u32(block_size))
+                    .checked_add(block_size.to_usize())
                     .ok_or(FileTooLarge)?;
 
                 // If the block index is zero, it's a hole, which should

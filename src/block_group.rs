@@ -60,6 +60,7 @@ impl BlockGroupDescriptor {
         let bgd_start_block: u32 = if sb.block_size == 1024 { 2 } else { 1 };
         let bgd_per_block = sb
             .block_size
+            .to_u32()
             .checked_div(u32::from(sb.block_group_descriptor_size))?;
         let block_index = bgd_start_block
             .checked_add(bgd_index.checked_div(bgd_per_block)?)?;
@@ -67,7 +68,7 @@ impl BlockGroupDescriptor {
             .checked_mul(u32::from(sb.block_group_descriptor_size))?;
 
         u64::from(block_index)
-            .checked_mul(u64::from(sb.block_size))?
+            .checked_mul(sb.block_size.to_u64())?
             .checked_add(u64::from(offset_within_block))
     }
 

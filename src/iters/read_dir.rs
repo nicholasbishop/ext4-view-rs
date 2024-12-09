@@ -13,7 +13,6 @@ use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::file_blocks::FileBlocks;
 use crate::path::PathBuf;
-use crate::util::usize_from_u32;
 use crate::Ext4;
 use alloc::rc::Rc;
 use alloc::vec;
@@ -84,7 +83,7 @@ impl ReadDir {
             file_blocks: FileBlocks::new(fs.clone(), inode)?,
             block_index: None,
             is_first_block: true,
-            block: vec![0; usize_from_u32(fs.0.superblock.block_size)],
+            block: vec![0; fs.0.superblock.block_size.to_usize()],
             offset_within_block: 0,
             is_done: false,
             has_htree,
@@ -116,7 +115,7 @@ impl ReadDir {
         // If a block has been fully processed, move to the next block
         // on the next iteration.
         let block_size = self.fs.0.superblock.block_size;
-        if self.offset_within_block >= usize_from_u32(block_size) {
+        if self.offset_within_block >= block_size.to_usize() {
             self.is_first_block = false;
             self.block_index = None;
             return Ok(None);

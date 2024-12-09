@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_size::BlockSize;
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error, Incompatible};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
@@ -15,7 +16,7 @@ use core::num::NonZero;
 /// Information about the filesystem.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Superblock {
-    pub(crate) block_size: u32,
+    pub(crate) block_size: BlockSize,
     pub(crate) blocks_count: u64,
     pub(crate) inode_size: u16,
     pub(crate) inodes_per_block_group: NonZero<u32>,
@@ -66,7 +67,7 @@ impl Superblock {
 
         let blocks_count = u64_from_hilo(s_blocks_count_hi, s_blocks_count_lo);
 
-        let block_size = calc_block_size(s_log_block_size)
+        let block_size = BlockSize::from_superblock_value(s_log_block_size)
             .ok_or(Corrupt::InvalidBlockSize)?;
 
         if s_magic != 0xef53 {
@@ -139,11 +140,6 @@ impl Superblock {
     }
 }
 
-fn calc_block_size(s_log_block_size: u32) -> Option<u32> {
-    let exp = s_log_block_size.checked_add(10)?;
-    2u32.checked_pow(exp)
-}
-
 fn check_incompat_features(
     s_feature_incompat: u32,
 ) -> Result<IncompatibleFeatures, Incompatible> {
@@ -193,7 +189,7 @@ mod tests {
         assert_eq!(
             sb,
             Superblock {
-                block_size: 1024,
+                block_size: BlockSize::from_superblock_value(0).unwrap(),
                 blocks_count: 128,
                 inode_size: 256,
                 inodes_per_block_group: NonZero::new(16).unwrap(),
