@@ -354,7 +354,7 @@ pub(crate) fn get_dir_entry_via_htree(
     assert!(inode.flags.contains(InodeFlags::DIRECTORY_HTREE));
 
     let block_size = fs.0.superblock.block_size;
-    let mut block = vec![0; usize_from_u32(block_size)];
+    let mut block = vec![0; block_size.to_usize()];
 
     // Read the first block of the file, which contains the root node of
     // the htree.
@@ -402,10 +402,7 @@ mod tests {
     use super::*;
 
     #[cfg(feature = "std")]
-    use {
-        crate::util::usize_from_u32,
-        crate::{FollowSymlinks, Path, ReadDir},
-    };
+    use crate::{FollowSymlinks, Path, ReadDir};
 
     #[test]
     fn test_internal_node() {
@@ -467,7 +464,7 @@ mod tests {
     fn test_read_dot_or_dotdot() {
         let fs = crate::load_test_disk1();
 
-        let mut block = vec![0; usize_from_u32(fs.0.superblock.block_size)];
+        let mut block = vec![0; fs.0.superblock.block_size.to_usize()];
 
         // Read the root block of an htree.
         let inode = fs

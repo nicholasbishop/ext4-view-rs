@@ -9,7 +9,7 @@
 use crate::checksum::Checksum;
 use crate::error::{Corrupt, Ext4Error};
 use crate::inode::InodeIndex;
-use crate::util::{read_u16le, read_u32le, usize_from_u32};
+use crate::util::{read_u16le, read_u32le};
 use crate::Ext4;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -53,11 +53,11 @@ impl DirBlock<'_> {
     /// block's checksum will be verified.
     pub(crate) fn read(&self, block: &mut [u8]) -> Result<(), Ext4Error> {
         let block_size = self.fs.0.superblock.block_size;
-        assert_eq!(block.len(), usize_from_u32(block_size));
+        assert_eq!(block.len(), block_size.to_usize());
 
         let start_byte = self
             .block_index
-            .checked_mul(u64::from(block_size))
+            .checked_mul(block_size.to_u64())
             .ok_or(Corrupt::DirEntry(self.dir_inode.get()))?;
         self.fs.read_bytes(start_byte, block)?;
 

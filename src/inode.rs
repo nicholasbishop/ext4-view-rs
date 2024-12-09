@@ -270,8 +270,10 @@ fn get_inode_start_byte(ext4: &Ext4, inode: InodeIndex) -> Option<u64> {
     let byte_offset_within_group =
         u64::from(index_within_group).checked_mul(u64::from(sb.inode_size))?;
 
-    let byte_offset_of_group =
-        u64::from(sb.block_size).checked_mul(group.inode_table_first_block)?;
+    let byte_offset_of_group = sb
+        .block_size
+        .to_u64()
+        .checked_mul(group.inode_table_first_block)?;
 
     byte_offset_of_group.checked_add(byte_offset_within_group)
 }
