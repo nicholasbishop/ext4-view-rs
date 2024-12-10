@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::expected_holes_data;
 use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
 
 // This function is duplicated in `/src/lib.rs`. We can't import that
@@ -157,14 +158,7 @@ fn test_read() {
     assert_eq!(fs.read("/small_file").unwrap(), b"hello, world!");
 
     // File with holes.
-    let mut expected = vec![];
-    for i in 0..5 {
-        expected.extend(vec![0xa5; 4096]);
-        if i != 4 {
-            expected.extend(vec![0; 8192]);
-        }
-    }
-    assert_eq!(fs.read("/holes").unwrap(), expected);
+    assert_eq!(fs.read("/holes").unwrap(), expected_holes_data());
 
     // Errors.
     assert!(fs.read("not_absolute").is_err());

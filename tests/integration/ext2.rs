@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::expected_holes_data;
 use ext4_view::Ext4;
 
 fn load_ext2() -> Ext4 {
@@ -52,11 +53,6 @@ fn test_read_big_file() {
 #[test]
 fn test_read_file_with_holes() {
     let fs = load_ext2();
-    let mut expected_data = vec![0xa5; 1024];
-    expected_data.extend(vec![0; 1024]);
-    expected_data.extend(vec![0xa5; 1024]);
-    expected_data.extend(vec![0; 1024]);
-    expected_data.extend(vec![0xa5; 1024]);
 
-    assert_eq!(fs.read("/holes").unwrap(), expected_data);
+    assert_eq!(fs.read("/holes").unwrap(), expected_holes_data());
 }
