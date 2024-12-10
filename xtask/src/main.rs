@@ -12,7 +12,6 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use nix::fcntl::{self, FallocateFlags};
 use std::fs::{self, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
@@ -173,21 +172,7 @@ impl DiskParams {
             fs::write(big_dir.join(&i), i)?;
         }
 
-        // Create a file with holes. By having five blocks, with holes
-        // between them, the file will require at least five extents. This
-        // will ensure the extent tree does not fit entirely within the
-        // inode, allowing testing of internal nodes.
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(root.join("holes"))?;
-        let block = vec![0xa5; 4096];
-        for _ in 0..5 {
-            // Write a 4K block.
-            f.write_all(&block)?;
-            // Leave an 8K hole.
-            f.seek(SeekFrom::Current(8192))?;
-        }
+        create_file_with_holes(&root.join("holes"))?;
 
         run_cmd(
             Command::new("fscrypt")
@@ -259,20 +244,7 @@ impl DiskParams {
             gen_big_file(big_file_size_in_blocks),
         )?;
 
-        // Create a five-block file, then punch holes in blocks 1 and 3.
-        let holes_path = root.join("holes");
-        fs::write(&holes_path, vec![0xa5; 1024 * 5])?;
-        let f = OpenOptions::new().write(true).open(&holes_path)?;
-        for offset in [1024, 1024 * 3] {
-            let len = 1024;
-            fcntl::fallocate(
-                f.as_raw_fd(),
-                FallocateFlags::FALLOC_FL_PUNCH_HOLE
-                    | FallocateFlags::FALLOC_FL_KEEP_SIZE,
-                offset,
-                len,
-            )?;
-        }
+        create_file_with_holes(&root.join("holes"))?;
 
         Ok(())
     }
@@ -325,6 +297,38 @@ impl DiskParams {
         }
         Ok(())
     }
+}
+
+/// Create a file with holes at `path`.
+///
+/// This assumes a block size of 1024.
+///
+/// File format per block:
+///  0,1: hole
+///  2,3: data
+///  4,5: hole
+///  6,7: data
+///  8,9: hole
+///
+/// Should match `expected_holes_data` in the ext4-view tests.
+fn create_file_with_holes(path: &Path) -> Result<()> {
+    let block_size = 1024;
+    fs::write(path, vec![0xa5; block_size * 10])?;
+    let f = OpenOptions::new().write(true).open(path)?;
+
+    for block in [0, 4, 8] {
+        let offset = block_size * block;
+        let len = block_size * 2;
+        fcntl::fallocate(
+            f.as_raw_fd(),
+            FallocateFlags::FALLOC_FL_PUNCH_HOLE
+                | FallocateFlags::FALLOC_FL_KEEP_SIZE,
+            offset as i64,
+            len as i64,
+        )?;
+    }
+
+    Ok(())
 }
 
 /// Use `zstd` to compress the file at `path`. A new file will be

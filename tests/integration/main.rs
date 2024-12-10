@@ -9,3 +9,27 @@
 mod ext2;
 mod ext4;
 mod path;
+
+/// Get the expected data for the "/holes" file.
+///
+/// Should match `create_file_with_holes` in xtask.
+fn expected_holes_data() -> Vec<u8> {
+    let block_size = 1024;
+
+    let data_block = vec![0xa5; block_size];
+    let hole_block = vec![0; block_size];
+
+    let mut expected = Vec::new();
+    expected.extend(&hole_block);
+    expected.extend(&hole_block);
+    expected.extend(&data_block);
+    expected.extend(&data_block);
+    expected.extend(&hole_block);
+    expected.extend(&hole_block);
+    expected.extend(&data_block);
+    expected.extend(&data_block);
+    expected.extend(&hole_block);
+    expected.extend(&hole_block);
+
+    expected
+}
