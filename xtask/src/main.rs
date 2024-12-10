@@ -70,6 +70,7 @@ struct DiskParams {
     path: PathBuf,
     size_in_kilobytes: u32,
     fs_type: FsType,
+    block_size: u32,
 }
 
 impl DiskParams {
@@ -96,6 +97,10 @@ impl DiskParams {
             // Enable directory encryption.
             cmd.args(["-O", "encrypt"]);
         }
+
+        // Set block size.
+        cmd.arg("-b");
+        cmd.arg(self.block_size.to_string());
 
         run_cmd(&mut cmd)
     }
@@ -362,6 +367,7 @@ fn create_test_data() -> Result<()> {
             path: path.to_owned(),
             size_in_kilobytes: 128,
             fs_type: FsType::Ext4,
+            block_size: 1024,
         };
         disk.create()?;
         let data = fs::read(&path)?;
@@ -374,6 +380,7 @@ fn create_test_data() -> Result<()> {
         path: path.to_owned(),
         size_in_kilobytes: 1024 * 64,
         fs_type: FsType::Ext4,
+        block_size: 1024,
     };
     disk.create()?;
     disk.fill()?;
@@ -387,6 +394,7 @@ fn create_test_data() -> Result<()> {
         // map, so jump up to 64+32.
         size_in_kilobytes: 1024 * 96,
         fs_type: FsType::Ext2,
+        block_size: 1024,
     };
     disk.create()?;
     disk.fill_ext2()?;
