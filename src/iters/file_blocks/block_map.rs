@@ -40,6 +40,8 @@ use alloc::vec::Vec;
 /// containing direct indices.
 ///
 /// Indices are only initialized up to the size of the file.
+///
+/// A block index of zero indicates a hole.
 pub(super) struct BlockMap {
     fs: Ext4,
 
