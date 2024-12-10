@@ -108,6 +108,9 @@ pub(crate) struct Inode {
 
     /// Checksum seed used in various places.
     pub(crate) checksum_base: Checksum,
+
+    /// Number of blocks in the file (including holes).
+    file_size_in_blocks: u32,
 }
 
 impl Inode {
@@ -153,6 +156,13 @@ impl Inode {
         checksum_base.update_u32_le(index.get());
         checksum_base.update_u32_le(i_generation);
 
+        let file_size_in_blocks: u32 = size_in_bytes
+            // Round up.
+            .div_ceil(ext4.0.superblock.block_size.to_u64())
+            // Ext4 allows at most `2^32` blocks in a file.
+            .try_into()
+            .map_err(|_| Ext4Error::Corrupt(Corrupt::TooManyBlocksInFile))?;
+
         Ok((
             Self {
                 index,
@@ -168,6 +178,7 @@ impl Inode {
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,
+                file_size_in_blocks,
             },
             checksum,
         ))
@@ -249,6 +260,19 @@ impl Inode {
             PathBuf::try_from(data)
                 .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
         }
+    }
+
+    /// Get the number of blocks in the file.
+    ///
+    /// If the file size is not an even multiple of the block size,
+    /// round up.
+    ///
+    /// # Errors
+    ///
+    /// Ext4 allows at most `2^32` blocks in a file. Returns
+    /// `Corrupt::TooManyBlocksInFile` if that limit is exceeded.
+    pub(crate) fn file_size_in_blocks(&self) -> u32 {
+        self.file_size_in_blocks
     }
 }
 

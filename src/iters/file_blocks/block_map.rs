@@ -50,10 +50,10 @@ pub(super) struct BlockMap {
     level_0_index: usize,
 
     /// Number of blocks the iterator has yielded so far.
-    num_blocks_yielded: u64,
+    num_blocks_yielded: u32,
 
     /// Total number of blocks in the file.
-    num_blocks_total: u64,
+    num_blocks_total: u32,
 
     /// Iterators through the deeper levels of the block map.
     level_1: Option<IndirectBlockIter>,
@@ -75,16 +75,11 @@ impl BlockMap {
             *dst = read_u32le(&inode.inline_data, src_offset);
         }
 
-        let num_blocks = inode
-            .metadata
-            .size_in_bytes
-            .div_ceil(fs.0.superblock.block_size.to_u64());
-
         Self {
             fs,
             level_0,
             num_blocks_yielded: 0,
-            num_blocks_total: num_blocks,
+            num_blocks_total: inode.file_size_in_blocks(),
             level_0_index: 0,
             level_1: None,
             level_2: None,
