@@ -199,6 +199,9 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// The number of blocks in a file exceeds 2^32.
+    TooManyBlocksInFile,
+
     /// A block map is invalid.
     BlockMap,
 
@@ -275,6 +278,7 @@ impl Display for Corrupt {
             Self::SymlinkTarget(inode) => {
                 write!(f, "inode {inode} has an invalid symlink path")
             }
+            Self::TooManyBlocksInFile => write!(f, "too many blocks in file"),
             Self::BlockMap => {
                 write!(f, "block map is invalid")
             }
