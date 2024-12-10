@@ -250,6 +250,16 @@ impl Inode {
                 .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
         }
     }
+
+    /// Get the number of blocks in the file.
+    ///
+    /// If the file size is not an even multiple of the block size,
+    /// round up.
+    pub(crate) fn num_blocks_in_file(&self, fs: &Ext4) -> u64 {
+        self.metadata
+            .size_in_bytes
+            .div_ceil(fs.0.superblock.block_size.to_u64())
+    }
 }
 
 fn get_inode_start_byte(ext4: &Ext4, inode: InodeIndex) -> Option<u64> {

@@ -40,6 +40,8 @@ use alloc::vec::Vec;
 /// containing direct indices.
 ///
 /// Indices are only initialized up to the size of the file.
+///
+/// A block index of zero indicates a hole.
 pub(super) struct BlockMap {
     fs: Ext4,
 
@@ -75,16 +77,13 @@ impl BlockMap {
             *dst = read_u32le(&inode.inline_data, src_offset);
         }
 
-        let num_blocks = inode
-            .metadata
-            .size_in_bytes
-            .div_ceil(fs.0.superblock.block_size.to_u64());
+        let num_blocks_total = inode.num_blocks_in_file(&fs);
 
         Self {
             fs,
             level_0,
             num_blocks_yielded: 0,
-            num_blocks_total: num_blocks,
+            num_blocks_total,
             level_0_index: 0,
             level_1: None,
             level_2: None,
