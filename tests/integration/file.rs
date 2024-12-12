@@ -12,7 +12,7 @@ use crate::ext4::load_test_disk1;
 use ext4_view::Ext4Error;
 
 #[cfg(feature = "std")]
-use std::io::Read;
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
 #[test]
 fn test_file_metadata() {
@@ -221,6 +221,43 @@ fn test_file_std_read() {
     let mut buf = [0; 13];
     assert_eq!(file.read(&mut buf).unwrap(), buf.len());
     assert_eq!(buf, "hello, world!".as_bytes());
+}
+
+/// Test `std::io::Seek` impl.
+#[cfg(feature = "std")]
+#[test]
+fn test_file_std_seek() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    let mut buf = [0; 13];
+
+    // Seek from start.
+    assert_eq!(file.seek(SeekFrom::Start(1)).unwrap(), 1);
+    assert_eq!(file.read(&mut buf).unwrap(), 12);
+    assert_eq!(buf, "ello, world!\0".as_bytes());
+
+    // Seek from end.
+    assert_eq!(file.seek(SeekFrom::End(-6)).unwrap(), 7);
+    assert_eq!(file.read(&mut buf).unwrap(), 6);
+    assert_eq!(&buf[..6], "world!".as_bytes());
+
+    // Seek from current position.
+    assert_eq!(file.seek(SeekFrom::Current(-6)).unwrap(), 7);
+    assert_eq!(file.read(&mut buf).unwrap(), 6);
+    assert_eq!(&buf[..6], "world!".as_bytes());
+
+    // Invalid seek from end.
+    assert_eq!(
+        file.seek(SeekFrom::End(-100)).unwrap_err().kind(),
+        ErrorKind::InvalidInput
+    );
+
+    // Invalid seek from current position.
+    assert_eq!(
+        file.seek(SeekFrom::Current(-100)).unwrap_err().kind(),
+        ErrorKind::InvalidInput
+    );
 }
 
 #[test]
