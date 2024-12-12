@@ -17,7 +17,7 @@ use crate::Ext4;
 use core::fmt::{self, Debug, Formatter};
 
 #[cfg(feature = "std")]
-use std::io::{self, Read};
+use std::io::{self, ErrorKind, Read, Seek, SeekFrom};
 
 /// An open file within an [`Ext4`] filesystem.
 pub struct File {
@@ -230,5 +230,34 @@ impl Debug for File {
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         Ok(self.read_bytes(buf)?)
+    }
+}
+
+#[cfg(feature = "std")]
+impl Seek for File {
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        let pos = match pos {
+            SeekFrom::Start(pos) => pos,
+            SeekFrom::End(offset) => {
+                // file_size + offset:
+                i64::try_from(self.inode.metadata.size_in_bytes)
+                    .ok()
+                    .and_then(|pos| pos.checked_add(offset))
+                    .and_then(|pos| pos.try_into().ok())
+                    .ok_or(ErrorKind::InvalidInput)?
+            }
+            SeekFrom::Current(offset) => {
+                // current_pos + offset:
+                i64::try_from(self.position)
+                    .ok()
+                    .and_then(|pos| pos.checked_add(offset))
+                    .and_then(|pos| pos.try_into().ok())
+                    .ok_or(ErrorKind::InvalidInput)?
+            }
+        };
+
+        self.seek_to(pos)?;
+
+        Ok(self.position)
     }
 }
