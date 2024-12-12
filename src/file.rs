@@ -58,12 +58,17 @@ impl File {
     }
 
     // TODO: will this conflict with Read trait annoyingly?
+    // TODO: maybeunit?
 
     /// Read bytes from the file into `buf`, returning how many bytes
     /// were read.
     ///
+    /// This advanced the position of the file by the number of bytes
+    /// read, so calling `read_bytes` repeatedly can be used to read the
+    /// entire file.
+    ///
     /// Returns `Ok(0)` if the end of the file has been reached.
-    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, Ext4Error> {
+    pub fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, Ext4Error> {
         // Nothing to do if output buffer is empty.
         if buf.is_empty() {
             return Ok(0);
