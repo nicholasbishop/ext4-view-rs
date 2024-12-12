@@ -117,6 +117,7 @@ mod dir_htree;
 mod error;
 mod extent;
 mod features;
+mod file;
 mod file_type;
 mod format;
 mod inode;
@@ -147,6 +148,7 @@ use util::usize_from_u32;
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible};
 pub use features::IncompatibleFeatures;
+pub use file::File;
 pub use file_type::FileType;
 pub use format::BytesDisplay;
 pub use iters::read_dir::ReadDir;
@@ -364,6 +366,24 @@ impl Ext4 {
     {
         let path = path.try_into().map_err(|_| Ext4Error::MalformedPath)?;
         resolve::resolve_path(self, path, FollowSymlinks::All).map(|v| v.1)
+    }
+
+    /// Open the file at `path`.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * `path` is not absolute.
+    /// * `path` does not exist.
+    /// * `path` is a directory or special file type.
+    ///
+    /// This is not an exhaustive list of errors, see the
+    /// [crate documentation](crate#errors).
+    pub fn open<'p, P>(&self, path: P) -> Result<File, Ext4Error>
+    where
+        P: TryInto<Path<'p>>,
+    {
+        File::open(self, path.try_into().map_err(|_| Ext4Error::MalformedPath)?)
     }
 
     /// Read the entire contents of a file as raw bytes.

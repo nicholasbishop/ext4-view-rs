@@ -8,6 +8,7 @@
 
 mod ext2;
 mod ext4;
+mod file;
 mod path;
 
 /// Get the expected data for the "/holes" file.
