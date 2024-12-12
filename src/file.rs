@@ -64,23 +64,45 @@ impl File {
     ///
     /// Returns `Ok(0)` if the end of the file has been reached.
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, Ext4Error> {
-        // TODO: avoid always copying from internal buffer
+        // Nothing to do if output buffer is empty.
+        if buf.is_empty() {
+            dbg!("empty buf");
+            return Ok(0);
+        }
 
-        // TODO: holes
+        // Nothing to do if already at the end of the file.
+        if dbg!(self.position) >= dbg!(self.inode.metadata.size_in_bytes) {
+            dbg!("at EOF");
+            return Ok(0);
+        }
+
+        // let mut block;
+        let block_size = self.fs.0.superblock.block_size;
+        // if buf.len() < block_size {
+        //     block = vec![0; block_size];
+        // }
+
+        // TODO: avoid always copying from internal buffer
 
         if self.read_next_block {
             if let Some(block_index) = self.file_blocks.next() {
                 // TODO: impl ez conv from Ext4Error to io::Error
                 let block_index = block_index?;
                 self.read_next_block = false;
-                self.fs.read_bytes(
-                    block_index
-                        .checked_mul(self.fs.0.superblock.block_size.to_u64())
-                        .ok_or(Ext4Error::FileTooLarge)?,
-                    &mut self.block,
-                )?;
+                self.offset_within_block = 0;
+                if block_index == 0 {
+                    self.block.fill(0);
+                } else {
+                    self.fs.read_bytes(
+                        block_index
+                            .checked_mul(block_size.to_u64())
+                            .ok_or(Ext4Error::FileTooLarge)?,
+                        &mut self.block,
+                    )?;
+                }
             } else {
                 // End of file reached.
+                dbg!("eof");
                 return Ok(0);
             }
         }
@@ -90,23 +112,46 @@ impl File {
         //     0
         // };
 
-        let offset = self.offset_within_block;
+        let offset_within_block = self.offset_within_block;
+
+        // if this is the last block in the file, cap
+        // TODO: move to `open` once we figure out calculation...
+        let unused_bytes_in_last_block =
+            u64::from(self.inode.file_size_in_blocks()) * block_size.to_u64()
+                - self.inode.metadata.size_in_bytes;
+        let max_read_in_last_block =
+            block_size.to_u64() - unused_bytes_in_last_block;
+        let mut max_read_in_block = self.block.len();
+
+        if (self.position + block_size.to_u64())
+            > self.inode.metadata.size_in_bytes
+        {
+            // TODO
+            dbg!("in last block");
+            max_read_in_block = max_read_in_last_block as usize;
+        }
 
         // OK to unwrap: `offset_within_block` is always less than or
         // equal to the block length.
+        // TODO: not good unwrap comment anymore
         let bytes_remaining_in_block =
-            self.block.len().checked_sub(offset).unwrap();
+            max_read_in_block.checked_sub(offset_within_block).unwrap();
+        dbg!(bytes_remaining_in_block);
+
         let bytes_to_copy = buf.len().min(bytes_remaining_in_block);
+        dbg!(bytes_to_copy);
 
         // OK to unwrap: this sum is at most the block size.
-        let end = offset.checked_add(bytes_to_copy).unwrap();
+        let end = offset_within_block.checked_add(bytes_to_copy).unwrap();
 
-        buf[..bytes_to_copy].copy_from_slice(&self.block[offset..end]);
+        buf[..bytes_to_copy]
+            .copy_from_slice(&self.block[offset_within_block..end]);
 
         // Advance offset
         self.offset_within_block = end;
 
         if self.offset_within_block >= self.block.len() {
+            dbg!("at end of block");
             self.read_next_block = true;
         }
 

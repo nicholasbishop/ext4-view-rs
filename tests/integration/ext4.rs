@@ -198,6 +198,92 @@ fn test_read_to_string() {
     ));
 }
 
+/// Test `File::read` with an empty file.
+#[test]
+fn test_file_read_empty() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/empty_file").unwrap();
+    let mut buf = [0];
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+}
+
+/// Test `File::read` with a small file, reading the whole file at once.
+#[test]
+fn test_file_read_all() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the whole file at once.
+    let mut buf = [0; 13];
+    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, b"hello, world!".as_slice());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+}
+
+/// Test `File::read` with a small file, reading one byte at a time.
+#[test]
+fn test_file_read_by_byte() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the file one byte at a time.
+    let mut buf = [0];
+    let mut all = Vec::new();
+    for _ in 0..13 {
+        assert_eq!(file.read(&mut buf).unwrap(), 1);
+        all.extend(buf);
+    }
+    assert_eq!(all, "hello, world!".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+}
+
+/// Test `File::read` with a small file, reading two bytes at a time.
+#[test]
+fn test_file_read_by_twos() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the first 12 bytes of the file, two bytes a time.
+    let mut buf = [0; 2];
+    let mut all = Vec::new();
+    for _ in 0..6 {
+        assert_eq!(file.read(&mut buf).unwrap(), 2);
+        all.extend(buf);
+    }
+
+    // Request two more bytes; should only be one remaining.
+    assert_eq!(file.read(&mut buf).unwrap(), 1);
+    all.push(buf[0]);
+
+    assert_eq!(all, "hello, world!".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+}
+
+/// Test `File::read` on a file with holes.
+#[test]
+fn test_file_with_holes() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/holes").unwrap();
+
+    let mut all = vec![];
+    for _ in 0..10 {
+        let mut buf = vec![0xff; 1024];
+        assert_eq!(file.read(&mut buf).unwrap(), dbg!(buf.len()));
+        all.extend(buf);
+    }
+
+    assert_eq!(all, expected_holes_data());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read(&mut all).unwrap(), 0);
+}
+
 #[test]
 fn test_file() {
     let fs = load_test_disk1();
@@ -216,22 +302,27 @@ fn test_file() {
     assert_eq!(file.read(&mut buf).unwrap(), 1);
     assert_eq!(buf, [b'h']);
 
-    let mut buf = [0; 11];
-    assert_eq!(file.read(&mut buf).unwrap(), 11);
-    assert_eq!(buf, b"ello, world".as_slice());
+    let mut buf = [0; 12];
+    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, b"ello, world!".as_slice());
     assert_eq!(file.read(&mut buf).unwrap(), 0);
 
-    let mut buf = [0; 5];
+    let mut buf = [0; 6];
     file.seek(7).unwrap();
-    assert_eq!(file.read(&mut buf).unwrap(), 5);
-    assert_eq!(buf, b"world".as_slice());
+    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, b"world!".as_slice());
     assert_eq!(file.read(&mut buf).unwrap(), 0);
 
     // File with holes.
     let mut file = fs.open("/holes").unwrap();
-    let mut buf = vec![0xff; 1024 * 10];
-    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
-    assert_eq!(buf, expected_holes_data());
+    let mut all = vec![];
+    for _ in 0..10 {
+        let mut buf = vec![0xff; 1024];
+        assert_eq!(file.read(&mut buf).unwrap(), dbg!(buf.len()));
+        all.extend(buf);
+    }
+    assert_eq!(file.read(&mut buf).unwrap(), 0);
+    assert_eq!(all, expected_holes_data());
 
     // Errors.
     assert!(fs.read("not_absolute").is_err());
