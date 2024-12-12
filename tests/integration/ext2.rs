@@ -9,7 +9,7 @@
 use crate::expected_holes_data;
 use ext4_view::Ext4;
 
-fn load_ext2() -> Ext4 {
+pub fn load_ext2() -> Ext4 {
     let output = std::process::Command::new("zstd")
         .args([
             "--decompress",

@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::expected_holes_data;
+use crate::ext2::load_ext2;
 use crate::ext4::load_test_disk1;
 use ext4_view::Ext4Error;
 
@@ -21,6 +23,132 @@ fn test_file_metadata() {
     assert!(!metadata.is_symlink());
     assert_eq!(metadata.mode(), 0o644);
     assert_eq!(metadata.len(), 13);
+}
+
+/// Test reading an empty file.
+#[test]
+fn test_file_read_empty_file() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/empty_file").unwrap();
+    let mut buf = [0];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading into an empty buffer.
+#[test]
+fn test_file_read_empty_buffer() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    let mut buf = [];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading a small file, reading the whole file at once with a
+/// buffer the same size as the file.
+#[test]
+fn test_file_read_exact() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the whole file at once.
+    let mut buf = [0; 13];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, "hello, world!".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading a small file, reading the whole file at once into a
+/// buffer larger than the file.
+#[test]
+fn test_file_read_big_buf() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the whole file at once, buffer is larger than the file.
+    let mut buf = vec![b'X'; 20];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 13);
+    assert_eq!(buf, "hello, world!XXXXXXX".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading a small file, reading one byte at a time.
+#[test]
+fn test_file_read_by_byte() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the file one byte at a time.
+    let mut buf = [0];
+    let mut all = Vec::new();
+    for _ in 0..13 {
+        assert_eq!(file.read_bytes(&mut buf).unwrap(), 1);
+        all.extend(buf);
+    }
+    assert_eq!(all, "hello, world!".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading a small file, reading two bytes at a time.
+#[test]
+fn test_file_read_by_twos() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Read the first 12 bytes of the file, two bytes a time.
+    let mut buf = [0; 2];
+    let mut all = Vec::new();
+    for _ in 0..6 {
+        assert_eq!(file.read_bytes(&mut buf).unwrap(), 2);
+        all.extend(buf);
+    }
+
+    // Request two more bytes; should only be one remaining.
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 1);
+    all.push(buf[0]);
+
+    assert_eq!(all, "hello, world!".as_bytes());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Test reading a file with holes.
+#[test]
+fn test_file_read_holes() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/holes").unwrap();
+
+    let mut all = vec![];
+    for _ in 0..10 {
+        let mut buf = vec![0xff; 1024];
+        assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+        all.extend(buf);
+    }
+
+    assert_eq!(all, expected_holes_data());
+
+    // Check that reading again does not return any bytes.
+    assert_eq!(file.read_bytes(&mut all).unwrap(), 0);
+}
+
+/// Test that each read is limited to at most one block.
+#[test]
+fn test_file_read_limited_to_block() {
+    let fs = load_ext2();
+    // Load a file that is larger than one block.
+    let mut file = fs.open("/big_file").unwrap();
+
+    let mut buf = vec![0xff; 2048];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 1024);
+    assert_eq!(&buf[..1024], vec![0; 1024]);
+    assert_eq!(&buf[1024..], vec![0xff; 1024]);
 }
 
 #[test]
@@ -44,5 +172,5 @@ fn test_file_debug() {
 
     let s = format!("{:?}", file);
     assert!(s.starts_with("File { inode: "));
-    assert!(s.ends_with(".. }"));
+    assert!(s.ends_with(", position: 0, .. }"));
 }
