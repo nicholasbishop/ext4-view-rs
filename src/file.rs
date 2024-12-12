@@ -183,6 +183,31 @@ impl File {
 
         Ok(buf.len())
     }
+
+    /// Current position within the file.
+    pub fn position(&self) -> u64 {
+        self.position
+    }
+
+    /// Seek from the start of the file to `position`.
+    ///
+    /// Seeking past the end of the file is allowed.
+    pub fn seek_to(&mut self, position: u64) -> Result<(), Ext4Error> {
+        // Reset iteration.
+        self.file_blocks = FileBlocks::new(self.fs.clone(), &self.inode)?;
+        self.block_index = None;
+
+        // Advance the block iterator by the number of whole blocks in
+        // `position`.
+        let num_blocks = position / self.fs.0.superblock.block_size.to_nz_u64();
+        for _ in 0..num_blocks {
+            self.file_blocks.next();
+        }
+
+        self.position = position;
+
+        Ok(())
+    }
 }
 
 impl Debug for File {
