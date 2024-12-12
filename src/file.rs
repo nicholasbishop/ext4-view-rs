@@ -66,13 +66,11 @@ impl File {
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, Ext4Error> {
         // Nothing to do if output buffer is empty.
         if buf.is_empty() {
-            dbg!("empty buf");
             return Ok(0);
         }
 
         // Nothing to do if already at the end of the file.
-        if dbg!(self.position) >= dbg!(self.inode.metadata.size_in_bytes) {
-            dbg!("at EOF");
+        if self.position >= self.inode.metadata.size_in_bytes {
             return Ok(0);
         }
 
@@ -89,7 +87,6 @@ impl File {
                 // TODO: impl ez conv from Ext4Error to io::Error
                 let block_index = block_index?;
                 self.read_next_block = false;
-                self.offset_within_block = 0;
                 if block_index == 0 {
                     self.block.fill(0);
                 } else {
@@ -102,7 +99,6 @@ impl File {
                 }
             } else {
                 // End of file reached.
-                dbg!("eof");
                 return Ok(0);
             }
         }
@@ -127,7 +123,6 @@ impl File {
             > self.inode.metadata.size_in_bytes
         {
             // TODO
-            dbg!("in last block");
             max_read_in_block = max_read_in_last_block as usize;
         }
 
@@ -136,10 +131,8 @@ impl File {
         // TODO: not good unwrap comment anymore
         let bytes_remaining_in_block =
             max_read_in_block.checked_sub(offset_within_block).unwrap();
-        dbg!(bytes_remaining_in_block);
 
         let bytes_to_copy = buf.len().min(bytes_remaining_in_block);
-        dbg!(bytes_to_copy);
 
         // OK to unwrap: this sum is at most the block size.
         let end = offset_within_block.checked_add(bytes_to_copy).unwrap();
@@ -151,8 +144,8 @@ impl File {
         self.offset_within_block = end;
 
         if self.offset_within_block >= self.block.len() {
-            dbg!("at end of block");
             self.read_next_block = true;
+            self.offset_within_block = 0;
         }
 
         // TODO

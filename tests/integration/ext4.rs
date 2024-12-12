@@ -310,7 +310,7 @@ fn test_file() {
     let mut buf = [0; 6];
     file.seek(7).unwrap();
     assert_eq!(file.read(&mut buf).unwrap(), buf.len());
-    assert_eq!(buf, b"world!".as_slice());
+    assert_eq!(std::str::from_utf8(&buf).unwrap(), "world!");
     assert_eq!(file.read(&mut buf).unwrap(), 0);
 
     // File with holes.
