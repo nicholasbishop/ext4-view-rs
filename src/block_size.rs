@@ -38,6 +38,16 @@ impl BlockSize {
         }
     }
 
+    pub(crate) const fn to_nz_u64(self) -> NonZero<u64> {
+        // TODO: this would be OK to `unwrap`, but can't use `unwrap` in
+        // a const function until Rust 1.83.
+        if let Some(nz) = NonZero::new(self.to_u64()) {
+            nz
+        } else {
+            unreachable!()
+        }
+    }
+
     pub(crate) const fn to_usize(self) -> usize {
         usize_from_u32(self.0.get())
     }
