@@ -151,6 +151,63 @@ fn test_file_read_limited_to_block() {
     assert_eq!(&buf[1024..], vec![0xff; 1024]);
 }
 
+/// Test seeking in a small file.
+#[test]
+fn test_file_seek_first_block() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+    let mut buf = [0; 5];
+
+    file.seek_to(7).unwrap();
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, "world".as_bytes());
+
+    file.seek_to(0).unwrap();
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, "hello".as_bytes());
+}
+
+/// Test seeking in a file with multiple blocks.
+#[test]
+fn test_file_seek_multiple_blocks() {
+    let fs = load_ext2();
+    // Load a file that is larger than one block.
+    let mut file = fs.open("/big_file").unwrap();
+
+    let mut buf = [0; 4];
+
+    // Seek to first byte of the second block.
+    file.seek_to(1024).unwrap();
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(u32::from_le_bytes(buf), 1);
+
+    // Seek to first byte of the third block.
+    file.seek_to(2048).unwrap();
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(u32::from_le_bytes(buf), 2);
+
+    // Seek to the last four bytes of the second block.
+    file.seek_to(2044).unwrap();
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), buf.len());
+    assert_eq!(u32::from_le_bytes(buf), 1);
+}
+
+/// Test that seeking past the end is allowed (matching the behavior of
+/// `std::io::Seek` and POSIX seek in general).
+#[test]
+fn test_file_seek_past_end() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    // Seek way past the end of the file.
+    file.seek_to(1000).unwrap();
+    assert_eq!(file.position(), 1000);
+
+    // We're past the end of the file, so reading returns zero bytes.
+    let mut buf = [0];
+    assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
 #[test]
 fn test_file_open_errors() {
     let fs = load_test_disk1();
