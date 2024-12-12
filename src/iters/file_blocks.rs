@@ -26,9 +26,6 @@ enum FileBlocksInner {
 ///
 /// The iterator produces absolute block indices. A block index of zero
 /// indicates a hole.
-///
-/// TODO: files represented with extents do not currently yield anything
-/// for holes. Those blocks are silently skipped over.
 pub(crate) struct FileBlocks(FileBlocksInner);
 
 impl FileBlocks {
