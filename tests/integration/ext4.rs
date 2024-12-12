@@ -12,7 +12,7 @@ use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
 // This function is duplicated in `/src/lib.rs`. We can't import that
 // function here because it is gated by `cfg(test)`, and integration
 // tests compile the crate-under-test without that config.
-fn load_test_disk1() -> Ext4 {
+pub fn load_test_disk1() -> Ext4 {
     // This function executes quickly, so don't bother caching.
     let output = std::process::Command::new("zstd")
         .args([
