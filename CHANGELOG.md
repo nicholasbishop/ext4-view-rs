@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Added `File` type and `Ext4::open`.
+* Added `impl From<Ext4Error> for std::io::Error`.
 * Added `impl From<Corrupt> for Ext4Error`.
 * Added `impl From<Incompatible> for Ext4Error`.
 * Made `BytesDisplay` public.

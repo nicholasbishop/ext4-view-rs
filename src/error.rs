@@ -143,6 +143,33 @@ impl Display for Ext4Error {
 
 impl Error for Ext4Error {}
 
+#[cfg(feature = "std")]
+impl From<Ext4Error> for std::io::Error {
+    fn from(e: Ext4Error) -> Self {
+        use std::io::ErrorKind::*;
+
+        // TODO: Rust 1.83 adds NotADirectory, IsADirectory, and
+        // FileTooLarge to std::io::Error; use those after bumping the
+        // MSRV.
+        match e {
+            Ext4Error::IsADirectory
+            | Ext4Error::IsASpecialFile
+            | Ext4Error::MalformedPath
+            | Ext4Error::NotADirectory
+            | Ext4Error::NotASymlink
+            | Ext4Error::NotAbsolute => InvalidInput.into(),
+            Ext4Error::Corrupt(_)
+            | Ext4Error::FileTooLarge
+            | Ext4Error::Incompatible(_)
+            | Ext4Error::PathTooLong
+            | Ext4Error::TooManySymlinks => Self::other(e),
+            Ext4Error::Io(inner) => Self::other(inner),
+            Ext4Error::NotFound => NotFound.into(),
+            Ext4Error::NotUtf8 => InvalidData.into(),
+        }
+    }
+}
+
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
 #[derive(Clone, Debug, Eq, PartialEq)]
