@@ -16,6 +16,9 @@ use crate::util::usize_from_u32;
 use crate::Ext4;
 use core::fmt::{self, Debug, Formatter};
 
+#[cfg(feature = "std")]
+use std::io::{self, Read};
+
 /// An open file within an [`Ext4`] filesystem.
 pub struct File {
     fs: Ext4,
@@ -220,5 +223,12 @@ impl Debug for File {
             // Don't show all fields, as that would make the output less
             // readable.
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(feature = "std")]
+impl Read for File {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(self.read_bytes(buf)?)
     }
 }
