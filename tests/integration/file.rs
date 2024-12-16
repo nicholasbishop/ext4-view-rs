@@ -11,6 +11,9 @@ use crate::ext2::load_ext2;
 use crate::ext4::load_test_disk1;
 use ext4_view::Ext4Error;
 
+#[cfg(feature = "std")]
+use std::io::Read;
+
 #[test]
 fn test_file_metadata() {
     let fs = load_test_disk1();
@@ -206,6 +209,18 @@ fn test_file_seek_past_end() {
     // We're past the end of the file, so reading returns zero bytes.
     let mut buf = [0];
     assert_eq!(file.read_bytes(&mut buf).unwrap(), 0);
+}
+
+/// Basic test of `std::io::Read` impl.
+#[cfg(feature = "std")]
+#[test]
+fn test_file_std_read() {
+    let fs = load_test_disk1();
+    let mut file = fs.open("/small_file").unwrap();
+
+    let mut buf = [0; 13];
+    assert_eq!(file.read(&mut buf).unwrap(), buf.len());
+    assert_eq!(buf, "hello, world!".as_bytes());
 }
 
 #[test]
