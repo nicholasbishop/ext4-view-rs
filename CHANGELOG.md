@@ -2,11 +2,16 @@
 
 ## Unreleased
 
-* Added `File` type and `Ext4::open`.
+## 0.7.0
+
+* Added `File` type and `Ext4::open`. This can be used to read parts of
+  files rather than reading the whole file at once with `Ext4::read`. If
+  the `std` feature is enabled, `File` impls `Read` and `Seek`.
 * Added `impl From<Ext4Error> for std::io::Error`.
 * Added `impl From<Corrupt> for Ext4Error`.
 * Added `impl From<Incompatible> for Ext4Error`.
 * Made `BytesDisplay` public.
+* Made the library more robust against arithmetic overflow.
 
 ## 0.6.1
 
