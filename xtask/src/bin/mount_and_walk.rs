@@ -160,5 +160,8 @@ fn main() -> Result<()> {
         io::stdout().write_all(&dir_entry.format())?;
         println!();
     }
+
+    mount.unmount()?;
+
     Ok(())
 }

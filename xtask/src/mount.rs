@@ -19,7 +19,10 @@ pub struct ReadOnly(pub bool);
 ///
 /// The filesystem will be unmounted on drop.
 pub struct Mount {
-    mount_point: TempDir,
+    /// Temporary directory used as the mount point. This is normally
+    /// always `Some`, the `Option` is only needed so that `drop`
+    /// doesn't try to unmount after `unmount` is called.
+    mount_point: Option<TempDir>,
 }
 
 impl Mount {
@@ -33,22 +36,37 @@ impl Mount {
                 .args(["mount", "-o", if read_only.0 { "ro" } else { "rw" }])
                 .args([fs_bin, mount_point.path()]),
         )?;
-        Ok(Self { mount_point })
+        Ok(Self {
+            mount_point: Some(mount_point),
+        })
     }
 
     /// Get the mount point.
     pub fn path(&self) -> &Path {
-        self.mount_point.path()
+        // OK to unwrap: `mount_point` is always `Some` while the object
+        // is live.
+        self.mount_point.as_ref().unwrap().path()
+    }
+
+    /// Unmount the filesystem.
+    pub fn unmount(mut self) -> Result<()> {
+        self.unmount_impl()
+    }
+
+    fn unmount_impl(&mut self) -> Result<()> {
+        if self.mount_point.is_some() {
+            run_cmd(Command::new("sudo").arg("umount").arg(self.path()))?;
+            self.mount_point = None;
+        }
+        Ok(())
     }
 }
 
 impl Drop for Mount {
     fn drop(&mut self) {
         // Ignore errors in drop.
-        let _ = run_cmd(
-            Command::new("sudo")
-                .arg("umount")
-                .arg(self.mount_point.path()),
-        );
+        if let Err(err) = self.unmount_impl() {
+            eprintln!("{err:?}");
+        }
     }
 }
