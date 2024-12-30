@@ -213,6 +213,8 @@ impl DiskParams {
         // Lock the directory.
         run_cmd(Command::new("fscrypt").arg("lock").arg(encrypted_dir))?;
 
+        mount.unmount()?;
+
         Ok(())
     }
 
@@ -247,6 +249,8 @@ impl DiskParams {
         )?;
 
         create_file_with_holes(&root.join("holes"))?;
+
+        mount.unmount()?;
 
         Ok(())
     }
