@@ -155,19 +155,14 @@ fn is_compressed(path: &Path) -> Result<bool> {
 /// requires elevated permissions.
 pub fn diff_walk(orig_path: &Path) -> Result<()> {
     // Build `mount_and_walk` in release mode.
-    let status = Command::new("cargo")
-        .args([
-            "build",
-            "--release",
-            "--package",
-            "xtask",
-            "--bin",
-            "mount_and_walk",
-        ])
-        .status()?;
-    if !status.success() {
-        bail!("failed to build mount_and_walk");
-    }
+    run_cmd(Command::new("cargo").args([
+        "build",
+        "--release",
+        "--package",
+        "xtask",
+        "--bin",
+        "mount_and_walk",
+    ]))?;
 
     // If the input file is compressed, decompress it and write to a
     // temporary file.

@@ -123,13 +123,7 @@ impl DiskParams {
             let path = root.join("owner_file");
             fs::write(&path, [])?;
 
-            let status = Command::new("sudo")
-                .args(["chown", "123:456"])
-                .arg(path)
-                .status()?;
-            if !status.success() {
-                bail!("chmod failed");
-            }
+            run_cmd(Command::new("sudo").args(["chown", "123:456"]).arg(path))?;
         }
 
         // Create some nested directories.
