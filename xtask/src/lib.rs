@@ -31,11 +31,16 @@ pub fn calc_file_sha256(path: &Path) -> Result<String> {
     Ok(format!("{hash:x}"))
 }
 
+fn cmd_to_string(cmd: &Command) -> String {
+    format!("{cmd:?}").replace('"', "")
+}
+
 /// Run a command.
 ///
 /// Return an error if the command fails to launch or if it exits
 /// non-zero.
 pub fn run_cmd(cmd: &mut Command) -> Result<()> {
+    eprintln!("run: {}", cmd_to_string(cmd));
     let program = cmd.get_program().to_string_lossy().into_owned();
     let status = cmd
         .status()
@@ -51,6 +56,7 @@ pub fn run_cmd(cmd: &mut Command) -> Result<()> {
 /// Return an error if the command fails to launch or if it exits
 /// non-zero.
 pub fn capture_cmd(cmd: &mut Command) -> Result<Output> {
+    eprintln!("capture: {}", cmd_to_string(cmd));
     let program = cmd.get_program().to_string_lossy().into_owned();
     let output = cmd
         .output()
