@@ -45,9 +45,10 @@ impl Mount {
 impl Drop for Mount {
     fn drop(&mut self) {
         // Ignore errors in drop.
-        let _ = Command::new("sudo")
-            .arg("umount")
-            .arg(self.mount_point.path())
-            .status();
+        let _ = run_cmd(
+            Command::new("sudo")
+                .arg("umount")
+                .arg(self.mount_point.path()),
+        );
     }
 }
