@@ -122,6 +122,7 @@ mod file_type;
 mod format;
 mod inode;
 mod iters;
+mod journal;
 mod metadata;
 mod path;
 mod reader;
@@ -141,6 +142,7 @@ use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
 use features::ReadOnlyCompatibleFeatures;
 use inode::{Inode, InodeFlags, InodeIndex};
+use journal::Journal;
 use resolve::FollowSymlinks;
 use superblock::Superblock;
 use util::usize_from_u32;
@@ -159,6 +161,7 @@ pub use reader::{Ext4Read, MemIoError};
 struct Ext4Inner {
     superblock: Superblock,
     block_group_descriptors: Vec<BlockGroupDescriptor>,
+    journal: Journal,
 
     /// Reader providing access to the underlying storage.
     ///
@@ -184,8 +187,8 @@ pub struct Ext4(Rc<Ext4Inner>);
 impl Ext4 {
     /// Load an `Ext4` instance from the given `reader`.
     ///
-    /// This reads and validates the superblock and block group
-    /// descriptors. No other data is read.
+    /// This reads and validates the superblock, block group
+    /// descriptors, and journal. No other data is read.
     pub fn load(mut reader: Box<dyn Ext4Read>) -> Result<Self, Ext4Error> {
         // The first 1024 bytes are reserved for "weird" stuff like x86
         // boot sectors.
@@ -197,14 +200,23 @@ impl Ext4 {
 
         let superblock = Superblock::from_bytes(&data)?;
 
-        Ok(Self(Rc::new(Ext4Inner {
+        let mut fs = Self(Rc::new(Ext4Inner {
             block_group_descriptors: BlockGroupDescriptor::read_all(
                 &superblock,
                 &mut *reader,
             )?,
             reader: RefCell::new(reader),
             superblock,
-        })))
+            // Initialize with an empty journal, because loading the
+            // journal requires a valid `Ext4` object.
+            journal: Journal::empty(),
+        }));
+
+        // Load the actual journal, if present.
+        let journal = Journal::load(&fs)?;
+        Rc::get_mut(&mut fs.0).unwrap().journal = journal;
+
+        Ok(fs)
     }
 
     /// Load an `Ext4` filesystem from the given `path`.
