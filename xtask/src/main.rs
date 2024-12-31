@@ -75,6 +75,9 @@ struct DiskParams {
 
 impl DiskParams {
     fn create(&self) -> Result<()> {
+        // Delete the file if it already exists.
+        let _ = fs::remove_file(&self.path);
+
         let uid = nix::unistd::getuid();
         let gid = nix::unistd::getgid();
 
