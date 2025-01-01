@@ -254,7 +254,7 @@ impl Ext4 {
     /// Read bytes into `dst`, starting at `start_byte`.
     fn read_bytes(
         &self,
-        start_byte: u64,
+        mut start_byte: u64,
         mut dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
         // The first 1024 bytes are reserved for non-filesystem
@@ -271,7 +271,7 @@ impl Ext4 {
             let block_index = self.0.journal.map_block_index(block_index);
             let offset_within_block = start_byte % block_size.to_u64();
 
-            let read_len = {
+            let read_len: usize = {
                 // OK to unwrap: `offset_within_block` is always less
                 // than the block size, and the block size always fits
                 // in a `u32`. We assume a `usize` is always at least as
@@ -283,14 +283,15 @@ impl Ext4 {
 
             let partial_dst = &mut dst[..read_len];
 
-            let start_byte =
+            let partial_start_byte =
                 block_index * block_size.to_u64() + offset_within_block;
             self.0
                 .reader
                 .borrow_mut()
-                .read(start_byte, partial_dst)
+                .read(partial_start_byte, partial_dst)
                 .map_err(Ext4Error::Io)?;
 
+            start_byte += util::u64_from_usize(read_len);
             dst = &mut dst[read_len..];
         }
 
