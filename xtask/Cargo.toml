@@ -15,7 +15,7 @@ publish = false
 default-run = "xtask"
 
 [dependencies]
-anyhow = { version = "1.0.86", features = ["backtrace"] }
+anyhow.workspace = true
 clap = { version = "4.5.0", default-features = false, features = ["derive", "help", "std"] }
 ext4-view = { path = "../", features = ["std"] }
 gpt_disk_io = { version = "0.16.0", features = ["std"] }

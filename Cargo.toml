@@ -26,6 +26,9 @@ include = [
 [workspace]
 members = ["xtask"]
 
+[workspace.dependencies]
+anyhow = { version = "1.0.0", features = ["backtrace"] }
+
 [features]
 std = []
 
@@ -33,6 +36,13 @@ std = []
 bitflags = "2.0.0"
 crc = "3.0.0"
 
+[dev-dependencies]
+anyhow.workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "cat"
+required-features = ["std"]
