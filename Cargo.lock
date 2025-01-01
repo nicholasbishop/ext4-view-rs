@@ -237,6 +237,7 @@ dependencies = [
 name = "ext4-view"
 version = "0.7.0"
 dependencies = [
+ "anyhow",
  "bitflags",
  "crc",
 ]
