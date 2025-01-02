@@ -312,7 +312,15 @@ impl DiskParams {
 /// Should match `expected_holes_data` in the ext4-view tests.
 fn create_file_with_holes(path: &Path) -> Result<()> {
     let block_size = 1024;
-    fs::write(path, vec![0xa5; block_size * 10])?;
+    let mut data = Vec::new();
+    data.extend(vec![0; block_size * 2]);
+    data.extend(vec![0xa1; block_size]);
+    data.extend(vec![0xa2; block_size]);
+    data.extend(vec![0; block_size * 2]);
+    data.extend(vec![0xa3; block_size]);
+    data.extend(vec![0xa4; block_size]);
+    data.extend(vec![0; block_size * 2]);
+    fs::write(path, data)?;
     let f = OpenOptions::new().write(true).open(path)?;
 
     for block in [0, 4, 8] {

@@ -17,18 +17,17 @@ mod path;
 fn expected_holes_data() -> Vec<u8> {
     let block_size = 1024;
 
-    let data_block = vec![0xa5; block_size];
     let hole_block = vec![0; block_size];
 
     let mut expected = Vec::new();
     expected.extend(&hole_block);
     expected.extend(&hole_block);
-    expected.extend(&data_block);
-    expected.extend(&data_block);
+    expected.extend(vec![0xa1; block_size]);
+    expected.extend(vec![0xa2; block_size]);
     expected.extend(&hole_block);
     expected.extend(&hole_block);
-    expected.extend(&data_block);
-    expected.extend(&data_block);
+    expected.extend(vec![0xa3; block_size]);
+    expected.extend(vec![0xa4; block_size]);
     expected.extend(&hole_block);
     expected.extend(&hole_block);
 
