@@ -8,6 +8,8 @@
 
 mod big_fs;
 #[expect(unused)] // TODO
+mod dmsetup;
+#[expect(unused)] // TODO
 mod losetup;
 
 use anyhow::{bail, Context, Result};
