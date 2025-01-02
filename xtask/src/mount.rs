@@ -6,10 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::run_cmd;
+use crate::{run_cmd, sudo};
 use anyhow::Result;
 use std::path::Path;
-use std::process::Command;
 use tempfile::TempDir;
 
 /// Whether to mount read-only or read-write.
@@ -32,7 +31,7 @@ impl Mount {
     pub fn new(fs_bin: &Path, read_only: ReadOnly) -> Result<Self> {
         let mount_point = TempDir::new()?;
         run_cmd(
-            Command::new("sudo")
+            sudo()
                 .args(["mount", "-o", if read_only.0 { "ro" } else { "rw" }])
                 .args([fs_bin, mount_point.path()]),
         )?;
@@ -55,7 +54,7 @@ impl Mount {
 
     fn unmount_impl(&mut self) -> Result<()> {
         if self.mount_point.is_some() {
-            run_cmd(Command::new("sudo").arg("umount").arg(self.path()))?;
+            run_cmd(sudo().arg("umount").arg(self.path()))?;
             self.mount_point = None;
         }
         Ok(())
