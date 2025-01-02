@@ -18,8 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, str};
 use tempfile::TempDir;
-use xtask::{capture_cmd, run_cmd};
-use xtask::{diff_walk, Mount, ReadOnly};
+use xtask::{capture_cmd, diff_walk, run_cmd, sudo, Mount, ReadOnly};
 
 /// Get the path of the root directory of the repo.
 ///
@@ -126,7 +125,7 @@ impl DiskParams {
             let path = root.join("owner_file");
             fs::write(&path, [])?;
 
-            run_cmd(Command::new("sudo").args(["chown", "123:456"]).arg(path))?;
+            run_cmd(sudo().args(["chown", "123:456"]).arg(path))?;
         }
 
         // Create some nested directories.
