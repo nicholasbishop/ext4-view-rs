@@ -7,6 +7,8 @@
 // except according to those terms.
 
 mod big_fs;
+#[expect(unused)] // TODO
+mod losetup;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
