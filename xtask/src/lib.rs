@@ -69,3 +69,8 @@ pub fn capture_cmd(cmd: &mut Command) -> Result<Output> {
     }
     Ok(output)
 }
+
+/// Create a `Command` to run sudo.
+pub fn sudo() -> Command {
+    Command::new("sudo")
+}

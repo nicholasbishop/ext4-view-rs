@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::{capture_cmd, run_cmd};
+use crate::{capture_cmd, run_cmd, sudo};
 use anyhow::{bail, Result};
 use ext4_view::{Ext4, Ext4Error, Incompatible};
 use sha2::{Digest, Sha256};
@@ -203,11 +203,8 @@ pub fn diff_walk(orig_path: &Path) -> Result<()> {
     };
     let expected = {
         let before_cmd = SystemTime::now();
-        let output = capture_cmd(
-            Command::new("sudo")
-                .arg("target/release/mount_and_walk")
-                .arg(path),
-        )?;
+        let output =
+            capture_cmd(sudo().arg("target/release/mount_and_walk").arg(path))?;
         println!(
             "mount_and_walk took {:?}",
             SystemTime::now().duration_since(before_cmd).unwrap()
