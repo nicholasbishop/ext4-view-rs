@@ -44,6 +44,9 @@ for entry in fs.read_dir("/some/dir")? {
 }
 ```
 
+See [`examples/cat.rs`](examples/cat.rs) for an example of using the
+`File` interface to read a file in chunks.
+
 ## Design Goals
 
 In order of importance:
