@@ -12,6 +12,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
+use core::str::{self, Utf8Error};
 
 /// Error returned when [`Path`] or [`PathBuf`] construction fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -112,6 +113,11 @@ impl<'a> Path<'a> {
             path: self,
             offset: 0,
         }
+    }
+
+    /// Convert to a `&str` if the path is valid UTF-8.
+    pub fn to_str(self) -> Result<&'a str, Utf8Error> {
+        str::from_utf8(self.0)
     }
 }
 
@@ -331,6 +337,11 @@ impl PathBuf {
     #[must_use]
     pub fn components(&self) -> Components<'_> {
         self.as_path().components()
+    }
+
+    /// Convert to a `&str` if the path is valid UTF-8.
+    pub fn to_str(&self) -> Result<&str, Utf8Error> {
+        self.as_path().to_str()
     }
 }
 

@@ -302,3 +302,14 @@ fn test_path_components() {
         ]
     );
 }
+
+#[test]
+fn test_path_to_str() {
+    let invalid = b"abc\xc3\x28";
+
+    assert_eq!(Path::new("abc").to_str().unwrap(), "abc");
+    assert!(Path::new(invalid).to_str().is_err());
+
+    assert_eq!(PathBuf::new("abc").to_str().unwrap(), "abc");
+    assert!(PathBuf::new(invalid).to_str().is_err());
+}

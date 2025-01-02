@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Added `Path::to_str` and `PathBuf::to_str`.
+
 ## 0.7.0
 
 * Added `File` type and `Ext4::open`. This can be used to read parts of
