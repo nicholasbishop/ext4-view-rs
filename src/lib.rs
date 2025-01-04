@@ -254,8 +254,8 @@ impl Ext4 {
     /// Read bytes into `dst`, starting at `start_byte`.
     fn read_bytes(
         &self,
-        start_byte: u64,
-        dst: &mut [u8],
+        mut start_byte: u64,
+        mut dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
         // The first 1024 bytes are reserved for non-filesystem
         // data. This conveniently allows for something like a null
@@ -263,11 +263,39 @@ impl Ext4 {
         // logic bug in the library.
         assert!(start_byte >= 1024, "invalid read offset: {start_byte}");
 
-        self.0
-            .reader
-            .borrow_mut()
-            .read(start_byte, dst)
-            .map_err(Ext4Error::Io)
+        // TODO
+        #[expect(clippy::arithmetic_side_effects)]
+        while !dst.is_empty() {
+            let block_size = self.0.superblock.block_size;
+            let block_index = start_byte / block_size.to_u64();
+            let block_index = self.0.journal.map_block_index(block_index);
+            let offset_within_block = start_byte % block_size.to_u64();
+
+            let read_len: usize = {
+                // OK to unwrap: `offset_within_block` is always less
+                // than the block size, and the block size always fits
+                // in a `u32`. We assume a `usize` is always at least as
+                // large as a `u32`.
+                let offset_within_block =
+                    usize::try_from(offset_within_block).unwrap();
+                dst.len().min(block_size.to_usize() - offset_within_block)
+            };
+
+            let partial_dst = &mut dst[..read_len];
+
+            let partial_start_byte =
+                block_index * block_size.to_u64() + offset_within_block;
+            self.0
+                .reader
+                .borrow_mut()
+                .read(partial_start_byte, partial_dst)
+                .map_err(Ext4Error::Io)?;
+
+            start_byte += util::u64_from_usize(read_len);
+            dst = &mut dst[read_len..];
+        }
+
+        Ok(())
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.

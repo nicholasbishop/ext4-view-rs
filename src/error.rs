@@ -211,6 +211,24 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// Journal size is invalid.
+    JournalSize,
+
+    /// Journal magic is invalid.
+    JournalMagic,
+
+    /// Journal contains a block of unknown type.
+    JournalBlockType(
+        /// Raw block type.
+        u32,
+    ),
+
+    /// Journal superblock type is invalid.
+    JournalSuperblockType(
+        /// Raw block type.
+        u32,
+    ),
+
     /// An inode's checksum is invalid.
     InodeChecksum(
         /// Inode number.
@@ -302,6 +320,21 @@ impl Display for Corrupt {
                 f,
                 "invalid checksum for block group descriptor {block_group_num}"
             ),
+            Self::JournalSize => {
+                write!(f, "journal size is invalid")
+            }
+            Self::JournalMagic => {
+                write!(f, "journal magic is invalid")
+            }
+            Self::JournalBlockType(block_type) => {
+                write!(
+                    f,
+                    "journal contains an unknown block type: {block_type}"
+                )
+            }
+            Self::JournalSuperblockType(block_type) => {
+                write!(f, "journal superblock type is invalid: {block_type}")
+            }
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
             }

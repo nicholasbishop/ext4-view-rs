@@ -28,6 +28,26 @@ pub(crate) const fn usize_from_u32(val: u32) -> usize {
     }
 }
 
+/// Convert a `usize` to a `u64`.
+///
+/// TODO, but on platforms
+/// supported by this crate, this conversion is infallible.
+///
+/// # Panics
+///
+/// Panics if `val` does not fit in this platform's `u64`.
+#[inline]
+#[must_use]
+pub(crate) const fn u64_from_usize(val: usize) -> u64 {
+    assert!(size_of::<u64>() >= size_of::<usize>());
+
+    // Cannot use `usize::try_from` in a `const fn`.
+    #[expect(clippy::as_conversions)]
+    {
+        val as u64
+    }
+}
+
 /// Create a `u64` from two `u32` values.
 #[inline]
 #[must_use]
@@ -68,4 +88,18 @@ pub(crate) fn read_u32le(bytes: &[u8], offset: usize) -> u32 {
     let end = offset.checked_add(size_of::<u32>()).unwrap();
     let bytes = bytes.get(offset..end).unwrap();
     u32::from_le_bytes(bytes.try_into().unwrap())
+}
+
+/// Read a big-endian [`u32`] from `bytes` at `offset`.
+///
+/// # Panics
+///
+/// Panics if `bytes` is not large enough to read four bytes at `offset`.
+#[inline]
+#[must_use]
+pub(crate) fn read_u32be(bytes: &[u8], offset: usize) -> u32 {
+    // OK to unwrap: these panics are described in the docstring.
+    let end = offset.checked_add(size_of::<u32>()).unwrap();
+    let bytes = bytes.get(offset..end).unwrap();
+    u32::from_be_bytes(bytes.try_into().unwrap())
 }
