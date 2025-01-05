@@ -91,7 +91,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Inode {
     /// This inode's index.
     pub(crate) index: InodeIndex,
