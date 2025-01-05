@@ -130,8 +130,6 @@ mod resolve;
 mod superblock;
 mod util;
 
-use crate::iters::extents::Extents;
-use crate::iters::file_blocks::FileBlocks;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::String;
@@ -141,11 +139,10 @@ use block_group::BlockGroupDescriptor;
 use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
 use features::ReadOnlyCompatibleFeatures;
-use inode::{Inode, InodeFlags, InodeIndex};
+use inode::{Inode, InodeIndex};
 use journal::Journal;
 use resolve::FollowSymlinks;
 use superblock::Superblock;
-use util::usize_from_u32;
 
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible};
@@ -277,72 +274,20 @@ impl Ext4 {
     /// Fails with `FileTooLarge` if the size of the file is too large
     /// to fit in a [`usize`].
     fn read_inode_file(&self, inode: &Inode) -> Result<Vec<u8>, Ext4Error> {
-        use Ext4Error::FileTooLarge;
-
-        let block_size = self.0.superblock.block_size;
-
-        // Get the file size and preallocate the output vector.
+        // Get the file size and initialize the output vector.
         let file_size_in_bytes = usize::try_from(inode.metadata.size_in_bytes)
-            .map_err(|_| FileTooLarge)?;
+            .map_err(|_| Ext4Error::FileTooLarge)?;
         let mut dst = vec![0; file_size_in_bytes];
 
-        if inode.flags.contains(InodeFlags::EXTENTS) {
-            for extent in Extents::new(self.clone(), inode)? {
-                let extent = extent?;
-
-                let dst_start = usize_from_u32(extent.block_within_file)
-                    .checked_mul(block_size.to_usize())
-                    .ok_or(FileTooLarge)?;
-
-                // Get the length (in bytes) of the extent.
-                //
-                // This length may actually be too long, since the last
-                // block may extend past the end of the file. This is
-                // checked below.
-                let len = block_size
-                    .to_usize()
-                    .checked_mul(usize::from(extent.num_blocks))
-                    .ok_or(FileTooLarge)?;
-                let dst_end = dst_start.checked_add(len).ok_or(FileTooLarge)?;
-                // Cap to the end of the file.
-                let dst_end = dst_end.min(file_size_in_bytes);
-
-                let dst = &mut dst[dst_start..dst_end];
-
-                let src_start = extent
-                    .start_block
-                    .checked_mul(block_size.to_u64())
-                    .ok_or(FileTooLarge)?;
-
-                self.read_bytes(src_start, dst)?;
+        // Use `File` to read the data in chunks.
+        let mut file = File::open_inode(self, inode.clone())?;
+        let mut remaining = dst.as_mut();
+        loop {
+            let bytes_read = file.read_bytes(remaining)?;
+            if bytes_read == 0 {
+                break;
             }
-        } else {
-            let mut dst_start: usize = 0;
-            for block_index in FileBlocks::new(self.clone(), inode)? {
-                let block_index = block_index?;
-
-                let src_start = block_index
-                    .checked_mul(block_size.to_u64())
-                    .ok_or(FileTooLarge)?;
-
-                let dst_end = dst_start
-                    .checked_add(block_size.to_usize())
-                    .ok_or(FileTooLarge)?;
-                // Cap to the end of the file.
-                let dst_end = dst_end.min(file_size_in_bytes);
-
-                let dst = &mut dst[dst_start..dst_end];
-                dst_start = dst_start
-                    .checked_add(block_size.to_usize())
-                    .ok_or(FileTooLarge)?;
-
-                // If the block index is zero, it's a hole, which should
-                // be filled with zeroes. The destination is already
-                // zeroed, so nothing to do in that case.
-                if block_index != 0 {
-                    self.read_bytes(src_start, dst)?;
-                }
-            }
+            remaining = &mut remaining[bytes_read..];
         }
         Ok(dst)
     }
