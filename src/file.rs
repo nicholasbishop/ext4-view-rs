@@ -48,6 +48,16 @@ impl File {
             return Err(Ext4Error::IsASpecialFile);
         }
 
+        Self::open_inode(fs, inode)
+    }
+
+    /// Open `inode`. Note that unlike `File::open`, this allows any
+    /// type of `inode` to be opened, including directories and
+    /// symlinks. This is used by `Ext4::read_inode_file`.
+    pub(crate) fn open_inode(
+        fs: &Ext4,
+        inode: Inode,
+    ) -> Result<Self, Ext4Error> {
         Ok(Self {
             fs: fs.clone(),
             position: 0,
