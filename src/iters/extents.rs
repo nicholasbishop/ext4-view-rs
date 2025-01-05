@@ -229,10 +229,8 @@ impl Extents {
             // Read just the header of the child node. This is needed to
             // find out how much data is in the full child node.
             let mut child_header = [0; ENTRY_SIZE_IN_BYTES];
-            let child_start = child_block
-                .checked_mul(self.ext4.0.superblock.block_size.to_u64())
-                .ok_or_else(|| Corrupt::ExtentBlock(self.inode.get()))?;
-            self.ext4.read_bytes(child_start, &mut child_header)?;
+            self.ext4
+                .read_from_block(child_block, 0, &mut child_header)?;
             let child_header =
                 NodeHeader::from_bytes(&child_header, self.inode)?;
 
@@ -256,7 +254,7 @@ impl Extents {
                 return Err(Corrupt::ExtentNodeSize(self.inode.get()).into());
             }
             let mut child_node = vec![0; child_node_size];
-            self.ext4.read_bytes(child_start, &mut child_node)?;
+            self.ext4.read_from_block(child_block, 0, &mut child_node)?;
 
             // Validating the checksum here covers everything but the
             // root node. The root node is embedded within the inode,

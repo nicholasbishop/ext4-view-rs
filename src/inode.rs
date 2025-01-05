@@ -185,6 +185,7 @@ impl Inode {
     }
 
     /// Read an inode.
+    #[expect(clippy::arithmetic_side_effects)] // TODO
     pub(crate) fn read(
         ext4: &Ext4,
         inode: InodeIndex,
@@ -192,8 +193,14 @@ impl Inode {
         let src_offset = get_inode_start_byte(ext4, inode)
             .ok_or(Corrupt::Inode(inode.get()))?;
 
+        // TODO
+        let block_index = src_offset / ext4.0.superblock.block_size.to_u64();
+        let offset_within_block =
+            u32::try_from(src_offset % ext4.0.superblock.block_size.to_u64())
+                .unwrap();
+
         let mut data = vec![0; usize::from(ext4.0.superblock.inode_size)];
-        ext4.read_bytes(src_offset, &mut data)?;
+        ext4.read_from_block(block_index, offset_within_block, &mut data)?;
 
         let (inode, expected_checksum) = Self::from_bytes(ext4, inode, &data)?;
 

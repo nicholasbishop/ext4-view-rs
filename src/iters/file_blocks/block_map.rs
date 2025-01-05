@@ -8,7 +8,7 @@
 
 use crate::inode::Inode;
 use crate::util::read_u32le;
-use crate::{Corrupt, Ext4, Ext4Error};
+use crate::{Ext4, Ext4Error};
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -189,15 +189,8 @@ struct IndirectBlockIter {
 
 impl IndirectBlockIter {
     fn new(fs: Ext4, block_index: u32) -> Result<Self, Ext4Error> {
-        let block_size = fs.0.superblock.block_size;
-
-        let start = u64::from(block_index)
-            .checked_mul(block_size.to_u64())
-            .ok_or(Corrupt::BlockMap)?;
-
-        let mut block = vec![0u8; block_size.to_usize()];
-
-        fs.read_bytes(start, &mut block)?;
+        let mut block = vec![0u8; fs.0.superblock.block_size.to_usize()];
+        fs.read_from_block(u64::from(block_index), 0, &mut block)?;
 
         Ok(Self {
             block,
