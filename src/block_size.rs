@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::util::usize_from_u32;
+use core::cmp::Ordering;
 use core::num::NonZero;
 
 /// File system block size.
@@ -59,9 +60,39 @@ impl PartialEq<u32> for BlockSize {
     }
 }
 
+impl PartialEq<BlockSize> for u16 {
+    fn eq(&self, v: &BlockSize) -> bool {
+        u32::from(*self) == v.to_u32()
+    }
+}
+
 impl PartialEq<BlockSize> for u32 {
     fn eq(&self, v: &BlockSize) -> bool {
         *self == v.to_u32()
+    }
+}
+
+impl PartialEq<BlockSize> for usize {
+    fn eq(&self, v: &BlockSize) -> bool {
+        *self == v.to_usize()
+    }
+}
+
+impl PartialOrd<BlockSize> for u16 {
+    fn partial_cmp(&self, v: &BlockSize) -> Option<Ordering> {
+        u32::from(*self).partial_cmp(&v.to_u32())
+    }
+}
+
+impl PartialOrd<BlockSize> for u32 {
+    fn partial_cmp(&self, v: &BlockSize) -> Option<Ordering> {
+        self.partial_cmp(&v.to_u32())
+    }
+}
+
+impl PartialOrd<BlockSize> for usize {
+    fn partial_cmp(&self, v: &BlockSize) -> Option<Ordering> {
+        self.partial_cmp(&v.to_usize())
     }
 }
 
@@ -94,6 +125,11 @@ mod tests {
     fn test_block_size_eq() {
         let bs = BlockSize::from_superblock_value(0).unwrap();
         assert!(bs == 1024u32);
+        assert!(1024u16 == bs);
         assert!(1024u32 == bs);
+        assert!(1024usize == bs);
+        assert!(1023u16 < bs);
+        assert!(1023u32 < bs);
+        assert!(1023usize < bs);
     }
 }
