@@ -251,6 +251,10 @@ impl Extents {
             // `u32`.
             let child_node_size: usize =
                 checksum_offset.checked_add(checksum_size).unwrap();
+            // Extent nodes are not allowed to exceed the block size.
+            if child_node_size > self.ext4.0.superblock.block_size {
+                return Err(Corrupt::ExtentNodeSize(self.inode.get()).into());
+            }
             let mut child_node = vec![0; child_node_size];
             self.ext4.read_bytes(child_start, &mut child_node)?;
 

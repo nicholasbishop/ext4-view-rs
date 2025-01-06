@@ -112,6 +112,11 @@ impl Superblock {
                 32
             };
 
+        // Inodes are not allowed to exceed the block size.
+        if s_inode_size > block_size {
+            return Err(Corrupt::InodeSize.into());
+        }
+
         let journal_inode = if compatible_features
             .contains(CompatibleFeatures::HAS_JOURNAL)
         {
@@ -292,6 +297,17 @@ mod tests {
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
             Ext4Error::Corrupt(Corrupt::TooManyBlockGroups)
+        ));
+    }
+
+    #[test]
+    fn test_invalid_inode_size() {
+        let mut data =
+            include_bytes!("../test_data/raw_superblock.bin").to_vec();
+        data[0x58..0x5a].copy_from_slice(&1025u16.to_le_bytes());
+        assert!(matches!(
+            Superblock::from_bytes(&data).unwrap_err(),
+            Ext4Error::Corrupt(Corrupt::InodeSize)
         ));
     }
 
