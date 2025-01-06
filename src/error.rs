@@ -190,6 +190,9 @@ pub enum Corrupt {
     /// The number of inodes per block group is zero.
     InodesPerBlockGroup,
 
+    /// The inode size exceeds the block size.
+    InodeSize,
+
     /// The journal inode in the superblock is invalid.
     JournalInode,
 
@@ -265,6 +268,12 @@ pub enum Corrupt {
         u32,
     ),
 
+    /// An extent node's size exceeds the block size.
+    ExtentNodeSize(
+        /// Inode number.
+        u32,
+    ),
+
     /// A directory block's checksum is invalid.
     DirBlockChecksum(
         /// Inode number.
@@ -291,6 +300,7 @@ impl Display for Corrupt {
             Self::InodesPerBlockGroup => {
                 write!(f, "inodes per block group is zero")
             }
+            Self::InodeSize => write!(f, "inode size is invalid"),
             Self::JournalInode => write!(f, "invalid journal inode"),
             Self::FirstDataBlock(block) => {
                 write!(f, "invalid first data block: {block}")
@@ -327,6 +337,12 @@ impl Display for Corrupt {
             }
             Self::ExtentBlock(inode) => {
                 write!(f, "extent in inode {inode} points to an invalid block")
+            }
+            Self::ExtentNodeSize(inode) => {
+                write!(
+                    f,
+                    "extent in inode {inode} has a node with an invalid size"
+                )
             }
             Self::DirBlockChecksum(inode) => write!(
                 f,
