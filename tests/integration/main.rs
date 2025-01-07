@@ -11,6 +11,12 @@ mod ext4;
 mod file;
 mod path;
 
+use ext4_view::Ext4;
+
+mod test_util {
+    include!("../../src/test_util.rs");
+}
+
 /// Get the expected data for the "/holes" file.
 ///
 /// Should match `create_file_with_holes` in xtask.

@@ -462,7 +462,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_read_dot_or_dotdot() {
-        let fs = crate::load_test_disk1();
+        let fs = crate::test_util::load_test_disk1();
 
         let mut block = vec![0; fs.0.superblock.block_size.to_usize()];
 
@@ -531,7 +531,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_get_dir_entry_via_htree() {
-        let fs = crate::load_test_disk1();
+        let fs = crate::test_util::load_test_disk1();
 
         // Resolve paths in `/medium_dir` via htree.
         let medium_dir = Path::new("/medium_dir");
@@ -546,7 +546,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_block_from_file_block() {
-        let fs = crate::load_test_disk1();
+        let fs = crate::test_util::load_test_disk1();
 
         // Manually construct a simple extent tree containing two
         // extents.

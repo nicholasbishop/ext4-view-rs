@@ -449,7 +449,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_dir_entry_from_bytes() {
-        let fs = crate::load_test_disk1();
+        let fs = crate::test_util::load_test_disk1();
 
         let inode1 = InodeIndex::new(1).unwrap();
         let inode2 = InodeIndex::new(2).unwrap();

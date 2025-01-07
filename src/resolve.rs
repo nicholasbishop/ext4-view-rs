@@ -354,7 +354,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_resolve() {
-        let fs = &crate::load_test_disk1();
+        let fs = &crate::test_util::load_test_disk1();
 
         let follow = FollowSymlinks::All;
         let mkp = |s| Path::new(s);

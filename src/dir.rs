@@ -53,7 +53,7 @@ pub(crate) fn get_dir_entry_inode_by_name(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::load_test_disk1;
+    use crate::test_util::load_test_disk1;
 
     #[test]
     fn test_get_dir_entry_inode_by_name() {

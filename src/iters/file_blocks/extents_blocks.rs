@@ -188,7 +188,8 @@ impl_result_iter!(ExtentsBlocks, u64);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{load_test_disk1, FollowSymlinks, Path};
+    use crate::test_util::load_test_disk1;
+    use crate::{FollowSymlinks, Path};
 
     /// Test that `ExtentsBlocks` yields zero for holes.
     ///
