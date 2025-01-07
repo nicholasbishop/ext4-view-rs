@@ -8,7 +8,7 @@
 
 use crate::expected_holes_data;
 use crate::ext2::load_ext2;
-use crate::ext4::load_test_disk1;
+use crate::test_util::load_test_disk1;
 use ext4_view::Ext4Error;
 
 #[cfg(feature = "std")]

@@ -172,7 +172,7 @@ impl_result_iter!(ReadDir, DirEntry);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::load_test_disk1;
+    use crate::test_util::load_test_disk1;
 
     #[test]
     fn test_read_dir() {

@@ -130,6 +130,9 @@ mod resolve;
 mod superblock;
 mod util;
 
+#[cfg(all(test, feature = "std"))]
+mod test_util;
+
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::String;
@@ -545,24 +548,6 @@ impl Debug for Ext4 {
     }
 }
 
-// This function is duplicated in `/tests/integration/ext4.rs`.
-#[cfg(feature = "std")]
-#[cfg(test)]
-fn load_test_disk1() -> Ext4 {
-    // This function executes quickly, so don't bother caching.
-    let output = std::process::Command::new("zstd")
-        .args([
-            "--decompress",
-            // Write to stdout and don't delete the input file.
-            "--stdout",
-            "test_data/test_disk1.bin.zst",
-        ])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    Ext4::load(Box::new(output.stdout)).unwrap()
-}
-
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -570,7 +555,7 @@ mod tests {
 
     #[test]
     fn test_path_to_inode() {
-        let fs = load_test_disk1();
+        let fs = crate::test_util::load_test_disk1();
 
         let follow = FollowSymlinks::All;
 

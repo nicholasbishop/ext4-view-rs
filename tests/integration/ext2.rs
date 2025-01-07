@@ -7,20 +7,11 @@
 // except according to those terms.
 
 use crate::expected_holes_data;
+use crate::test_util::load_compressed_filesystem;
 use ext4_view::Ext4;
 
 pub fn load_ext2() -> Ext4 {
-    let output = std::process::Command::new("zstd")
-        .args([
-            "--decompress",
-            // Write to stdout and don't delete the input file.
-            "--stdout",
-            "test_data/test_disk_ext2.bin.zst",
-        ])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    Ext4::load(Box::new(output.stdout)).unwrap()
+    load_compressed_filesystem("test_disk_ext2.bin.zst")
 }
 
 // This function is duplicated in `/xtask/src/main.rs`.
