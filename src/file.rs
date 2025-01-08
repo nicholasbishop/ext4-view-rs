@@ -184,7 +184,7 @@ impl File {
         // If the end of this block has been reached, clear
         // `self.block_index` so that the next call fetches a new block
         // from the iterator.
-        if new_offset_within_block >= block_size.to_u32() {
+        if new_offset_within_block >= block_size {
             self.block_index = None;
         }
 
