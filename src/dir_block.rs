@@ -53,7 +53,7 @@ impl DirBlock<'_> {
     /// block's checksum will be verified.
     pub(crate) fn read(&self, block: &mut [u8]) -> Result<(), Ext4Error> {
         let block_size = self.fs.0.superblock.block_size;
-        assert_eq!(block.len(), block_size.to_usize());
+        assert_eq!(block.len(), block_size);
 
         let start_byte = self
             .block_index

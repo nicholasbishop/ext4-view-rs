@@ -115,7 +115,7 @@ impl ReadDir {
         // If a block has been fully processed, move to the next block
         // on the next iteration.
         let block_size = self.fs.0.superblock.block_size;
-        if self.offset_within_block >= block_size.to_usize() {
+        if self.offset_within_block >= block_size {
             self.is_first_block = false;
             self.block_index = None;
             return Ok(None);
