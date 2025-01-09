@@ -107,6 +107,7 @@
 extern crate alloc;
 
 mod block_group;
+mod block_read;
 mod block_size;
 mod checksum;
 mod dir;
@@ -271,49 +272,19 @@ impl Ext4 {
     /// * `offset_within_block + dst.len() <= block_size`
     ///
     /// This function panics if any precondition is not met.
-    #[expect(clippy::arithmetic_side_effects)] // TODO
     fn read_from_block(
         &self,
         block_index: u64,
         offset_within_block: u32,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
-        // TODO: add read_from_block_impl for tests
-
-        // The first 1024 bytes are reserved for non-filesystem
-        // data. This conveniently allows for something like a null
-        // pointer check; an attempt to read from this area indicates a
-        // logic bug in the library.
-        assert!(
-            block_index > 0 || offset_within_block >= 1024,
-            "invalid read from block zero: {offset_within_block}"
-        );
-
-        let block_size = self.0.superblock.block_size;
-
-        // Per the preconditions, `offset_within_block` must be less
-        // than the block size.
-        assert!(offset_within_block < block_size);
-
-        // OK to unwrap: per the preconditions, `dst.len()` cannot
-        // exceed the block size, and the block size always fits in a
-        // `u32`.
-        let dst_len = u32::try_from(dst.len()).unwrap();
-        let Some(read_end) = offset_within_block.checked_add(dst_len) else {
-            panic!("{} + {} overflowed", offset_within_block, dst.len());
-        };
-
-        // Per the preconditions, `offset_within_block + dst.len()`
-        // cannot exceed the block size.
-        assert!(read_end <= block_size);
-
-        let start_byte =
-            block_index * block_size.to_u64() + u64::from(offset_within_block);
-        self.0
-            .reader
-            .borrow_mut()
-            .read(start_byte, dst)
-            .map_err(Ext4Error::Io)
+        block_read::read_from_block(
+            &mut **self.0.reader.borrow_mut(),
+            self.0.superblock.block_size,
+            block_index,
+            offset_within_block,
+            dst,
+        )
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.
@@ -598,19 +569,11 @@ impl Debug for Ext4 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Test that reading from the first 1024 bytes panics.
-    #[test]
-    #[should_panic]
-    fn test_read_from_block_first_1024() {
-        let fs = load_test_disk1();
-        let mut dst = vec![0; 1024];
-        let _ = fs.read_from_block(0, 1023, &mut dst);
-    }
+    use test_util::load_test_disk1;
 
     #[test]
     fn test_path_to_inode() {
-        let fs = crate::test_util::load_test_disk1();
+        let fs = load_test_disk1();
 
         let follow = FollowSymlinks::All;
 

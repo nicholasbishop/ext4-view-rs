@@ -286,6 +286,18 @@ pub enum Corrupt {
         /// Inode number.
         u32,
     ),
+
+    /// Invalid read of a block.
+    BlockRead {
+        /// Absolute block index.
+        block_index: u64,
+
+        /// Offset in bytes within the file.
+        offset_within_block: u32,
+
+        /// Length in bytes of the read.
+        read_len: usize,
+    },
 }
 
 impl Display for Corrupt {
@@ -350,6 +362,13 @@ impl Display for Corrupt {
             ),
             Self::DirEntry(inode) => {
                 write!(f, "invalid directory entry in inode {inode}")
+            }
+            Self::BlockRead {
+                block_index,
+                offset_within_block,
+                read_len,
+            } => {
+                write!(f, "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}")
             }
         }
     }
