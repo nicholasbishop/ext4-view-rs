@@ -38,6 +38,7 @@ crc = "3.0.0"
 
 [dev-dependencies]
 anyhow.workspace = true
+mockall = "0.13.1"
 
 [package.metadata.docs.rs]
 all-features = true

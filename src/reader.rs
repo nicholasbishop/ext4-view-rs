@@ -22,6 +22,7 @@ use {
 /// file or device.
 ///
 /// [`Ext4`]: crate::Ext4
+#[cfg_attr(test, mockall::automock)]
 pub trait Ext4Read {
     /// Read bytes into `dst`, starting at `start_byte`.
     ///

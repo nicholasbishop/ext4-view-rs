@@ -140,6 +140,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
+use block_read::BlockRead;
 use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
 use features::ReadOnlyCompatibleFeatures;
@@ -278,13 +279,15 @@ impl Ext4 {
         offset_within_block: u32,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
-        block_read::read_from_block(
-            &mut **self.0.reader.borrow_mut(),
-            self.0.superblock.block_size,
+        BlockRead {
+            reader: &mut **self.0.reader.borrow_mut(),
+            num_blocks: self.0.superblock.blocks_count,
+            block_size: self.0.superblock.block_size,
             block_index,
             offset_within_block,
             dst,
-        )
+        }
+        .read()
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.
