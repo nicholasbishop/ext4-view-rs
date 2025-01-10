@@ -183,18 +183,34 @@ impl<'a> TryFrom<&'a PathBuf> for Path<'a> {
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 impl<'a> TryFrom<&'a std::ffi::OsStr> for Path<'a> {
     type Error = PathError;
 
     fn try_from(p: &'a std::ffi::OsStr) -> Result<Self, PathError> {
-        use std::os::unix::ffi::OsStrExt;
-
-        Self::try_from(p.as_bytes())
+        // The encoding of the bytes in `OsStr` is "an unspecified,
+        // platform-specific, self-synchronizing superset of UTF-8".
+        //
+        // * On Unix, this call is equivalent to `OsStrExt::as_bytes`.
+        // * On Windows, the encoding is WTF-8 (i.e. Rust converts a
+        //   native Windows wide-encoded string to a superset of UTF-8).
+        // * Technically these encodings could change in the future, but
+        //   in practice it's hard to see how that would be possible
+        //   without breaking stable guarantees (`OsStr::to_str` returns
+        //   `&str`, so the underlying representation has to be
+        //   string-like).
+        // * Other platforms could use other definitions, although in
+        //   practice they are likely to match either Unix or Windows.
+        //
+        // In any case, semantically we are trying to create a `Path`
+        // that is as close as possible to the original input. Paths do
+        // not have to have any particular encoding; the main
+        // restriction is that they cannot contain null bytes.
+        Self::try_from(p.as_encoded_bytes())
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 impl<'a> TryFrom<&'a std::path::Path> for Path<'a> {
     type Error = PathError;
 
@@ -408,18 +424,17 @@ impl TryFrom<Vec<u8>> for PathBuf {
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 impl TryFrom<std::ffi::OsString> for PathBuf {
     type Error = PathError;
 
     fn try_from(p: std::ffi::OsString) -> Result<Self, PathError> {
-        use std::os::unix::ffi::OsStringExt;
-
-        Self::try_from(p.into_vec())
+        // See comment in the `TryFrom<&OsStr> for Path` impl.
+        Self::try_from(p.into_encoded_bytes())
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 impl TryFrom<std::path::PathBuf> for PathBuf {
     type Error = PathError;
 

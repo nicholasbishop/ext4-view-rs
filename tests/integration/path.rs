@@ -8,7 +8,7 @@
 
 use ext4_view::{Component, Path, PathBuf, PathError};
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 use std::ffi::{OsStr, OsString};
 
 #[test]
@@ -60,7 +60,7 @@ fn test_path_construction() {
     assert_eq!(PathBuf::default(), []);
 
     // Successful construction from std types.
-    #[cfg(all(feature = "std", unix))]
+    #[cfg(feature = "std")]
     {
         let src: &OsStr = OsStr::new("abc");
         assert_eq!(Path::try_from(src).unwrap(), expected_path);
