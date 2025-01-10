@@ -146,6 +146,7 @@ use inode::{Inode, InodeIndex};
 use journal::Journal;
 use resolve::FollowSymlinks;
 use superblock::Superblock;
+use util::usize_from_u32;
 
 pub use dir_entry::{DirEntry, DirEntryName, DirEntryNameError};
 pub use error::{Corrupt, Ext4Error, Incompatible};
@@ -262,6 +263,79 @@ impl Ext4 {
         // pointer check; an attempt to read from this area indicates a
         // logic bug in the library.
         assert!(start_byte >= 1024, "invalid read offset: {start_byte}");
+
+        self.0
+            .reader
+            .borrow_mut()
+            .read(start_byte, dst)
+            .map_err(Ext4Error::Io)
+    }
+
+    /// Read data from a block.
+    ///
+    /// `block_index`: an absolute block within the filesystem.
+    ///
+    /// `offset_within_block`: the byte offset within the block to start
+    /// reading from.
+    ///
+    /// `dst`: byte buffer to read into. This also controls the length
+    /// of the read.
+    ///
+    /// The first 1024 bytes of the filesystem are reserved for
+    /// non-filesystem data. Reads are not allowed there.
+    ///
+    /// The read cannot cross block boundaries. This implies that:
+    /// * `offset_within_block < block_size`
+    /// * `offset_within_block + dst.len() <= block_size`
+    ///
+    /// If any of these conditions are violated, a `Corrupt::BlockRead`
+    /// error is returned.
+    #[allow(unused)]
+    fn read_from_block(
+        &self,
+        block_index: u64,
+        offset_within_block: u32,
+        dst: &mut [u8],
+    ) -> Result<(), Ext4Error> {
+        let err = || {
+            Ext4Error::Corrupt(Corrupt::BlockRead {
+                block_index,
+                offset_within_block,
+                read_len: dst.len(),
+            })
+        };
+
+        // The first 1024 bytes are reserved for non-filesystem
+        // data. This conveniently allows for something like a null
+        // pointer check.
+        if block_index == 0 && offset_within_block < 1024 {
+            return Err(err());
+        }
+
+        // Check the block index.
+        if block_index >= self.0.superblock.blocks_count {
+            return Err(err());
+        }
+
+        // The start of the read must be less than the block size.
+        let block_size = self.0.superblock.block_size;
+        if offset_within_block >= block_size {
+            return Err(err());
+        }
+
+        // The end of the read must be less than or equal to the block size.
+        let read_end = usize_from_u32(offset_within_block)
+            .checked_add(dst.len())
+            .ok_or_else(err)?;
+        if read_end > block_size {
+            return Err(err());
+        }
+
+        // Get the absolute byte to start reading from.
+        let start_byte = block_index
+            .checked_mul(block_size.to_u64())
+            .and_then(|v| v.checked_add(u64::from(offset_within_block)))
+            .ok_or_else(err)?;
 
         self.0
             .reader
@@ -552,10 +626,79 @@ impl Debug for Ext4 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_util::load_test_disk1;
+
+    fn block_read_error(
+        block_index: u64,
+        offset_within_block: u32,
+        read_len: usize,
+    ) -> Corrupt {
+        Corrupt::BlockRead {
+            block_index,
+            offset_within_block,
+            read_len,
+        }
+    }
+
+    /// Test that reading from the first 1024 bytes of the file fails.
+    #[test]
+    fn test_read_from_block_first_1024() {
+        let fs = load_test_disk1();
+        let mut dst = vec![0; 1];
+        assert_eq!(
+            fs.read_from_block(0, 1023, &mut dst)
+                .unwrap_err()
+                .as_corrupt()
+                .unwrap(),
+            &block_read_error(0, 1023, 1),
+        );
+    }
+
+    /// Test that reading past the last block of the file fails.
+    #[test]
+    fn test_read_from_block_past_file_end() {
+        let fs = load_test_disk1();
+        let mut dst = vec![0; 1024];
+        assert_eq!(
+            fs.read_from_block(999_999_999, 0, &mut dst)
+                .unwrap_err()
+                .as_corrupt()
+                .unwrap(),
+            &block_read_error(999_999_999, 0, 1024),
+        );
+    }
+
+    /// Test that reading at an offset >= the block size fails.
+    #[test]
+    fn test_read_from_block_invalid_offset() {
+        let fs = load_test_disk1();
+        let mut dst = vec![0; 1024];
+        assert_eq!(
+            fs.read_from_block(1, 1024, &mut dst)
+                .unwrap_err()
+                .as_corrupt()
+                .unwrap(),
+            &block_read_error(1, 1024, 1024),
+        );
+    }
+
+    /// Test that reading past the end of the block fails.
+    #[test]
+    fn test_read_from_block_past_block_end() {
+        let fs = load_test_disk1();
+        let mut dst = vec![0; 25];
+        assert_eq!(
+            fs.read_from_block(1, 1000, &mut dst)
+                .unwrap_err()
+                .as_corrupt()
+                .unwrap(),
+            &block_read_error(1, 1000, 25),
+        );
+    }
 
     #[test]
     fn test_path_to_inode() {
-        let fs = crate::test_util::load_test_disk1();
+        let fs = load_test_disk1();
 
         let follow = FollowSymlinks::All;
 
