@@ -189,11 +189,12 @@ impl Inode {
         ext4: &Ext4,
         inode: InodeIndex,
     ) -> Result<Self, Ext4Error> {
-        let src_offset = get_inode_start_byte(ext4, inode)
-            .ok_or(Corrupt::Inode(inode.get()))?;
+        let (block_index, offset_within_block) =
+            get_inode_location(ext4, inode)
+                .ok_or(Corrupt::Inode(inode.get()))?;
 
         let mut data = vec![0; usize::from(ext4.0.superblock.inode_size)];
-        ext4.read_bytes(src_offset, &mut data)?;
+        ext4.read_from_block(block_index, offset_within_block, &mut data)?;
 
         let (inode, expected_checksum) = Self::from_bytes(ext4, inode, &data)?;
 
@@ -276,7 +277,10 @@ impl Inode {
     }
 }
 
-fn get_inode_start_byte(ext4: &Ext4, inode: InodeIndex) -> Option<u64> {
+/// Get an inode's location: block index and offset within that block.
+/// Note that this is the location of the inode itself, not the file
+/// data associated with the inode.
+fn get_inode_location(ext4: &Ext4, inode: InodeIndex) -> Option<(u64, u32)> {
     let sb = &ext4.0.superblock;
 
     // OK to unwrap: `inode` is nonzero.
@@ -299,5 +303,13 @@ fn get_inode_start_byte(ext4: &Ext4, inode: InodeIndex) -> Option<u64> {
         .to_u64()
         .checked_mul(group.inode_table_first_block)?;
 
-    byte_offset_of_group.checked_add(byte_offset_within_group)
+    // Absolute byte index of the inode.
+    let start_byte =
+        byte_offset_of_group.checked_add(byte_offset_within_group)?;
+
+    let block_index = start_byte / sb.block_size.to_nz_u64();
+    let offset_within_block =
+        u32::try_from(start_byte % sb.block_size.to_nz_u64()).ok()?;
+
+    Some((block_index, offset_within_block))
 }
