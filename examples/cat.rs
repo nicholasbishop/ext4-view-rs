@@ -12,7 +12,6 @@
 
 use anyhow::{Context, Result};
 use ext4_view::Ext4;
-use std::ffi::OsString;
 use std::io::{self, ErrorKind, Read, Write};
 use std::{env, process};
 
@@ -36,7 +35,8 @@ fn parse_args() -> Result<(std::path::PathBuf, ext4_view::PathBuf)> {
     }
 
     let filesystem = std::path::PathBuf::from(&args[1]);
-    let path = get_ext4_path(args[2].clone())?;
+    let path = ext4_view::PathBuf::try_from(args[2].clone())
+        .context("Invalid ext4 path")?;
 
     Ok((filesystem, path))
 }
@@ -81,13 +81,4 @@ fn main() -> Result<()> {
             }
         }
     }
-}
-
-fn get_ext4_path(s: OsString) -> Result<ext4_view::PathBuf> {
-    // TODO: implement a better conversion on Windows.
-    // https://github.com/nicholasbishop/ext4-view-rs/issues/361
-    #[cfg(windows)]
-    let s = s.to_str().context("Path is not UTF-8")?;
-
-    ext4_view::PathBuf::try_from(s).context("Invalid ext4 path")
 }
