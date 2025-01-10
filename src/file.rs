@@ -169,11 +169,8 @@ impl File {
         if block_index == 0 {
             buf.fill(0);
         } else {
-            let start = block_index
-                .checked_mul(block_size.to_u64())
-                .and_then(|v| v.checked_add(u64::from(offset_within_block)))
-                .ok_or(Ext4Error::FileTooLarge)?;
-            self.fs.read_bytes(start, buf)?;
+            self.fs
+                .read_from_block(block_index, offset_within_block, buf)?;
         }
 
         // OK to unwrap: reads don't extend past a block, so this is at
