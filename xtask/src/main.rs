@@ -96,6 +96,9 @@ impl DiskParams {
             // mounted filesystem to be edited without root permissions,
             // although the mount operation itself still requires root.
             .args(["-E", &format!("root_owner={uid}:{gid}")])
+            // Set the volume label. This string is 16 bytes, which is
+            // the maximum length.
+            .args(["-L", "ext4-view testfs"])
             .arg(&self.path)
             .arg(format!("{}k", self.size_in_kilobytes));
 
