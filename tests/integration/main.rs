@@ -10,6 +10,7 @@ mod ext2;
 mod ext4;
 mod file;
 mod path;
+mod uuid;
 
 use ext4_view::Ext4;
 
