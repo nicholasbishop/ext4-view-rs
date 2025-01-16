@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Added `Path::to_str` and `PathBuf::to_str`.
+* Added `Ext4::label` to get the filesystem label.
 * Added `Ext4::uuid` to get the filesystem UUID.
 
 ## 0.7.0

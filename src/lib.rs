@@ -241,6 +241,12 @@ impl Ext4 {
         inner(path.as_ref())
     }
 
+    /// Get the filesystem label.
+    #[must_use]
+    pub fn label(&self) -> &Label {
+        &self.0.superblock.label
+    }
+
     /// Get the filesystem UUID.
     #[must_use]
     pub fn uuid(&self) -> Uuid {
