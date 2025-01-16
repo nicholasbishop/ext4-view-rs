@@ -492,7 +492,7 @@ mod tests {
         // Error: not enough data.
         let err = DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
             .unwrap_err();
-        assert_eq!(*err.as_corrupt().unwrap(), CorruptKind::DirEntry(1));
+        assert_eq!(*err.as_corrupt().unwrap(), CorruptKind::DirEntry(1).into());
 
         // Error: not enough data for the name.
         let mut bytes = Vec::new();
