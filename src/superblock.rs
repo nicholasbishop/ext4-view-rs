@@ -224,6 +224,7 @@ fn check_incompat_features(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Corrupt;
 
     #[test]
     fn test_superblock() {
@@ -315,7 +316,7 @@ mod tests {
         data[0x150..0x154].copy_from_slice(&[0xff; 4]);
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(CorruptKind::TooManyBlockGroups)
+            Ext4Error::Corrupt(Corrupt(CorruptKind::TooManyBlockGroups))
         ));
     }
 
@@ -326,7 +327,7 @@ mod tests {
         data[0x58..0x5a].copy_from_slice(&1025u16.to_le_bytes());
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(CorruptKind::InodeSize)
+            Ext4Error::Corrupt(Corrupt(CorruptKind::InodeSize))
         ));
     }
 
@@ -339,7 +340,7 @@ mod tests {
         data[0x284] = 0xff;
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(CorruptKind::SuperblockChecksum)
+            Ext4Error::Corrupt(Corrupt(CorruptKind::SuperblockChecksum))
         ));
     }
 

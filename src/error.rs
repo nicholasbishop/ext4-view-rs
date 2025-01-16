@@ -170,14 +170,20 @@ impl From<Ext4Error> for std::io::Error {
     }
 }
 
-// TODO
-pub(crate) type CorruptKind = Corrupt;
-
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Corrupt(pub(crate) CorruptKind);
+
+impl Display for Corrupt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <CorruptKind as Display>::fmt(&self.0, f)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum Corrupt {
+pub(crate) enum CorruptKind {
     /// Superblock magic is invalid.
     SuperblockMagic,
 
@@ -300,7 +306,7 @@ pub enum Corrupt {
     },
 }
 
-impl Display for Corrupt {
+impl Display for CorruptKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::SuperblockMagic => write!(f, "invalid superblock magic"),
@@ -374,6 +380,18 @@ impl Display for Corrupt {
 impl From<Corrupt> for Ext4Error {
     fn from(c: Corrupt) -> Self {
         Self::Corrupt(c)
+    }
+}
+
+impl From<CorruptKind> for Corrupt {
+    fn from(c: CorruptKind) -> Self {
+        Self(c)
+    }
+}
+
+impl From<CorruptKind> for Ext4Error {
+    fn from(c: CorruptKind) -> Self {
+        Self::Corrupt(Corrupt(c))
     }
 }
 
