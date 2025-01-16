@@ -295,11 +295,14 @@ impl Ext4 {
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
         let err = || {
-            Ext4Error::Corrupt(CorruptKind::BlockRead {
-                block_index,
-                offset_within_block,
-                read_len: dst.len(),
-            })
+            Ext4Error::Corrupt(
+                CorruptKind::BlockRead {
+                    block_index,
+                    offset_within_block,
+                    read_len: dst.len(),
+                }
+                .into(),
+            )
         };
 
         // The first 1024 bytes are reserved for non-filesystem
@@ -636,7 +639,7 @@ mod tests {
         // Invalid superblock.
         assert!(matches!(
             Ext4::load(Box::new(vec![0; 2048])).unwrap_err(),
-            Ext4Error::Corrupt(CorruptKind::SuperblockMagic)
+            Ext4Error::Corrupt(Corrupt(CorruptKind::SuperblockMagic))
         ));
 
         // Not enough data to read the block group descriptors.
@@ -652,7 +655,9 @@ mod tests {
         fs_data.resize(3048usize, 0u8);
         assert!(matches!(
             Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
-            Ext4Error::Corrupt(CorruptKind::BlockGroupDescriptorChecksum(0))
+            Ext4Error::Corrupt(Corrupt(
+                CorruptKind::BlockGroupDescriptorChecksum(0)
+            ))
         ));
     }
 
@@ -670,7 +675,7 @@ mod tests {
                 .unwrap_err()
                 .as_corrupt()
                 .unwrap(),
-            CorruptKind::InvalidBlockSize
+            CorruptKind::InvalidBlockSize.into()
         );
     }
 
@@ -684,6 +689,7 @@ mod tests {
             offset_within_block,
             read_len,
         }
+        .into()
     }
 
     /// Test that reading from the first 1024 bytes of the file fails.
