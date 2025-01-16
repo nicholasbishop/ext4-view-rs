@@ -129,6 +129,7 @@ mod reader;
 mod resolve;
 mod superblock;
 mod util;
+mod uuid;
 
 #[cfg(all(test, feature = "std"))]
 mod test_util;
@@ -158,6 +159,7 @@ pub use iters::read_dir::ReadDir;
 pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};
 pub use reader::{Ext4Read, MemIoError};
+pub use uuid::Uuid;
 
 struct Ext4Inner {
     superblock: Superblock,
