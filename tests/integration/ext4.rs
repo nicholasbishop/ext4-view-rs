@@ -38,14 +38,14 @@ fn test_load_errors() {
     fs_data[1024..2048]
         .copy_from_slice(include_bytes!("../../test_data/raw_superblock.bin"));
     assert!(matches!(
-        dbg!(Ext4::load(Box::new(fs_data.clone())).unwrap_err()),
+        Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
         Ext4Error::Io(_)
     ));
 
     // Invalid block group descriptor checksum.
     fs_data.resize(3048usize, 0u8);
     assert!(matches!(
-        dbg!(Ext4::load(Box::new(fs_data.clone())).unwrap_err()),
+        Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
         Ext4Error::Corrupt(Corrupt::BlockGroupDescriptorChecksum(0))
     ));
 }
