@@ -239,6 +239,12 @@ impl Ext4 {
         inner(path.as_ref())
     }
 
+    /// Get the filesystem UUID.
+    #[must_use]
+    pub fn uuid(&self) -> Uuid {
+        self.0.superblock.uuid
+    }
+
     /// Return true if the filesystem has metadata checksums enabled,
     /// false otherwise.
     fn has_metadata_checksums(&self) -> bool {

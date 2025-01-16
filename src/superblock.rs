@@ -14,6 +14,7 @@ use crate::features::{
 };
 use crate::inode::InodeIndex;
 use crate::util::{read_u16le, read_u32le, u64_from_hilo};
+use crate::Uuid;
 use core::num::NonZero;
 
 /// Information about the filesystem.
@@ -30,6 +31,7 @@ pub(crate) struct Superblock {
     pub(crate) checksum_seed: u32,
     pub(crate) htree_hash_seed: [u32; 4],
     pub(crate) journal_inode: Option<InodeIndex>,
+    pub(crate) uuid: Uuid,
 }
 
 impl Superblock {
@@ -153,6 +155,9 @@ impl Superblock {
             checksum.finalize()
         };
 
+        // OK to unwrap: `s_uuid` is always 16 bytes.
+        let uuid = Uuid(s_uuid.try_into().unwrap());
+
         Ok(Self {
             block_size,
             blocks_count,
@@ -165,6 +170,7 @@ impl Superblock {
             checksum_seed,
             htree_hash_seed: s_hash_seed,
             journal_inode,
+            uuid,
         })
     }
 }
@@ -242,6 +248,10 @@ mod tests {
                     0xbb071441, 0x7746982f, 0x6007bb8f, 0xb61a9b7
                 ],
                 journal_inode: None,
+                uuid: Uuid([
+                    0xb6, 0x20, 0x21, 0xd2, 0x70, 0xe5, 0x4d, 0x2c, 0x8a, 0x2d,
+                    0x50, 0x93, 0x4f, 0x1b, 0xaf, 0x77
+                ]),
             }
         );
     }
