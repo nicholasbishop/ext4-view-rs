@@ -3,6 +3,10 @@
 ## Unreleased
 
 * Added `Path::to_str` and `PathBuf::to_str`.
+* Implemented `TryFrom<&OsStr> for ext4_view::Path` on all platforms,
+  not just Unix.
+* Implemented `TryFrom<&std::path::PathBuf> for ext4_view::Path` on all
+  platforms, not just Unix.
 
 ## 0.7.0
 
