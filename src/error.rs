@@ -87,6 +87,7 @@ pub enum Ext4Error {
 
 impl Ext4Error {
     /// If the error type is [`Ext4Error::Corrupt`], get the underlying error.
+    #[must_use]
     pub fn as_corrupt(&self) -> Option<&Corrupt> {
         if let Self::Corrupt(err) = self {
             Some(err)
@@ -96,6 +97,7 @@ impl Ext4Error {
     }
 
     /// If the error type is [`Ext4Error::Incompatible`], get the underlying error.
+    #[must_use]
     pub fn as_incompatible(&self) -> Option<&Incompatible> {
         if let Self::Incompatible(err) = self {
             Some(err)
@@ -105,6 +107,7 @@ impl Ext4Error {
     }
 
     /// If the error type is [`Ext4Error::Io`], get the underlying error.
+    #[must_use]
     pub fn as_io(&self) -> Option<&(dyn Error + Send + Sync + 'static)> {
         if let Self::Io(err) = self {
             Some(&**err)

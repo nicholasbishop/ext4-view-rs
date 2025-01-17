@@ -68,6 +68,7 @@ impl File {
     }
 
     /// Get the file metadata.
+    #[must_use]
     pub fn metadata(&self) -> &Metadata {
         &self.inode.metadata
     }
@@ -195,6 +196,7 @@ impl File {
     }
 
     /// Current position within the file.
+    #[must_use]
     pub fn position(&self) -> u64 {
         self.position
     }
