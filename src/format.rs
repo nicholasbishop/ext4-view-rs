@@ -35,6 +35,7 @@ pub(crate) fn format_bytes_debug(
 ///
 /// The data is lossily converted to UTF-8, with invalid UTF-8 sequences
 /// converted to '�'.
+#[must_use]
 pub struct BytesDisplay<'a>(pub(crate) &'a [u8]);
 
 impl Display for BytesDisplay<'_> {

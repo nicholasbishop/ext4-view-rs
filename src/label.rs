@@ -56,7 +56,6 @@ impl Label {
     /// Null bytes are not included.
     ///
     /// [`Display`]: core::fmt::Display
-    #[must_use]
     pub fn display(&self) -> BytesDisplay {
         BytesDisplay(self.as_bytes_up_to_first_null())
     }

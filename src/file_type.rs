@@ -51,36 +51,43 @@ impl FileType {
     }
 
     /// Returns true if the file is a block device.
+    #[must_use]
     pub fn is_block_dev(self) -> bool {
         self == Self::BlockDevice
     }
 
     /// Returns true if the file is a character device.
+    #[must_use]
     pub fn is_char_dev(self) -> bool {
         self == Self::CharacterDevice
     }
 
     /// Returns true if the file is a directory.
+    #[must_use]
     pub fn is_dir(self) -> bool {
         self == Self::Directory
     }
 
     /// Returns true if the file is a first-in first-out (FIFO) special file.
+    #[must_use]
     pub fn is_fifo(self) -> bool {
         self == Self::Fifo
     }
 
     /// Returns true if the file is a regular file.
+    #[must_use]
     pub fn is_regular_file(self) -> bool {
         self == Self::Regular
     }
 
     /// Returns true if the file is a socket.
+    #[must_use]
     pub fn is_socket(self) -> bool {
         self == Self::Socket
     }
 
     /// Returns true if the file is a symlink.
+    #[must_use]
     pub fn is_symlink(self) -> bool {
         self == Self::Symlink
     }
