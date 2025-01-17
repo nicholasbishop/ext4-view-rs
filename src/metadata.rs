@@ -30,22 +30,26 @@ pub struct Metadata {
 
 impl Metadata {
     /// Get the file type.
+    #[must_use]
     pub fn file_type(&self) -> FileType {
         self.file_type
     }
 
     /// Return true if this metadata is for a directory.
+    #[must_use]
     pub fn is_dir(&self) -> bool {
         self.file_type.is_dir()
     }
 
     /// Return true if this metadata is for a symlink.
+    #[must_use]
     pub fn is_symlink(&self) -> bool {
         self.file_type.is_symlink()
     }
 
     /// Get the size in bytes of the file.
     #[allow(clippy::len_without_is_empty)]
+    #[must_use]
     pub fn len(&self) -> u64 {
         self.size_in_bytes
     }
@@ -71,16 +75,19 @@ impl Metadata {
     /// See `st_mode` in [inode(7)][inode] for more details.
     ///
     /// [inode]: https://www.man7.org/linux/man-pages/man7/inode.7.html
+    #[must_use]
     pub fn mode(&self) -> u16 {
         self.mode.bits() & 0o7777
     }
 
     /// Owner user ID.
+    #[must_use]
     pub fn uid(&self) -> u32 {
         self.uid
     }
 
     /// Owner group ID.
+    #[must_use]
     pub fn gid(&self) -> u32 {
         self.gid
     }
