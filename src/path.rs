@@ -76,6 +76,7 @@ impl<'a> Path<'a> {
     }
 
     /// Get whether the path is absolute (starts with `/`).
+    #[must_use]
     pub fn is_absolute(self) -> bool {
         if self.0.is_empty() {
             false
@@ -249,16 +250,19 @@ impl PathBuf {
     }
 
     /// Create empty `PathBuf`.
+    #[must_use]
     pub const fn empty() -> Self {
         Self(Vec::new())
     }
 
     /// Borrow as a `Path`.
+    #[must_use]
     pub fn as_path(&self) -> Path {
         Path(&self.0)
     }
 
     /// Get whether the path is absolute (starts with `/`).
+    #[must_use]
     pub fn is_absolute(&self) -> bool {
         self.as_path().is_absolute()
     }

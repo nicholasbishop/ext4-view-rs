@@ -99,6 +99,7 @@
 #![warn(
     clippy::arithmetic_side_effects,
     clippy::as_conversions,
+    clippy::must_use_candidate,
     clippy::use_self
 )]
 #![warn(missing_docs)]
