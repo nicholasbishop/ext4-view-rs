@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeIndex};
 use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
@@ -73,7 +73,7 @@ impl NodeHeader {
     /// Read a `NodeHeader` from a byte slice.
     fn from_bytes(data: &[u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
         if data.len() < ENTRY_SIZE_IN_BYTES {
-            return Err(Corrupt::ExtentNotEnoughData(inode.get()).into());
+            return Err(CorruptKind::ExtentNotEnoughData(inode.get()).into());
         }
 
         let eh_magic = read_u16le(data, 0);
@@ -82,11 +82,11 @@ impl NodeHeader {
         let eh_depth = read_u16le(data, 6);
 
         if eh_magic != 0xf30a {
-            return Err(Corrupt::ExtentMagic(inode.get()).into());
+            return Err(CorruptKind::ExtentMagic(inode.get()).into());
         }
 
         if eh_depth > 5 {
-            return Err(Corrupt::ExtentDepth(inode.get()).into());
+            return Err(CorruptKind::ExtentDepth(inode.get()).into());
         }
 
         Ok(Self {
@@ -119,7 +119,7 @@ impl ToVisitItem {
         // The node data must be large enough to contain the number of
         // entries specified in the header.
         if node.len() < header.node_size_in_bytes() {
-            return Err(Corrupt::ExtentNotEnoughData(inode.get()).into());
+            return Err(CorruptKind::ExtentNotEnoughData(inode.get()).into());
         }
 
         // Remove unused data at the end (e.g. checksum data).
@@ -251,7 +251,9 @@ impl Extents {
                 checksum_offset.checked_add(checksum_size).unwrap();
             // Extent nodes are not allowed to exceed the block size.
             if child_node_size > self.ext4.0.superblock.block_size {
-                return Err(Corrupt::ExtentNodeSize(self.inode.get()).into());
+                return Err(
+                    CorruptKind::ExtentNodeSize(self.inode.get()).into()
+                );
             }
             let mut child_node = vec![0; child_node_size];
             self.ext4.read_from_block(child_block, 0, &mut child_node)?;
@@ -268,7 +270,7 @@ impl Extents {
                 let actual_checksum = checksum.finalize();
                 if expected_checksum != actual_checksum {
                     return Err(
-                        Corrupt::ExtentChecksum(self.inode.get()).into()
+                        CorruptKind::ExtentChecksum(self.inode.get()).into()
                     );
                 }
             }
