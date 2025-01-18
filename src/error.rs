@@ -170,6 +170,9 @@ impl From<Ext4Error> for std::io::Error {
     }
 }
 
+// TODO
+pub(crate) type CorruptKind = Corrupt;
+
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
 #[derive(Clone, Debug, Eq, PartialEq)]

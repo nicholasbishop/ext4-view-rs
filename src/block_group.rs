@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::superblock::Superblock;
 use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
@@ -84,7 +84,7 @@ impl BlockGroupDescriptor {
         let mut data = vec![0; block_group_descriptor_size];
 
         let start = Self::get_start_byte(sb, bgd_index)
-            .ok_or(Corrupt::BlockGroupDescriptor(bgd_index))?;
+            .ok_or(CorruptKind::BlockGroupDescriptor(bgd_index))?;
         reader.read(start, &mut data).map_err(Ext4Error::Io)?;
 
         let block_group_descriptor = Self::from_bytes(sb, &data);
@@ -107,9 +107,10 @@ impl BlockGroupDescriptor {
             let checksum = u16::try_from(checksum.finalize() & 0xffff).unwrap();
 
             if checksum != block_group_descriptor.checksum {
-                return Err(
-                    Corrupt::BlockGroupDescriptorChecksum(bgd_index).into()
-                );
+                return Err(CorruptKind::BlockGroupDescriptorChecksum(
+                    bgd_index,
+                )
+                .into());
             }
         } else if sb
             .read_only_compatible_features

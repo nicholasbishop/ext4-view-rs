@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
 use crate::format::{format_bytes_debug, BytesDisplay};
 use crate::inode::{Inode, InodeIndex};
@@ -237,7 +237,7 @@ impl DirEntry {
     ) -> Result<(Option<Self>, usize), Ext4Error> {
         const NAME_OFFSET: usize = 8;
 
-        let err = || Corrupt::DirEntry(inode.get()).into();
+        let err = || CorruptKind::DirEntry(inode.get()).into();
 
         // Check size (the full entry will usually be larger than this),
         // but these header fields must be present.
@@ -492,7 +492,7 @@ mod tests {
         // Error: not enough data.
         let err = DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
             .unwrap_err();
-        assert_eq!(*err.as_corrupt().unwrap(), Corrupt::DirEntry(1));
+        assert_eq!(*err.as_corrupt().unwrap(), CorruptKind::DirEntry(1));
 
         // Error: not enough data for the name.
         let mut bytes = Vec::new();
