@@ -5,6 +5,8 @@
 * Added `Path::to_str` and `PathBuf::to_str`.
 * Added `Ext4::label` to get the filesystem label.
 * Added `Ext4::uuid` to get the filesystem UUID.
+* Made the `Corrupt` type opaque. It is no longer possible to `match` on
+  specific types of corruption.
 
 ## 0.7.0
 

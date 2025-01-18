@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::InodeIndex;
 use crate::util::{read_u16le, read_u32le};
 use crate::Ext4;
@@ -73,7 +73,7 @@ impl DirBlock<'_> {
         if actual_checksum.finalize() == expected_checksum {
             Ok(())
         } else {
-            Err(Corrupt::DirBlockChecksum(self.dir_inode.get()).into())
+            Err(CorruptKind::DirBlockChecksum(self.dir_inode.get()).into())
         }
     }
 
