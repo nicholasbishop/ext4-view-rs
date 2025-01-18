@@ -238,9 +238,6 @@ pub enum Corrupt {
     /// The number of blocks in a file exceeds 2^32.
     TooManyBlocksInFile,
 
-    /// A block map is invalid.
-    BlockMap,
-
     /// An extent's magic is invalid.
     ExtentMagic(
         /// Inode number.
@@ -335,9 +332,6 @@ impl Display for Corrupt {
                 write!(f, "inode {inode} has an invalid symlink path")
             }
             Self::TooManyBlocksInFile => write!(f, "too many blocks in file"),
-            Self::BlockMap => {
-                write!(f, "block map is invalid")
-            }
             Self::ExtentMagic(inode) => {
                 write!(f, "extent in inode {inode} has invalid magic")
             }
