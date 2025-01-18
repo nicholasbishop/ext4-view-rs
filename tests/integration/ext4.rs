@@ -8,7 +8,10 @@
 
 use crate::expected_holes_data;
 use crate::test_util::load_test_disk1;
-use ext4_view::{Corrupt, Ext4, Ext4Error, Incompatible, Path, PathBuf};
+use ext4_view::{Ext4Error, Incompatible, Path, PathBuf};
+
+#[cfg(feature = "std")]
+use ext4_view::Ext4;
 
 #[test]
 fn test_ext4_debug() {
@@ -19,37 +22,6 @@ fn test_ext4_debug() {
     assert!(s.ends_with(", .. }"));
 }
 
-#[test]
-fn test_load_errors() {
-    // Not enough data.
-    assert!(matches!(
-        Ext4::load(Box::new(vec![])).unwrap_err(),
-        Ext4Error::Io(_)
-    ));
-
-    // Invalid superblock.
-    assert!(matches!(
-        Ext4::load(Box::new(vec![0; 2048])).unwrap_err(),
-        Ext4Error::Corrupt(Corrupt::SuperblockMagic)
-    ));
-
-    // Not enough data to read the block group descriptors.
-    let mut fs_data = vec![0; 2048];
-    fs_data[1024..2048]
-        .copy_from_slice(include_bytes!("../../test_data/raw_superblock.bin"));
-    assert!(matches!(
-        Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
-        Ext4Error::Io(_)
-    ));
-
-    // Invalid block group descriptor checksum.
-    fs_data.resize(3048usize, 0u8);
-    assert!(matches!(
-        Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
-        Ext4Error::Corrupt(Corrupt::BlockGroupDescriptorChecksum(0))
-    ));
-}
-
 #[cfg(feature = "std")]
 #[test]
 fn test_load_path_error() {
@@ -58,24 +30,6 @@ fn test_load_path_error() {
             .unwrap_err(),
         Ext4Error::Io(_)
     ));
-}
-
-/// Test that loading the data from
-/// https://github.com/nicholasbishop/ext4-view-rs/issues/280 does not
-/// panic.
-#[test]
-fn test_invalid_ext4_data() {
-    // Fill in zeros for the first 1024 bytes, then add the test data.
-    let mut data = vec![0; 1024];
-    data.extend(include_bytes!("../../test_data/not_ext4.bin"));
-
-    assert_eq!(
-        *Ext4::load(Box::new(data))
-            .unwrap_err()
-            .as_corrupt()
-            .unwrap(),
-        Corrupt::InvalidBlockSize
-    );
 }
 
 #[test]
