@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
 use crate::metadata::Metadata;
 use crate::path::PathBuf;
@@ -128,7 +128,7 @@ impl Inode {
         data: &[u8],
     ) -> Result<(Self, u32), Ext4Error> {
         if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
-            return Err(Corrupt::Inode(index.get()).into());
+            return Err(CorruptKind::Inode(index.get()).into());
         }
 
         let i_mode = read_u16le(data, 0x0);
@@ -161,7 +161,9 @@ impl Inode {
             .div_ceil(ext4.0.superblock.block_size.to_u64())
             // Ext4 allows at most `2^32` blocks in a file.
             .try_into()
-            .map_err(|_| Ext4Error::Corrupt(Corrupt::TooManyBlocksInFile))?;
+            .map_err(|_| {
+                Ext4Error::Corrupt(CorruptKind::TooManyBlocksInFile)
+            })?;
 
         Ok((
             Self {
@@ -174,7 +176,7 @@ impl Inode {
                     uid,
                     gid,
                     file_type: FileType::try_from(mode)
-                        .map_err(|_| Corrupt::Inode(index.get()))?,
+                        .map_err(|_| CorruptKind::Inode(index.get()))?,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,
@@ -191,7 +193,7 @@ impl Inode {
     ) -> Result<Self, Ext4Error> {
         let (block_index, offset_within_block) =
             get_inode_location(ext4, inode)
-                .ok_or(Corrupt::Inode(inode.get()))?;
+                .ok_or(CorruptKind::Inode(inode.get()))?;
 
         let mut data = vec![0; usize::from(ext4.0.superblock.inode_size)];
         ext4.read_from_block(block_index, offset_within_block, &mut data)?;
@@ -225,7 +227,9 @@ impl Inode {
 
             let actual_checksum = checksum.finalize();
             if actual_checksum != expected_checksum {
-                return Err(Corrupt::InodeChecksum(inode.index.get()).into());
+                return Err(
+                    CorruptKind::InodeChecksum(inode.index.get()).into()
+                );
             }
         }
 
@@ -242,7 +246,7 @@ impl Inode {
 
         // An empty symlink target is not allowed.
         if self.metadata.size_in_bytes == 0 {
-            return Err(Corrupt::SymlinkTarget(self.index.get()).into());
+            return Err(CorruptKind::SymlinkTarget(self.index.get()).into());
         }
 
         // Symlink targets of up to 59 bytes are stored inline. Longer
@@ -254,12 +258,14 @@ impl Inode {
             let len = usize::try_from(self.metadata.size_in_bytes).unwrap();
             let target = &self.inline_data[..len];
 
-            PathBuf::try_from(target)
-                .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
+            PathBuf::try_from(target).map_err(|_| {
+                CorruptKind::SymlinkTarget(self.index.get()).into()
+            })
         } else {
             let data = ext4.read_inode_file(self)?;
-            PathBuf::try_from(data)
-                .map_err(|_| Corrupt::SymlinkTarget(self.index.get()).into())
+            PathBuf::try_from(data).map_err(|_| {
+                CorruptKind::SymlinkTarget(self.index.get()).into()
+            })
         }
     }
 
@@ -271,7 +277,7 @@ impl Inode {
     /// # Errors
     ///
     /// Ext4 allows at most `2^32` blocks in a file. Returns
-    /// `Corrupt::TooManyBlocksInFile` if that limit is exceeded.
+    /// `CorruptKind::TooManyBlocksInFile` if that limit is exceeded.
     pub(crate) fn file_size_in_blocks(&self) -> u32 {
         self.file_size_in_blocks
     }

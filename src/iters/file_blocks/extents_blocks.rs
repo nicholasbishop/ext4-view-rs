@@ -6,10 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::error::{CorruptKind, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeIndex};
 use crate::iters::extents::Extents;
-use crate::{Corrupt, Ext4, Ext4Error};
+use crate::Ext4;
 
 /// Iterator over blocks in a file that uses extents.
 ///
@@ -147,7 +148,7 @@ impl ExtentsBlocks {
         let block = extent
             .start_block
             .checked_add(u64::from(self.block_within_extent))
-            .ok_or(Corrupt::ExtentBlock(self.inode.get()))?;
+            .ok_or(CorruptKind::ExtentBlock(self.inode.get()))?;
 
         // OK to unwrap: `block_within_extent` is less than `num_blocks`
         // (checked above) so adding `1` cannot fail.

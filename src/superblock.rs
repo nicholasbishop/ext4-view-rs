@@ -8,7 +8,7 @@
 
 use crate::block_size::BlockSize;
 use crate::checksum::Checksum;
-use crate::error::{Corrupt, Ext4Error, Incompatible};
+use crate::error::{CorruptKind, Ext4Error, Incompatible};
 use crate::features::{
     CompatibleFeatures, IncompatibleFeatures, ReadOnlyCompatibleFeatures,
 };
@@ -78,10 +78,10 @@ impl Superblock {
         let blocks_count = u64_from_hilo(s_blocks_count_hi, s_blocks_count_lo);
 
         let block_size = BlockSize::from_superblock_value(s_log_block_size)
-            .ok_or(Corrupt::InvalidBlockSize)?;
+            .ok_or(CorruptKind::InvalidBlockSize)?;
 
         if s_magic != 0xef53 {
-            return Err(Corrupt::SuperblockMagic.into());
+            return Err(CorruptKind::SuperblockMagic.into());
         }
 
         let incompatible_features = check_incompat_features(s_feature_incompat)
@@ -95,7 +95,7 @@ impl Superblock {
         // and otherwise its usually 0.
         let num_data_blocks = blocks_count
             .checked_sub(u64::from(s_first_data_block))
-            .ok_or(Corrupt::FirstDataBlock(s_first_data_block))?;
+            .ok_or(CorruptKind::FirstDataBlock(s_first_data_block))?;
         // Use div_ceil to round up in case `num_data_blocks` isn't an
         // even multiple of `s_blocks_per_group`. (Consider for example
         // `num_data_blocks = 3` and `s_blocks_per_group = 4`; that is
@@ -104,10 +104,10 @@ impl Superblock {
         let num_block_groups = u32::try_from(
             num_data_blocks.div_ceil(u64::from(s_blocks_per_group)),
         )
-        .map_err(|_| Corrupt::TooManyBlockGroups)?;
+        .map_err(|_| CorruptKind::TooManyBlockGroups)?;
 
         let inodes_per_block_group = NonZero::new(s_inodes_per_group)
-            .ok_or(Corrupt::InodesPerBlockGroup)?;
+            .ok_or(CorruptKind::InodesPerBlockGroup)?;
 
         let block_group_descriptor_size =
             if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
@@ -118,23 +118,25 @@ impl Superblock {
 
         // Inodes are not allowed to exceed the block size.
         if s_inode_size > block_size {
-            return Err(Corrupt::InodeSize.into());
+            return Err(CorruptKind::InodeSize.into());
         }
 
-        let journal_inode = if compatible_features
-            .contains(CompatibleFeatures::HAS_JOURNAL)
-        {
-            // For now a separate journal device is not supported, so
-            // assert that feature is not present. This assert cannot
-            // fail because of the call to `check_incompat_features`
-            // above.
-            assert!(!incompatible_features
-                .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
+        let journal_inode =
+            if compatible_features.contains(CompatibleFeatures::HAS_JOURNAL) {
+                // For now a separate journal device is not supported, so
+                // assert that feature is not present. This assert cannot
+                // fail because of the call to `check_incompat_features`
+                // above.
+                assert!(!incompatible_features
+                    .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
 
-            Some(InodeIndex::new(s_journal_inum).ok_or(Corrupt::JournalInode)?)
-        } else {
-            None
-        };
+                Some(
+                    InodeIndex::new(s_journal_inum)
+                        .ok_or(CorruptKind::JournalInode)?,
+                )
+            } else {
+                None
+            };
 
         // Validate the superblock checksum.
         if read_only_compatible_features
@@ -143,7 +145,7 @@ impl Superblock {
             let mut checksum = Checksum::new();
             checksum.update(&bytes[..S_CHECKSUM_OFFSET]);
             if s_checksum != checksum.finalize() {
-                return Err(Corrupt::SuperblockChecksum.into());
+                return Err(CorruptKind::SuperblockChecksum.into());
             }
         }
 
@@ -313,7 +315,7 @@ mod tests {
         data[0x150..0x154].copy_from_slice(&[0xff; 4]);
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt::TooManyBlockGroups)
+            Ext4Error::Corrupt(CorruptKind::TooManyBlockGroups)
         ));
     }
 
@@ -324,7 +326,7 @@ mod tests {
         data[0x58..0x5a].copy_from_slice(&1025u16.to_le_bytes());
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt::InodeSize)
+            Ext4Error::Corrupt(CorruptKind::InodeSize)
         ));
     }
 
@@ -337,7 +339,7 @@ mod tests {
         data[0x284] = 0xff;
         assert!(matches!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt::SuperblockChecksum)
+            Ext4Error::Corrupt(CorruptKind::SuperblockChecksum)
         ));
     }
 

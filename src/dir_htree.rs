@@ -9,7 +9,7 @@
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
-use crate::error::{Corrupt, Ext4Error, Incompatible};
+use crate::error::{CorruptKind, Ext4Error, Incompatible};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::extents::Extents;
@@ -89,7 +89,7 @@ impl<'a> InternalNode<'a> {
     /// Create an `InternalNode` from raw bytes. These bytes come from a
     /// directory block, see [`from_root_block`] and [`from_non_root_block`].
     fn new(mut bytes: &'a [u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
-        let err = Corrupt::DirEntry(inode.get()).into();
+        let err = CorruptKind::DirEntry(inode.get()).into();
 
         // At least the header entry must be present.
         if bytes.len() < Self::ENTRY_SIZE {
@@ -177,7 +177,7 @@ fn read_root_block(
     // Get the first block.
     let block_index = file_blocks
         .next()
-        .ok_or_else(|| Corrupt::DirEntry(inode.index.get()))??;
+        .ok_or_else(|| CorruptKind::DirEntry(inode.index.get()))??;
 
     // Read the first block of the extent.
     let dir_block = DirBlock {
@@ -204,7 +204,7 @@ fn read_dot_or_dotdot(
     name: DirEntryName<'_>,
     block: &[u8],
 ) -> Result<Option<DirEntry>, Ext4Error> {
-    let corrupt = || Corrupt::DirEntry(inode.index.get()).into();
+    let corrupt = || CorruptKind::DirEntry(inode.index.get()).into();
 
     let offset = if name == "." {
         0
@@ -240,13 +240,13 @@ fn find_extent_for_block(
         let start = extent.block_within_file;
         let end = start
             .checked_add(u32::from(extent.num_blocks))
-            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+            .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
         if block >= start && block < end {
             return Ok(extent);
         }
     }
 
-    Err(Corrupt::DirEntry(inode.index.get()).into())
+    Err(CorruptKind::DirEntry(inode.index.get()).into())
 }
 
 /// Convert from a block offset within a file to an absolute block index.
@@ -259,17 +259,17 @@ fn block_from_file_block(
         let extent = find_extent_for_block(fs, inode, relative_block)?;
         let block_within_extent = relative_block
             .checked_sub(extent.block_within_file)
-            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+            .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
         let absolute_block = extent
             .start_block
             .checked_add(u64::from(block_within_extent))
-            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+            .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
         Ok(absolute_block)
     } else {
         let mut block_map = FileBlocks::new(fs.clone(), inode)?;
         block_map
             .nth(usize_from_u32(relative_block))
-            .ok_or_else(|| Corrupt::DirEntry(inode.index.get()))?
+            .ok_or_else(|| CorruptKind::DirEntry(inode.index.get()))?
     }
 }
 
@@ -302,7 +302,7 @@ fn find_leaf_node(
     let hash = dir_hash_md4_half(name, &fs.0.superblock.htree_hash_seed);
     let mut child_block_relative = root_node
         .lookup_block_by_hash(hash)
-        .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+        .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
 
     // Descend through the tree one level at a time. The first iteration
     // of the loop goes from the root node to a child. The last
@@ -330,7 +330,7 @@ fn find_leaf_node(
                 InternalNode::from_non_root_block(block, inode.index)?;
             child_block_relative = inner_node
                 .lookup_block_by_hash(hash)
-                .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+                .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
         }
     }
 
@@ -384,7 +384,7 @@ pub(crate) fn get_dir_entry_via_htree(
         )?;
         offset_within_block = offset_within_block
             .checked_add(entry_size)
-            .ok_or(Corrupt::DirEntry(inode.index.get()))?;
+            .ok_or(CorruptKind::DirEntry(inode.index.get()))?;
         let Some(dir_entry) = dir_entry else {
             continue;
         };
