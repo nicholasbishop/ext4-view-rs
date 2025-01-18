@@ -5,6 +5,7 @@
 * Added `Path::to_str` and `PathBuf::to_str`.
 * Added `Ext4::label` to get the filesystem label.
 * Added `Ext4::uuid` to get the filesystem UUID.
+* Added support for reading filesystems that weren't cleanly unmounted.
 
 ## 0.7.0
 
