@@ -224,7 +224,6 @@ fn check_incompat_features(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Corrupt;
 
     #[test]
     fn test_superblock() {
@@ -314,10 +313,10 @@ mod tests {
         // Set `s_blocks_count_hi` to a very large value so that
         // `num_block_groups` no longer fits in a `u32`.
         data[0x150..0x154].copy_from_slice(&[0xff; 4]);
-        assert!(matches!(
+        assert_eq!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt(CorruptKind::TooManyBlockGroups))
-        ));
+            CorruptKind::TooManyBlockGroups
+        );
     }
 
     #[test]
@@ -325,10 +324,10 @@ mod tests {
         let mut data =
             include_bytes!("../test_data/raw_superblock.bin").to_vec();
         data[0x58..0x5a].copy_from_slice(&1025u16.to_le_bytes());
-        assert!(matches!(
+        assert_eq!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt(CorruptKind::InodeSize))
-        ));
+            CorruptKind::InodeSize
+        );
     }
 
     #[test]
@@ -338,10 +337,10 @@ mod tests {
         // Modify a reserved byte. Nothing currently uses this data, but
         // it is still part of the checksum.
         data[0x284] = 0xff;
-        assert!(matches!(
+        assert_eq!(
             Superblock::from_bytes(&data).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt(CorruptKind::SuperblockChecksum))
-        ));
+            CorruptKind::SuperblockChecksum
+        );
     }
 
     /// Test that an error is returned if an unknown incompatible
