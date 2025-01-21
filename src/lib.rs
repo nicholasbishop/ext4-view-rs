@@ -638,10 +638,10 @@ mod tests {
         ));
 
         // Invalid superblock.
-        assert!(matches!(
+        assert_eq!(
             Ext4::load(Box::new(vec![0; 2048])).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt(CorruptKind::SuperblockMagic))
-        ));
+            CorruptKind::SuperblockMagic
+        );
 
         // Not enough data to read the block group descriptors.
         let mut fs_data = vec![0; 2048];
@@ -654,12 +654,10 @@ mod tests {
 
         // Invalid block group descriptor checksum.
         fs_data.resize(3048usize, 0u8);
-        assert!(matches!(
+        assert_eq!(
             Ext4::load(Box::new(fs_data.clone())).unwrap_err(),
-            Ext4Error::Corrupt(Corrupt(
-                CorruptKind::BlockGroupDescriptorChecksum(0)
-            ))
-        ));
+            CorruptKind::BlockGroupDescriptorChecksum(0)
+        );
     }
 
     /// Test that loading the data from

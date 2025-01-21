@@ -176,7 +176,7 @@ impl From<Ext4Error> for std::io::Error {
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Corrupt(pub(crate) CorruptKind);
+pub struct Corrupt(CorruptKind);
 
 impl Display for Corrupt {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -376,6 +376,16 @@ impl Display for CorruptKind {
             } => {
                 write!(f, "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}")
             }
+        }
+    }
+}
+
+impl PartialEq<CorruptKind> for Ext4Error {
+    fn eq(&self, ck: &CorruptKind) -> bool {
+        if let Self::Corrupt(c) = self {
+            c.0 == *ck
+        } else {
+            false
         }
     }
 }
