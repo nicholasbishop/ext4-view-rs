@@ -8,6 +8,8 @@
 
 #[expect(unused)] // TODO
 mod block_header;
+#[expect(unused)] // TODO
+mod superblock;
 
 use crate::{Ext4, Ext4Error};
 
