@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[expect(unused)] // TODO
+mod block_header;
+
 use crate::{Ext4, Ext4Error};
 
 #[derive(Debug)]
