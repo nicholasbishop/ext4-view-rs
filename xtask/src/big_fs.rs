@@ -15,6 +15,7 @@ use std::io::{self, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use tar::Archive;
 use tempfile::TempDir;
+use ureq::Agent;
 use xtask::calc_file_sha256;
 
 /// Download a ChromiumOS image and extract its root and stateful
@@ -61,10 +62,11 @@ pub fn download_big_filesystems() -> Result<()> {
     // Download the compressed tarball.
     {
         println!("downloading {url} to {}", download_path.display());
-        let agent = ureq::AgentBuilder::new()
+        let agent = Agent::config_builder()
             .user_agent("https://github.com/nicholasbishop/ext4-view-rs")
-            .build();
-        let mut response = agent.get(&url).call()?.into_reader();
+            .build()
+            .new_agent();
+        let mut response = agent.get(&url).call()?.into_body().into_reader();
         let mut download_file = File::create(&download_path)?;
         io::copy(&mut response, &mut download_file)?;
     }
