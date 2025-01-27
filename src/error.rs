@@ -227,6 +227,15 @@ pub(crate) enum CorruptKind {
         u32,
     ),
 
+    /// Journal size is invalid.
+    JournalSize,
+
+    /// Journal magic is invalid.
+    JournalMagic,
+
+    /// Journal superblock checksum is invalid.
+    JournalSuperblockChecksum,
+
     /// An inode's checksum is invalid.
     InodeChecksum(InodeIndex),
 
@@ -301,6 +310,15 @@ impl Display for CorruptKind {
                 f,
                 "invalid checksum for block group descriptor {block_group_num}"
             ),
+            Self::JournalSize => {
+                write!(f, "journal size is invalid")
+            }
+            Self::JournalMagic => {
+                write!(f, "journal magic is invalid")
+            }
+            Self::JournalSuperblockChecksum => {
+                write!(f, "journal superblock checksum is invalid")
+            }
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
             }
@@ -352,6 +370,16 @@ impl PartialEq<CorruptKind> for Ext4Error {
     fn eq(&self, ck: &CorruptKind) -> bool {
         if let Self::Corrupt(c) = self {
             c.0 == *ck
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<Incompatible> for Ext4Error {
+    fn eq(&self, other: &Incompatible) -> bool {
+        if let Self::Incompatible(i) = self {
+            i == other
         } else {
             false
         }
@@ -418,6 +446,24 @@ pub enum Incompatible {
         /// Inode number.
         u32,
     ),
+
+    /// The journal superblock type is not supported.
+    JournalSuperblockType(
+        /// Raw journal block type.
+        u32,
+    ),
+
+    /// The journal checksum type is not supported.
+    JournalChecksumType(
+        /// Raw journal checksum type.
+        u8,
+    ),
+
+    /// The journal uses features not supported by this library.
+    JournalIncompatibleFeatures(
+        /// Raw feature bits.
+        u32,
+    ),
 }
 
 impl Display for Incompatible {
@@ -437,6 +483,15 @@ impl Display for Incompatible {
             }
             Self::DirectoryEncrypted(inode) => {
                 write!(f, "directory in inode {inode} is encrypted")
+            }
+            Self::JournalSuperblockType(val) => {
+                write!(f, "journal superblock type is not supported: {val}")
+            }
+            Self::JournalChecksumType(val) => {
+                write!(f, "journal checksum type is not supported: {val}")
+            }
+            Self::JournalIncompatibleFeatures(val) => {
+                write!(f, "unsupported journal features: {val:08x}")
             }
         }
     }
