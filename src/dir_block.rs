@@ -73,7 +73,7 @@ impl DirBlock<'_> {
         if actual_checksum.finalize() == expected_checksum {
             Ok(())
         } else {
-            Err(CorruptKind::DirBlockChecksum(self.dir_inode.get()).into())
+            Err(CorruptKind::DirBlockChecksum(self.dir_inode).into())
         }
     }
 

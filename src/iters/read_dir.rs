@@ -144,7 +144,7 @@ impl ReadDir {
         self.offset_within_block = self
             .offset_within_block
             .checked_add(entry_size)
-            .ok_or(CorruptKind::DirEntry(self.inode.get()))?;
+            .ok_or(CorruptKind::DirEntry(self.inode))?;
 
         Ok(entry)
     }
