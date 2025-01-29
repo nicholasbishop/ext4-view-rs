@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::features::IncompatibleFeatures;
+use crate::inode::InodeIndex;
 use alloc::boxed::Box;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
@@ -227,74 +228,41 @@ pub(crate) enum CorruptKind {
     ),
 
     /// An inode's checksum is invalid.
-    InodeChecksum(
-        /// Inode number.
-        u32,
-    ),
+    InodeChecksum(InodeIndex),
 
     /// An inode is invalid.
-    Inode(
-        /// Inode number.
-        u32,
-    ),
+    Inode(InodeIndex),
 
     /// The target of a symlink is not a valid path.
-    SymlinkTarget(
-        /// Inode number.
-        u32,
-    ),
+    SymlinkTarget(InodeIndex),
 
     /// The number of blocks in a file exceeds 2^32.
     TooManyBlocksInFile,
 
     /// An extent's magic is invalid.
-    ExtentMagic(
-        /// Inode number.
-        u32,
-    ),
+    ExtentMagic(InodeIndex),
 
     /// An extent's checksum is invalid.
-    ExtentChecksum(
-        /// Inode number.
-        u32,
-    ),
+    ExtentChecksum(InodeIndex),
 
     /// An extent's depth is greater than five.
-    ExtentDepth(
-        /// Inode number.
-        u32,
-    ),
+    ExtentDepth(InodeIndex),
 
     /// Not enough data is present to read an extent node.
-    ExtentNotEnoughData(
-        /// Inode number.
-        u32,
-    ),
+    ExtentNotEnoughData(InodeIndex),
 
     /// An extent points to an invalid block.
-    ExtentBlock(
-        /// Inode number.
-        u32,
-    ),
+    ExtentBlock(InodeIndex),
 
     /// An extent node's size exceeds the block size.
-    ExtentNodeSize(
-        /// Inode number.
-        u32,
-    ),
+    ExtentNodeSize(InodeIndex),
 
     /// A directory block's checksum is invalid.
-    DirBlockChecksum(
-        /// Inode number.
-        u32,
-    ),
+    DirBlockChecksum(InodeIndex),
 
     // TODO: consider breaking this down into more specific problems.
     /// A directory entry is invalid.
-    DirEntry(
-        /// Inode number.
-        u32,
-    ),
+    DirEntry(InodeIndex),
 
     /// Invalid read of a block.
     BlockRead {

@@ -148,7 +148,7 @@ impl ExtentsBlocks {
         let block = extent
             .start_block
             .checked_add(u64::from(self.block_within_extent))
-            .ok_or(CorruptKind::ExtentBlock(self.inode.get()))?;
+            .ok_or(CorruptKind::ExtentBlock(self.inode))?;
 
         // OK to unwrap: `block_within_extent` is less than `num_blocks`
         // (checked above) so adding `1` cannot fail.

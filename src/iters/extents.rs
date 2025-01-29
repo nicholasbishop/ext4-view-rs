@@ -73,7 +73,7 @@ impl NodeHeader {
     /// Read a `NodeHeader` from a byte slice.
     fn from_bytes(data: &[u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
         if data.len() < ENTRY_SIZE_IN_BYTES {
-            return Err(CorruptKind::ExtentNotEnoughData(inode.get()).into());
+            return Err(CorruptKind::ExtentNotEnoughData(inode).into());
         }
 
         let eh_magic = read_u16le(data, 0);
@@ -82,11 +82,11 @@ impl NodeHeader {
         let eh_depth = read_u16le(data, 6);
 
         if eh_magic != 0xf30a {
-            return Err(CorruptKind::ExtentMagic(inode.get()).into());
+            return Err(CorruptKind::ExtentMagic(inode).into());
         }
 
         if eh_depth > 5 {
-            return Err(CorruptKind::ExtentDepth(inode.get()).into());
+            return Err(CorruptKind::ExtentDepth(inode).into());
         }
 
         Ok(Self {
@@ -119,7 +119,7 @@ impl ToVisitItem {
         // The node data must be large enough to contain the number of
         // entries specified in the header.
         if node.len() < header.node_size_in_bytes() {
-            return Err(CorruptKind::ExtentNotEnoughData(inode.get()).into());
+            return Err(CorruptKind::ExtentNotEnoughData(inode).into());
         }
 
         // Remove unused data at the end (e.g. checksum data).
@@ -251,9 +251,7 @@ impl Extents {
                 checksum_offset.checked_add(checksum_size).unwrap();
             // Extent nodes are not allowed to exceed the block size.
             if child_node_size > self.ext4.0.superblock.block_size {
-                return Err(
-                    CorruptKind::ExtentNodeSize(self.inode.get()).into()
-                );
+                return Err(CorruptKind::ExtentNodeSize(self.inode).into());
             }
             let mut child_node = vec![0; child_node_size];
             self.ext4.read_from_block(child_block, 0, &mut child_node)?;
@@ -269,9 +267,7 @@ impl Extents {
                 checksum.update(&child_node[..checksum_offset]);
                 let actual_checksum = checksum.finalize();
                 if expected_checksum != actual_checksum {
-                    return Err(
-                        CorruptKind::ExtentChecksum(self.inode.get()).into()
-                    );
+                    return Err(CorruptKind::ExtentChecksum(self.inode).into());
                 }
             }
 
