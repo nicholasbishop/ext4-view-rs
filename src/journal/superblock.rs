@@ -31,6 +31,11 @@ const SUPERBLOCK_UUID_OFFSET: usize = 0x30;
 const SUPERBLOCK_CHECKSUM_TYPE_OFFSET: usize = 0x50;
 const SUPERBLOCK_CHECKSUM_OFFSET: usize = 0xfc;
 
+/// Features that must be present for this library to read the journal.
+const REQUIRED_FEATURES: JournalIncompatibleFeatures =
+    JournalIncompatibleFeatures::IS_64BIT
+        .union(JournalIncompatibleFeatures::CHECKSUM_V3);
+
 #[derive(Debug, Eq, PartialEq)]
 pub(super) struct JournalSuperblock {
     /// Size in bytes of journal blocks. This must be the same block
@@ -110,9 +115,7 @@ impl JournalSuperblock {
         // that no unsupported features are present.
         let incompat_features =
             JournalIncompatibleFeatures::from_bits_retain(s_feature_incompat);
-        let required_incompat_features = JournalIncompatibleFeatures::IS_64BIT
-            | JournalIncompatibleFeatures::CHECKSUM_V3;
-        if incompat_features != required_incompat_features {
+        if incompat_features != REQUIRED_FEATURES {
             return Err(Incompatible::JournalIncompatibleFeatures(
                 s_feature_incompat,
             )
