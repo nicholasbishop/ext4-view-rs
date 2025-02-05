@@ -150,7 +150,7 @@ impl JournalSuperblock {
 
 bitflags! {
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-    pub struct JournalIncompatibleFeatures: u32 {
+    pub(crate) struct JournalIncompatibleFeatures: u32 {
         const BLOCK_REVOCATIONS = 0x1;
         const IS_64BIT = 0x2;
         const ASYNC_COMMITS = 0x4;
