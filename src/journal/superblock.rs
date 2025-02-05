@@ -111,16 +111,8 @@ impl JournalSuperblock {
         let s_checksum_type = bytes[SUPERBLOCK_CHECKSUM_TYPE_OFFSET];
         let s_checksum = read_u32be(bytes, SUPERBLOCK_CHECKSUM_OFFSET);
 
-        // Check that features required by this library are present, and
-        // that no unsupported features are present.
-        let incompat_features =
-            JournalIncompatibleFeatures::from_bits_retain(s_feature_incompat);
-        if incompat_features != REQUIRED_FEATURES {
-            return Err(Incompatible::JournalIncompatibleFeatures(
-                s_feature_incompat,
-            )
-            .into());
-        }
+        check_incompat_features(s_feature_incompat)
+            .map_err(Ext4Error::Incompatible)?;
 
         // For now only one checksum type is supported.
         if s_checksum_type != CHECKSUM_TYPE_CRC32C {
@@ -160,6 +152,22 @@ bitflags! {
         const CHECKSUM_V2 = 0x8;
         const CHECKSUM_V3 = 0x10;
         const FAST_COMMITS = 0x20;
+    }
+}
+
+/// Check that journal features required by this library are present,
+/// and that no unsupported features are present.
+fn check_incompat_features(
+    s_feature_incompat: u32,
+) -> Result<(), Incompatible> {
+    let incompat_features =
+        JournalIncompatibleFeatures::from_bits_retain(s_feature_incompat);
+    if incompat_features == REQUIRED_FEATURES {
+        Ok(())
+    } else {
+        Err(Incompatible::JournalIncompatibleFeatures(
+            s_feature_incompat,
+        ))
     }
 }
 
