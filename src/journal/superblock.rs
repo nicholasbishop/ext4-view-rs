@@ -160,15 +160,31 @@ bitflags! {
 fn check_incompat_features(
     s_feature_incompat: u32,
 ) -> Result<(), Incompatible> {
-    let incompat_features =
+    let present =
         JournalIncompatibleFeatures::from_bits_retain(s_feature_incompat);
-    if incompat_features == REQUIRED_FEATURES {
-        Ok(())
-    } else {
-        Err(Incompatible::JournalIncompatibleFeatures(
-            s_feature_incompat,
-        ))
+
+    let present_required = present & REQUIRED_FEATURES;
+    if present_required != REQUIRED_FEATURES {
+        return Err(Incompatible::MissingRequiredJournalFeatures(
+            REQUIRED_FEATURES.difference(present).bits(),
+        ));
     }
+
+    // All non-required features are currently unsupported.
+    //
+    // Note: `!REQUIRED_FEATURES` would only negate "known" bits
+    // specified in the bitflags definition. Convert to raw bits first
+    // to correct this.
+    let unsupported = !(REQUIRED_FEATURES.bits());
+
+    let present_unsupported = present.bits() & unsupported;
+    if present_unsupported != 0 {
+        return Err(Incompatible::UnsupportedJournalFeatures(
+            present_unsupported,
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(all(test, feature = "std"))]
@@ -242,10 +258,39 @@ mod tests {
     #[test]
     fn test_journal_superblock_missing_required_features() {
         let mut block = create_test_superblock();
-        write_u32be(&mut block, SUPERBLOCK_FEATURE_INCOMPAT_OFFSET, 0x10);
+        write_u32be(&mut block, SUPERBLOCK_FEATURE_INCOMPAT_OFFSET, 0);
         assert_eq!(
             JournalSuperblock::read_bytes(&block).unwrap_err(),
-            Incompatible::JournalIncompatibleFeatures(0x10),
+            Incompatible::MissingRequiredJournalFeatures(
+                (JournalIncompatibleFeatures::IS_64BIT
+                    | JournalIncompatibleFeatures::CHECKSUM_V3)
+                    .bits()
+            ),
+        );
+    }
+
+    #[test]
+    fn test_journal_superblock_unsupported_features() {
+        let mut block = create_test_superblock();
+        write_u32be(
+            &mut block,
+            SUPERBLOCK_FEATURE_INCOMPAT_OFFSET,
+            (REQUIRED_FEATURES
+                // Known but unsupported features.
+                | JournalIncompatibleFeatures::FAST_COMMITS
+                | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                .bits()
+                // An unknown and unsupported feature.
+                | 0x10_000,
+        );
+        assert_eq!(
+            JournalSuperblock::read_bytes(&block).unwrap_err(),
+            Incompatible::UnsupportedJournalFeatures(
+                (JournalIncompatibleFeatures::FAST_COMMITS
+                    | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                    .bits()
+                    | 0x10_000
+            ),
         );
     }
 

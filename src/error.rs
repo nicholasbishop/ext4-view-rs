@@ -459,9 +459,16 @@ pub enum Incompatible {
         u8,
     ),
 
-    /// The journal uses features not supported by this library.
-    JournalIncompatibleFeatures(
-        /// Raw feature bits.
+    /// One or more required journal features are missing.
+    MissingRequiredJournalFeatures(
+        /// The missing feature bits.
+        u32,
+    ),
+
+    /// One or more unsupported journal features are present.
+    #[allow(clippy::enum_variant_names)]
+    UnsupportedJournalFeatures(
+        /// The unsupported feature bits.
         u32,
     ),
 }
@@ -490,8 +497,11 @@ impl Display for Incompatible {
             Self::JournalChecksumType(val) => {
                 write!(f, "journal checksum type is not supported: {val}")
             }
-            Self::JournalIncompatibleFeatures(val) => {
-                write!(f, "unsupported journal features: {val:08x}")
+            Self::MissingRequiredJournalFeatures(feat) => {
+                write!(f, "missing required journal features: {feat:?}")
+            }
+            Self::UnsupportedJournalFeatures(feat) => {
+                write!(f, "unsupported journal features: {feat:?}")
             }
         }
     }
