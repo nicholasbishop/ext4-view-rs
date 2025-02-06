@@ -506,3 +506,33 @@ impl Display for Incompatible {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test the `Display` and `Debug` impls for a corruption error.
+    ///
+    /// Only one `CorruptKind` variant is tested, the focus of the test
+    /// is the formatting of the nested error type:
+    /// `Ext4Error::Corrupt(Corrupt(CorruptKind))`
+    #[test]
+    fn test_corrupt_format() {
+        let err: Ext4Error = CorruptKind::BlockRead {
+            block_index: 123,
+            offset_within_block: 456,
+            read_len: 789,
+        }
+        .into();
+
+        assert_eq!(
+            format!("{err}"),
+            "corrupt: invalid read of length 789 from block 123 at offset 456"
+        );
+
+        assert_eq!(
+            format!("{err:?}"),
+            "Corrupt(Corrupt(BlockRead { block_index: 123, offset_within_block: 456, read_len: 789 }))"
+        );
+    }
+}
