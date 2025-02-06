@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Removed `Ext4Error::as_corrupt`.
+
 ## 0.8.0
 
 * Added `Path::to_str` and `PathBuf::to_str`.
