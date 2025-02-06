@@ -176,8 +176,14 @@ impl From<Ext4Error> for std::io::Error {
 
 /// Error type used in [`Ext4Error::Corrupt`] when the filesystem is
 /// corrupt in some way.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Corrupt(CorruptKind);
+
+impl Debug for Corrupt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <CorruptKind as Debug>::fmt(&self.0, f)
+    }
+}
 
 impl Display for Corrupt {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -532,7 +538,7 @@ mod tests {
 
         assert_eq!(
             format!("{err:?}"),
-            "Corrupt(Corrupt(BlockRead { block_index: 123, offset_within_block: 456, read_len: 789 }))"
+            "Corrupt(BlockRead { block_index: 123, offset_within_block: 456, read_len: 789 })"
         );
     }
 }
