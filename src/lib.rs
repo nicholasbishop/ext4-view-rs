@@ -670,11 +670,8 @@ mod tests {
         data.extend(include_bytes!("../test_data/not_ext4.bin"));
 
         assert_eq!(
-            *Ext4::load(Box::new(data))
-                .unwrap_err()
-                .as_corrupt()
-                .unwrap(),
-            CorruptKind::InvalidBlockSize.into()
+            Ext4::load(Box::new(data)).unwrap_err(),
+            CorruptKind::InvalidBlockSize
         );
     }
 
@@ -682,13 +679,12 @@ mod tests {
         block_index: u64,
         offset_within_block: u32,
         read_len: usize,
-    ) -> Corrupt {
+    ) -> CorruptKind {
         CorruptKind::BlockRead {
             block_index,
             offset_within_block,
             read_len,
         }
-        .into()
     }
 
     /// Test that reading from the first 1024 bytes of the file fails.
@@ -697,11 +693,8 @@ mod tests {
         let fs = load_test_disk1();
         let mut dst = vec![0; 1];
         assert_eq!(
-            fs.read_from_block(0, 1023, &mut dst)
-                .unwrap_err()
-                .as_corrupt()
-                .unwrap(),
-            &block_read_error(0, 1023, 1),
+            fs.read_from_block(0, 1023, &mut dst).unwrap_err(),
+            block_read_error(0, 1023, 1),
         );
     }
 
@@ -711,11 +704,8 @@ mod tests {
         let fs = load_test_disk1();
         let mut dst = vec![0; 1024];
         assert_eq!(
-            fs.read_from_block(999_999_999, 0, &mut dst)
-                .unwrap_err()
-                .as_corrupt()
-                .unwrap(),
-            &block_read_error(999_999_999, 0, 1024),
+            fs.read_from_block(999_999_999, 0, &mut dst).unwrap_err(),
+            block_read_error(999_999_999, 0, 1024),
         );
     }
 
@@ -725,11 +715,8 @@ mod tests {
         let fs = load_test_disk1();
         let mut dst = vec![0; 1024];
         assert_eq!(
-            fs.read_from_block(1, 1024, &mut dst)
-                .unwrap_err()
-                .as_corrupt()
-                .unwrap(),
-            &block_read_error(1, 1024, 1024),
+            fs.read_from_block(1, 1024, &mut dst).unwrap_err(),
+            block_read_error(1, 1024, 1024),
         );
     }
 
@@ -739,11 +726,8 @@ mod tests {
         let fs = load_test_disk1();
         let mut dst = vec![0; 25];
         assert_eq!(
-            fs.read_from_block(1, 1000, &mut dst)
-                .unwrap_err()
-                .as_corrupt()
-                .unwrap(),
-            &block_read_error(1, 1000, 25),
+            fs.read_from_block(1, 1000, &mut dst).unwrap_err(),
+            block_read_error(1, 1000, 25),
         );
     }
 
