@@ -490,11 +490,10 @@ mod tests {
         assert_eq!(len, 72);
 
         // Error: not enough data.
-        let err = DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
-            .unwrap_err();
         assert_eq!(
-            *err.as_corrupt().unwrap(),
-            CorruptKind::DirEntry(inode1).into()
+            DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
+                .unwrap_err(),
+            CorruptKind::DirEntry(inode1)
         );
 
         // Error: not enough data for the name.
