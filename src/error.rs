@@ -139,8 +139,8 @@ impl Display for Ext4Error {
             // TODO: if the `Error` trait ever makes it into core, stop
             // printing `err` here and return it via `Error::source` instead.
             Self::Io(err) => write!(f, "io error: {err}"),
-            Self::Incompatible(i) => write!(f, "incompatible: {i}"),
-            Self::Corrupt(c) => write!(f, "corrupt: {c}"),
+            Self::Incompatible(i) => write!(f, "incompatible filesystem: {i}"),
+            Self::Corrupt(c) => write!(f, "corrupt filesystem: {c}"),
         }
     }
 }
@@ -527,7 +527,7 @@ mod tests {
 
         assert_eq!(
             format!("{err}"),
-            "corrupt: invalid read of length 789 from block 123 at offset 456"
+            "corrupt filesystem: invalid read of length 789 from block 123 at offset 456"
         );
 
         assert_eq!(
