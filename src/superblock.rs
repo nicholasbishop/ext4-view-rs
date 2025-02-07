@@ -394,10 +394,12 @@ mod tests {
 
         assert_eq!(
             check_incompat_features(
-                required | IncompatibleFeatures::RECOVERY.bits()
+                required | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE.bits()
             )
             .unwrap_err(),
-            Incompatible::UnsupportedFeatures(IncompatibleFeatures::RECOVERY)
+            Incompatible::UnsupportedFeatures(
+                IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
+            )
         );
     }
 }
