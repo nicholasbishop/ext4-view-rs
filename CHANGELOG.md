@@ -3,6 +3,10 @@
 ## Unreleased
 
 * Removed `Ext4Error::as_corrupt`.
+* Renamed `Incompatible::Missing` to `Incompatible::MissingRequiredFeatures`.
+* Renamed `Incompatible::Incompatible` to `Incompatible::UnsupportedFeatures`.
+* Removed `Incompatible::Unknown`; these errors are now reported as
+  `Incompatible::UnsupportedFeatures`.
 
 ## 0.8.0
 

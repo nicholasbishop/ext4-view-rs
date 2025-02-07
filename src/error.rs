@@ -411,22 +411,16 @@ impl From<Incompatible> for Ext4Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Incompatible {
-    /// One or more unknown bits are set in the incompatible feature flags.
-    Unknown(
-        /// The unknown features.
-        IncompatibleFeatures,
-    ),
-
-    /// One or more required incompatible features are missing.
-    Missing(
+    /// One or more required features are missing.
+    MissingRequiredFeatures(
         /// The missing features.
         IncompatibleFeatures,
     ),
 
-    /// One or more disallowed incompatible features are present.
+    /// One or more unsupported features are present.
     #[allow(clippy::enum_variant_names)]
-    Incompatible(
-        /// The incompatible features.
+    UnsupportedFeatures(
+        /// The unsupported features.
         IncompatibleFeatures,
     ),
 
@@ -472,14 +466,11 @@ pub enum Incompatible {
 impl Display for Incompatible {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unknown(feat) => {
-                write!(f, "unknown features: {feat:?}")
-            }
-            Self::Missing(feat) => {
+            Self::MissingRequiredFeatures(feat) => {
                 write!(f, "missing required features: {feat:?}")
             }
-            Self::Incompatible(feat) => {
-                write!(f, "incompatible features: {feat:?}")
+            Self::UnsupportedFeatures(feat) => {
+                write!(f, "unsupported features: {feat:?}")
             }
             Self::DirectoryHash(algorithm) => {
                 write!(f, "unsupported directory hash algorithm: {algorithm}")
