@@ -190,7 +190,9 @@ fn check_incompat_features(
     let actual_known =
         IncompatibleFeatures::from_bits_truncate(s_feature_incompat);
     if actual != actual_known {
-        return Err(Incompatible::Unknown(actual.difference(actual_known)));
+        return Err(Incompatible::UnsupportedFeatures(
+            actual.difference(actual_known),
+        ));
     }
 
     // TODO: for now, be strict on many incompat features. May be able to
@@ -208,14 +210,14 @@ fn check_incompat_features(
 
     let present_required = actual & required_features;
     if present_required != required_features {
-        return Err(Incompatible::Missing(
+        return Err(Incompatible::MissingRequiredFeatures(
             required_features.difference(present_required),
         ));
     }
 
     let present_disallowed = actual & disallowed_features;
     if !present_disallowed.is_empty() {
-        return Err(Incompatible::Incompatible(present_disallowed));
+        return Err(Incompatible::UnsupportedFeatures(present_disallowed));
     }
 
     Ok(actual)
@@ -344,8 +346,7 @@ mod tests {
     }
 
     /// Test that an error is returned if an unknown incompatible
-    /// feature bit is set. Test that the error value contains only the
-    /// unknown bits.
+    /// feature bit is set.
     #[test]
     fn test_unknown_incompat_flags() {
         let mut data =
@@ -356,9 +357,9 @@ mod tests {
                 .unwrap_err()
                 .as_incompatible()
                 .unwrap(),
-            Incompatible::Unknown(IncompatibleFeatures::from_bits_retain(
-                0x2_0000
-            ))
+            Incompatible::UnsupportedFeatures(
+                IncompatibleFeatures::from_bits_retain(0x2_0000)
+            )
         );
     }
 
@@ -375,9 +376,9 @@ mod tests {
         // Unknown incompatible bit is an error.
         assert_eq!(
             check_incompat_features(required | 0x2_0000).unwrap_err(),
-            Incompatible::Unknown(IncompatibleFeatures::from_bits_retain(
-                0x2_0000
-            ))
+            Incompatible::UnsupportedFeatures(
+                IncompatibleFeatures::from_bits_retain(0x2_0000)
+            )
         );
 
         assert_eq!(
@@ -386,7 +387,9 @@ mod tests {
                     & (!IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY.bits())
             )
             .unwrap_err(),
-            Incompatible::Missing(IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY)
+            Incompatible::MissingRequiredFeatures(
+                IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY
+            )
         );
 
         assert_eq!(
@@ -394,7 +397,7 @@ mod tests {
                 required | IncompatibleFeatures::RECOVERY.bits()
             )
             .unwrap_err(),
-            Incompatible::Incompatible(IncompatibleFeatures::RECOVERY)
+            Incompatible::UnsupportedFeatures(IncompatibleFeatures::RECOVERY)
         );
     }
 }
