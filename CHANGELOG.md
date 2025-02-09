@@ -7,6 +7,8 @@
 * Renamed `Incompatible::Incompatible` to `Incompatible::UnsupportedFeatures`.
 * Removed `Incompatible::Unknown`; these errors are now reported as
   `Incompatible::UnsupportedFeatures`.
+* Removed `Incompatible::DirectoryEncrypted` and replaced it with
+  `Ext4Error::Encrypted`.
 
 ## 0.8.0
 
