@@ -9,6 +9,7 @@
   `Incompatible::UnsupportedFeatures`.
 * Removed `Incompatible::DirectoryEncrypted` and replaced it with
   `Ext4Error::Encrypted`.
+* Removed `impl From<Corrupt> for Ext4Error`.
 
 ## 0.8.0
 
