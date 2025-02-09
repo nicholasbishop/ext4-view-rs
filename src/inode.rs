@@ -161,9 +161,7 @@ impl Inode {
             .div_ceil(ext4.0.superblock.block_size.to_u64())
             // Ext4 allows at most `2^32` blocks in a file.
             .try_into()
-            .map_err(|_| {
-                Ext4Error::Corrupt(CorruptKind::TooManyBlocksInFile.into())
-            })?;
+            .map_err(|_| CorruptKind::TooManyBlocksInFile)?;
 
         Ok((
             Self {

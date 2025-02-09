@@ -296,14 +296,11 @@ impl Ext4 {
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
         let err = || {
-            Ext4Error::Corrupt(
-                CorruptKind::BlockRead {
-                    block_index,
-                    offset_within_block,
-                    read_len: dst.len(),
-                }
-                .into(),
-            )
+            Ext4Error::from(CorruptKind::BlockRead {
+                block_index,
+                offset_within_block,
+                read_len: dst.len(),
+            })
         };
 
         // The first 1024 bytes are reserved for non-filesystem
