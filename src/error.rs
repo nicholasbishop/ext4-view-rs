@@ -440,13 +440,6 @@ pub enum Incompatible {
         u8,
     ),
 
-    /// Attempted to read an encrypted directory. Only unencrypted
-    /// directories are currently supported.
-    DirectoryEncrypted(
-        /// Inode number.
-        u32,
-    ),
-
     /// The journal superblock type is not supported.
     JournalSuperblockType(
         /// Raw journal block type.
@@ -484,9 +477,6 @@ impl Display for Incompatible {
             }
             Self::DirectoryHash(algorithm) => {
                 write!(f, "unsupported directory hash algorithm: {algorithm}")
-            }
-            Self::DirectoryEncrypted(inode) => {
-                write!(f, "directory in inode {inode} is encrypted")
             }
             Self::JournalSuperblockType(val) => {
                 write!(f, "journal superblock type is not supported: {val}")
