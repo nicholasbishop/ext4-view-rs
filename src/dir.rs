@@ -8,7 +8,7 @@
 
 use crate::dir_entry::DirEntryName;
 use crate::dir_htree::get_dir_entry_via_htree;
-use crate::error::{Ext4Error, Incompatible};
+use crate::error::Ext4Error;
 use crate::inode::{Inode, InodeFlags};
 use crate::iters::read_dir::ReadDir;
 use crate::path::PathBuf;
@@ -25,9 +25,7 @@ pub(crate) fn get_dir_entry_inode_by_name(
     assert!(dir_inode.metadata.is_dir());
 
     if dir_inode.flags.contains(InodeFlags::DIRECTORY_ENCRYPTED) {
-        return Err(
-            Incompatible::DirectoryEncrypted(dir_inode.index.get()).into()
-        );
+        return Err(Ext4Error::Encrypted);
     }
 
     if dir_inode.flags.contains(InodeFlags::DIRECTORY_HTREE) {

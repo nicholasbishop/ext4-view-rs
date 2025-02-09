@@ -8,7 +8,7 @@
 
 use crate::{capture_cmd, run_cmd, sudo};
 use anyhow::{bail, Result};
-use ext4_view::{Ext4, Ext4Error, Incompatible};
+use ext4_view::{Ext4, Ext4Error};
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
@@ -112,7 +112,7 @@ fn walk_with_lib(
 
     let entry_iter = match fs.read_dir(path) {
         Ok(entry_iter) => entry_iter,
-        Err(Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))) => {
+        Err(Ext4Error::Encrypted) => {
             output[0].content = FileContent::EncryptedDir;
             return Ok(output);
         }
