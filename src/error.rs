@@ -66,6 +66,14 @@ pub enum Ext4Error {
     /// of symbolic links.
     TooManySymlinks,
 
+    /// Attempted to read an encrypted file.
+    ///
+    /// Only unencrypted files are currently supported. Please file an
+    /// [issue] if you have a use case for reading encrypted files.
+    ///
+    /// [issue]: https://github.com/nicholasbishop/ext4-view-rs/issues/new
+    Encrypted,
+
     /// An IO operation failed. This error comes from the [`Ext4Read`]
     /// passed to [`Ext4::load`].
     ///
@@ -126,6 +134,7 @@ impl Display for Ext4Error {
             Self::TooManySymlinks => {
                 write!(f, "too many levels of symbolic links")
             }
+            Self::Encrypted => write!(f, "file is encrypted"),
             // TODO: if the `Error` trait ever makes it into core, stop
             // printing `err` here and return it via `Error::source` instead.
             Self::Io(err) => write!(f, "io error: {err}"),
@@ -160,6 +169,7 @@ impl From<Ext4Error> for std::io::Error {
             Ext4Error::Io(inner) => Self::other(inner),
             Ext4Error::NotFound => NotFound.into(),
             Ext4Error::NotUtf8 => InvalidData.into(),
+            Ext4Error::Encrypted => PermissionDenied.into(),
         }
     }
 }
