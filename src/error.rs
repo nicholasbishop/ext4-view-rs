@@ -392,12 +392,6 @@ impl PartialEq<Incompatible> for Ext4Error {
     }
 }
 
-impl From<CorruptKind> for Corrupt {
-    fn from(c: CorruptKind) -> Self {
-        Self(c)
-    }
-}
-
 impl From<CorruptKind> for Ext4Error {
     fn from(c: CorruptKind) -> Self {
         Self::Corrupt(Corrupt(c))
