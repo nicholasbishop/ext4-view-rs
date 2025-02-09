@@ -8,7 +8,7 @@
 
 use crate::expected_holes_data;
 use crate::test_util::load_test_disk1;
-use ext4_view::{Ext4Error, Incompatible, Path, PathBuf};
+use ext4_view::{Ext4Error, Path, PathBuf};
 
 #[cfg(feature = "std")]
 use ext4_view::Ext4;
@@ -386,12 +386,12 @@ fn test_encrypted_dir() {
     // This covers the check in `get_dir_entry_inode_by_name`.
     assert!(matches!(
         fs.read("/encrypted_dir/file").unwrap_err(),
-        Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))
+        Ext4Error::Encrypted
     ));
 
     // This covers the check in `ReadDir::new`.
     assert!(matches!(
         fs.read_dir("/encrypted_dir").unwrap_err(),
-        Ext4Error::Incompatible(Incompatible::DirectoryEncrypted(_))
+        Ext4Error::Encrypted
     ));
 }

@@ -9,7 +9,7 @@
 use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::DirEntry;
-use crate::error::{CorruptKind, Ext4Error, Incompatible};
+use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::file_blocks::FileBlocks;
 use crate::path::PathBuf;
@@ -72,9 +72,7 @@ impl ReadDir {
         let has_htree = inode.flags.contains(InodeFlags::DIRECTORY_HTREE);
 
         if inode.flags.contains(InodeFlags::DIRECTORY_ENCRYPTED) {
-            return Err(Ext4Error::Incompatible(
-                Incompatible::DirectoryEncrypted(inode.index.get()),
-            ));
+            return Err(Ext4Error::Encrypted);
         }
 
         Ok(Self {
