@@ -382,37 +382,32 @@ impl PartialEq<CorruptKind> for Ext4Error {
     }
 }
 
-impl PartialEq<Incompatible> for Ext4Error {
-    fn eq(&self, other: &Incompatible) -> bool {
-        if let Self::Incompatible(i) = self {
-            i == other
-        } else {
-            false
-        }
-    }
-}
-
 impl From<CorruptKind> for Ext4Error {
     fn from(c: CorruptKind) -> Self {
         Self::Corrupt(Corrupt(c))
     }
 }
 
-impl From<Incompatible> for Ext4Error {
-    fn from(i: Incompatible) -> Self {
-        Self::Incompatible(i)
+/// Error type used in [`Ext4Error::Incompatible`] when the filesystem
+/// cannot be read due to incomplete support in this library.
+#[derive(Clone, Eq, PartialEq)]
+pub struct Incompatible(IncompatibleKind);
+
+impl Debug for Incompatible {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <IncompatibleKind as Debug>::fmt(&self.0, f)
     }
 }
 
-// TODO: temporary alias.
-#[allow(unused)]
-pub(crate) type IncompatibleKind = Incompatible;
+impl Display for Incompatible {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <IncompatibleKind as Display>::fmt(&self.0, f)
+    }
+}
 
-/// Error type used in [`Ext4Error::Incompatible`] when the filesystem
-/// cannot be read due to incomplete support in this library.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum Incompatible {
+pub(crate) enum IncompatibleKind {
     /// One or more required features are missing.
     MissingRequiredFeatures(
         /// The missing features.
@@ -458,7 +453,7 @@ pub enum Incompatible {
     ),
 }
 
-impl Display for Incompatible {
+impl Display for IncompatibleKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::MissingRequiredFeatures(feat) => {
@@ -483,6 +478,22 @@ impl Display for Incompatible {
                 write!(f, "unsupported journal features: {feat:?}")
             }
         }
+    }
+}
+
+impl PartialEq<IncompatibleKind> for Ext4Error {
+    fn eq(&self, other: &IncompatibleKind) -> bool {
+        if let Self::Incompatible(Incompatible(i)) = self {
+            i == other
+        } else {
+            false
+        }
+    }
+}
+
+impl From<IncompatibleKind> for Ext4Error {
+    fn from(k: IncompatibleKind) -> Self {
+        Self::Incompatible(Incompatible(k))
     }
 }
 
