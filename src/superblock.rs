@@ -8,7 +8,7 @@
 
 use crate::block_size::BlockSize;
 use crate::checksum::Checksum;
-use crate::error::{CorruptKind, Ext4Error, Incompatible};
+use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::features::{
     CompatibleFeatures, IncompatibleFeatures, ReadOnlyCompatibleFeatures,
 };
@@ -84,8 +84,8 @@ impl Superblock {
             return Err(CorruptKind::SuperblockMagic.into());
         }
 
-        let incompatible_features = check_incompat_features(s_feature_incompat)
-            .map_err(Ext4Error::Incompatible)?;
+        let incompatible_features =
+            check_incompat_features(s_feature_incompat)?;
         let read_only_compatible_features =
             ReadOnlyCompatibleFeatures::from_bits_retain(s_feature_ro_compat);
         let compatible_features =
@@ -185,12 +185,12 @@ impl Superblock {
 
 fn check_incompat_features(
     s_feature_incompat: u32,
-) -> Result<IncompatibleFeatures, Incompatible> {
+) -> Result<IncompatibleFeatures, IncompatibleKind> {
     let actual = IncompatibleFeatures::from_bits_retain(s_feature_incompat);
     let actual_known =
         IncompatibleFeatures::from_bits_truncate(s_feature_incompat);
     if actual != actual_known {
-        return Err(Incompatible::UnsupportedFeatures(
+        return Err(IncompatibleKind::UnsupportedFeatures(
             actual.difference(actual_known),
         ));
     }
@@ -210,14 +210,14 @@ fn check_incompat_features(
 
     let present_required = actual & required_features;
     if present_required != required_features {
-        return Err(Incompatible::MissingRequiredFeatures(
+        return Err(IncompatibleKind::MissingRequiredFeatures(
             required_features.difference(present_required),
         ));
     }
 
     let present_disallowed = actual & disallowed_features;
     if !present_disallowed.is_empty() {
-        return Err(Incompatible::UnsupportedFeatures(present_disallowed));
+        return Err(IncompatibleKind::UnsupportedFeatures(present_disallowed));
     }
 
     Ok(actual)
@@ -353,11 +353,8 @@ mod tests {
             include_bytes!("../test_data/raw_superblock.bin").to_vec();
         data[0x62] |= 0x02;
         assert_eq!(
-            *Superblock::from_bytes(&data)
-                .unwrap_err()
-                .as_incompatible()
-                .unwrap(),
-            Incompatible::UnsupportedFeatures(
+            Superblock::from_bytes(&data).unwrap_err(),
+            IncompatibleKind::UnsupportedFeatures(
                 IncompatibleFeatures::from_bits_retain(0x2_0000)
             )
         );
@@ -376,7 +373,7 @@ mod tests {
         // Unknown incompatible bit is an error.
         assert_eq!(
             check_incompat_features(required | 0x2_0000).unwrap_err(),
-            Incompatible::UnsupportedFeatures(
+            IncompatibleKind::UnsupportedFeatures(
                 IncompatibleFeatures::from_bits_retain(0x2_0000)
             )
         );
@@ -387,7 +384,7 @@ mod tests {
                     & (!IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY.bits())
             )
             .unwrap_err(),
-            Incompatible::MissingRequiredFeatures(
+            IncompatibleKind::MissingRequiredFeatures(
                 IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY
             )
         );
@@ -397,7 +394,7 @@ mod tests {
                 required | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE.bits()
             )
             .unwrap_err(),
-            Incompatible::UnsupportedFeatures(
+            IncompatibleKind::UnsupportedFeatures(
                 IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
             )
         );

@@ -9,7 +9,7 @@
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
-use crate::error::{CorruptKind, Ext4Error, Incompatible};
+use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::extents::Extents;
@@ -287,7 +287,7 @@ fn find_leaf_node(
     // the "half MD4" algorithm is supported by this library.
     let hash_type = block[0x1c];
     if hash_type != 1 {
-        return Err(Incompatible::DirectoryHash(hash_type).into());
+        return Err(IncompatibleKind::DirectoryHash(hash_type).into());
     }
 
     // Read the htree's depth from the root block. The depth is the
