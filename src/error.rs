@@ -95,16 +95,6 @@ pub enum Ext4Error {
 }
 
 impl Ext4Error {
-    /// If the error type is [`Ext4Error::Incompatible`], get the underlying error.
-    #[must_use]
-    pub fn as_incompatible(&self) -> Option<&Incompatible> {
-        if let Self::Incompatible(err) = self {
-            Some(err)
-        } else {
-            None
-        }
-    }
-
     /// If the error type is [`Ext4Error::Io`], get the underlying error.
     #[must_use]
     pub fn as_io(&self) -> Option<&(dyn Error + Send + Sync + 'static)> {
