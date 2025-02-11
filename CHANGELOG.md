@@ -2,14 +2,17 @@
 
 ## Unreleased
 
-* Removed `Ext4Error::as_corrupt`.
+* Removed `Ext4Error::as_corrupt` and `Ext4Error::as_incompatible`.
 * Renamed `Incompatible::Missing` to `Incompatible::MissingRequiredFeatures`.
 * Renamed `Incompatible::Incompatible` to `Incompatible::UnsupportedFeatures`.
 * Removed `Incompatible::Unknown`; these errors are now reported as
   `Incompatible::UnsupportedFeatures`.
 * Removed `Incompatible::DirectoryEncrypted` and replaced it with
   `Ext4Error::Encrypted`.
-* Removed `impl From<Corrupt> for Ext4Error`.
+* Removed `impl From<Corrupt> for Ext4Error` and
+  `impl From<Incompatible>> for Ext4Error`.
+* Made the `Incompatible` type opaque. It is no longer possible to
+  `match` on specific types of incompatibility.
 
 ## 0.8.0
 
