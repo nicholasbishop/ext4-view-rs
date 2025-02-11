@@ -404,6 +404,10 @@ impl From<Incompatible> for Ext4Error {
     }
 }
 
+// TODO: temporary alias.
+#[allow(unused)]
+pub(crate) type IncompatibleKind = Incompatible;
+
 /// Error type used in [`Ext4Error::Incompatible`] when the filesystem
 /// cannot be read due to incomplete support in this library.
 #[derive(Clone, Debug, Eq, PartialEq)]
