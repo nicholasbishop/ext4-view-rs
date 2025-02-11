@@ -515,4 +515,21 @@ mod tests {
             "Corrupt(BlockRead { block_index: 123, offset_within_block: 456, read_len: 789 })"
         );
     }
+
+    /// Test the `Display` and `Debug` impls for an `Incompatible` error.
+    ///
+    /// Only one `IncompatibleKind` variant is tested, the focus of the test
+    /// is the formatting of the nested error type:
+    /// `Ext4Error::Incompatible(Incompatible(IncompatibleKind))`
+    #[test]
+    fn test_incompatible_format() {
+        let err: Ext4Error = IncompatibleKind::DirectoryHash(123).into();
+
+        assert_eq!(
+            format!("{err}"),
+            "incompatible filesystem: unsupported directory hash algorithm: 123"
+        );
+
+        assert_eq!(format!("{err:?}"), "Incompatible(DirectoryHash(123))");
+    }
 }
