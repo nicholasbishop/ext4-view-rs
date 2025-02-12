@@ -183,3 +183,24 @@ fn validate_commit_block_checksum(
         Err(CorruptKind::JournalCommitBlockChecksum.into())
     }
 }
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use crate::test_util::load_compressed_filesystem;
+    use alloc::rc::Rc;
+
+    #[test]
+    fn test_journal() {
+        let mut fs =
+            load_compressed_filesystem("test_disk_4k_block_journal.bin.zst");
+
+        let test_dir = "/dir500";
+
+        // With the journal in place, this directory exists.
+        assert!(fs.exists(test_dir).unwrap());
+
+        // Clear the journal, and verify that the directory no longer exists.
+        Rc::get_mut(&mut fs.0).unwrap().journal.block_map.clear();
+        assert!(!fs.exists(test_dir).unwrap());
+    }
+}
