@@ -121,22 +121,24 @@ impl Superblock {
             return Err(CorruptKind::InodeSize.into());
         }
 
-        let journal_inode =
-            if compatible_features.contains(CompatibleFeatures::HAS_JOURNAL) {
-                // For now a separate journal device is not supported, so
-                // assert that feature is not present. This assert cannot
-                // fail because of the call to `check_incompat_features`
-                // above.
-                assert!(!incompatible_features
-                    .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
+        let journal_inode = if compatible_features
+            .contains(CompatibleFeatures::HAS_JOURNAL)
+            && incompatible_features.contains(IncompatibleFeatures::RECOVERY)
+        {
+            // For now a separate journal device is not supported, so
+            // assert that feature is not present. This assert cannot
+            // fail because of the call to `check_incompat_features`
+            // above.
+            assert!(!incompatible_features
+                .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
 
-                Some(
-                    InodeIndex::new(s_journal_inum)
-                        .ok_or(CorruptKind::JournalInode)?,
-                )
-            } else {
-                None
-            };
+            Some(
+                InodeIndex::new(s_journal_inum)
+                    .ok_or(CorruptKind::JournalInode)?,
+            )
+        } else {
+            None
+        };
 
         // Validate the superblock checksum.
         if read_only_compatible_features
@@ -199,7 +201,6 @@ fn check_incompat_features(
     // relax some of these in the future.
     let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY;
     let disallowed_features = IncompatibleFeatures::COMPRESSION
-        | IncompatibleFeatures::RECOVERY
         | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
         | IncompatibleFeatures::META_BLOCK_GROUPS
         | IncompatibleFeatures::MULTIPLE_MOUNT_PROTECTION
