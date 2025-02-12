@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::error::{CorruptKind, Ext4Error};
 use crate::util::{read_u32be, u64_from_hilo};
 use bitflags::bitflags;
 
@@ -35,6 +36,15 @@ pub(super) struct DescriptorBlockTag {
 impl DescriptorBlockTag {
     const SIZE_WITHOUT_UUID: usize = 16;
     const SIZE_WITH_UUID: usize = 32;
+
+    /// Size (in bytes) of the tag when encoded in a block.
+    fn encoded_size(&self) -> usize {
+        if self.flags.contains(DescriptorBlockTagFlags::UUID_OMITTED) {
+            Self::SIZE_WITHOUT_UUID
+        } else {
+            Self::SIZE_WITH_UUID
+        }
+    }
 
     /// Read a tag from `bytes`.
     ///
@@ -70,6 +80,61 @@ impl DescriptorBlockTag {
     }
 }
 
+/// Iterator over tags in a descriptor block.
+pub(super) struct DescriptorBlockTagIter<'a> {
+    /// Remaining bytes in the block.
+    bytes: &'a [u8],
+
+    /// Set to true after the last element (or an error) is
+    /// returned. All future calls to `next` will return `None`.
+    is_done: bool,
+}
+
+impl<'a> DescriptorBlockTagIter<'a> {
+    /// Create a tag iterator from the raw bytes of a descriptor block.
+    pub(super) fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes,
+            is_done: false,
+        }
+    }
+}
+
+impl Iterator for DescriptorBlockTagIter<'_> {
+    type Item = Result<DescriptorBlockTag, Ext4Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_done {
+            return None;
+        }
+
+        let tag = if let Some(tag) = DescriptorBlockTag::read_bytes(self.bytes)
+        {
+            tag
+        } else {
+            // If there were not enough bytes left to read the next tag,
+            // then either there is no tag with the `LAST_TAG` flag set,
+            // or the final tag does have that flag set but there are
+            // not enough bytes to read the full tag.
+            self.is_done = true;
+            return Some(Err(
+                CorruptKind::JournalDescriptorBlockTruncated.into()
+            ));
+        };
+
+        if tag.flags.contains(DescriptorBlockTagFlags::LAST_TAG) {
+            // Last tag reached, nothing more to read.
+            self.is_done = true;
+            return Some(Ok(tag));
+        }
+
+        // Update the remaining bytes.
+        self.bytes = &self.bytes[tag.encoded_size()..];
+
+        Some(Ok(tag))
+    }
+}
+
 bitflags! {
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
     struct DescriptorBlockTagFlags: u32 {
@@ -77,5 +142,98 @@ bitflags! {
         const UUID_OMITTED = 0x2;
         const DELETED = 0x4;
         const LAST_TAG = 0x8;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn push_u32be(bytes: &mut Vec<u8>, value: u32) {
+        bytes.extend(&value.to_be_bytes());
+    }
+
+    /// Test `DescriptorBlockTagIter` on valid input. The first tag has
+    /// no UUID, the second tag does have a UUID.
+    #[test]
+    fn test_descriptor_block_tag_iter() {
+        let mut bytes = vec![];
+
+        // Block number low.
+        push_u32be(&mut bytes, 0x1000);
+        // Flags.
+        push_u32be(&mut bytes, DescriptorBlockTagFlags::UUID_OMITTED.bits());
+        // Block number high.
+        push_u32be(&mut bytes, 0xa000);
+        // Checksum.
+        push_u32be(&mut bytes, 0x123);
+
+        // Block number low.
+        push_u32be(&mut bytes, 0x2000);
+        // Flags.
+        push_u32be(&mut bytes, DescriptorBlockTagFlags::LAST_TAG.bits());
+        // Block number high.
+        push_u32be(&mut bytes, 0xb000);
+        // Checksum.
+        push_u32be(&mut bytes, 0x456);
+        // UUID.
+        bytes.extend([0; 16]);
+
+        assert_eq!(
+            DescriptorBlockTagIter::new(&bytes)
+                .map(Result::unwrap)
+                .collect::<Vec<_>>(),
+            [
+                DescriptorBlockTag {
+                    block_index: 0xa000_0000_1000,
+                    flags: DescriptorBlockTagFlags::UUID_OMITTED,
+                    checksum: 0x123,
+                },
+                DescriptorBlockTag {
+                    block_index: 0xb000_0000_2000,
+                    flags: DescriptorBlockTagFlags::LAST_TAG,
+                    checksum: 0x456,
+                }
+            ]
+        );
+    }
+
+    /// Test `DescriptorBlockTagFlags` on empty input.
+    #[test]
+    fn test_descriptor_block_tag_iter_empty() {
+        let bytes = vec![];
+        assert_eq!(
+            DescriptorBlockTagIter::new(&bytes)
+                .next()
+                .unwrap()
+                .unwrap_err(),
+            CorruptKind::JournalDescriptorBlockTruncated
+        );
+    }
+
+    /// Test that `DescriptorBlockTagIter` correctly returns an error on
+    /// truncated input.
+    #[test]
+    fn test_descriptor_block_tag_iter_missing_uuid() {
+        let mut bytes = vec![];
+
+        // Block number low.
+        push_u32be(&mut bytes, 0x2000);
+        // Flags.
+        push_u32be(&mut bytes, DescriptorBlockTagFlags::LAST_TAG.bits());
+        // Block number high.
+        push_u32be(&mut bytes, 0xb000);
+        // Checksum.
+        push_u32be(&mut bytes, 0x456);
+
+        // Intentionally leave out the UUID bytes to produce an error.
+
+        assert_eq!(
+            DescriptorBlockTagIter::new(&bytes)
+                .next()
+                .unwrap()
+                .unwrap_err(),
+            CorruptKind::JournalDescriptorBlockTruncated
+        );
     }
 }

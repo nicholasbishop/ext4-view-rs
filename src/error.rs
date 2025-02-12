@@ -232,6 +232,12 @@ pub(crate) enum CorruptKind {
     /// Journal superblock checksum is invalid.
     JournalSuperblockChecksum,
 
+    /// Journal has a truncated descriptor block. Either it is missing a
+    /// tag with the `LAST_TAG` flag set, or the final tag does have
+    /// that flag set but there are not enough bytes to read the full
+    /// tag.
+    JournalDescriptorBlockTruncated,
+
     /// An inode's checksum is invalid.
     InodeChecksum(InodeIndex),
 
@@ -314,6 +320,9 @@ impl Display for CorruptKind {
             }
             Self::JournalSuperblockChecksum => {
                 write!(f, "journal superblock checksum is invalid")
+            }
+            Self::JournalDescriptorBlockTruncated => {
+                write!(f, "journal descriptor block is truncated")
             }
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
