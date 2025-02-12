@@ -8,7 +8,7 @@
 
 #[expect(unused)] // TODO
 mod block_header;
-#[expect(unused)] // TODO
+#[allow(unused)] // TODO
 mod descriptor_block;
 #[expect(unused)] // TODO
 mod superblock;
