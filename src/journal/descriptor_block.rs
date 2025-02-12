@@ -6,9 +6,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
+use crate::journal::superblock::JournalSuperblock;
 use crate::util::{read_u32be, u64_from_hilo};
 use bitflags::bitflags;
+
+/// Ensure a descriptor block's checksum is valid.
+///
+/// The checksum is stored in the last four bytes of the block.
+pub(super) fn validate_descriptor_block_checksum(
+    superblock: &JournalSuperblock,
+    block: &[u8],
+) -> Result<(), Ext4Error> {
+    // OK to unwrap: minimum block length is 1024.
+    let checksum_offset = block.len().checked_sub(4).unwrap();
+    let expected_checksum = read_u32be(block, checksum_offset);
+    let mut checksum = Checksum::new();
+    checksum.update(superblock.uuid.as_bytes());
+    checksum.update(&block[..checksum_offset]);
+    checksum.update_u32_be(0);
+
+    if checksum.finalize() == expected_checksum {
+        Ok(())
+    } else {
+        Err(CorruptKind::JournalDescriptorBlockChecksum.into())
+    }
+}
 
 /// Data block tag within a descriptor block.
 ///
@@ -148,6 +172,27 @@ bitflags! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Uuid;
+
+    /// Test success and failure cases of `validate_descriptor_block_checksum`.
+    #[test]
+    fn test_validate_descriptor_block_checksum() {
+        let superblock = JournalSuperblock {
+            block_size: 1024,
+            sequence: 0,
+            start_block: 0,
+            uuid: Uuid([0; 16]),
+        };
+        let mut block = vec![0; 1024];
+        assert_eq!(
+            validate_descriptor_block_checksum(&superblock, &block)
+                .unwrap_err(),
+            CorruptKind::JournalDescriptorBlockChecksum
+        );
+
+        block[1020..].copy_from_slice(&[0x74, 0xef, 0x0e, 0xf6]);
+        assert!(validate_descriptor_block_checksum(&superblock, &block).is_ok());
+    }
 
     fn push_u32be(bytes: &mut Vec<u8>, value: u32) {
         bytes.extend(&value.to_be_bytes());
