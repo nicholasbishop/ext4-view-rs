@@ -54,6 +54,11 @@ impl Checksum {
         self.digest.update(data);
     }
 
+    /// Extend the digest with a big-endian `u32`.
+    pub(crate) fn update_u32_be(&mut self, data: u32) {
+        self.update(&data.to_be_bytes());
+    }
+
     /// Extend the digest with a little-endian `u16`.
     pub(crate) fn update_u16_le(&mut self, data: u16) {
         self.update(&data.to_le_bytes());
