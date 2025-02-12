@@ -28,6 +28,7 @@
 * Added `Ext4::uuid` to get the filesystem UUID.
 * Made the `Corrupt` type opaque. It is no longer possible to `match` on
   specific types of corruption.
+* Added support for reading filesystems that weren't cleanly unmounted.
 
 ## 0.7.0
 

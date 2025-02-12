@@ -201,7 +201,6 @@ fn check_incompat_features(
     // relax some of these in the future.
     let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY;
     let disallowed_features = IncompatibleFeatures::COMPRESSION
-        | IncompatibleFeatures::RECOVERY
         | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
         | IncompatibleFeatures::META_BLOCK_GROUPS
         | IncompatibleFeatures::MULTIPLE_MOUNT_PROTECTION
