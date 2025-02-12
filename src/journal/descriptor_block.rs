@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{CorruptKind, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::journal::superblock::JournalSuperblock;
 use crate::util::{read_u32be, u64_from_hilo};
 use bitflags::bitflags;
@@ -146,6 +146,12 @@ impl Iterator for DescriptorBlockTagIter<'_> {
             ));
         };
 
+        // Escaped data blocks are not yet supported.
+        if tag.flags.contains(DescriptorBlockTagFlags::ESCAPED) {
+            self.is_done = true;
+            return Some(Err(IncompatibleKind::JournalBlockEscaped.into()));
+        }
+
         if tag.flags.contains(DescriptorBlockTagFlags::LAST_TAG) {
             // Last tag reached, nothing more to read.
             self.is_done = true;
@@ -279,6 +285,36 @@ mod tests {
                 .unwrap()
                 .unwrap_err(),
             CorruptKind::JournalDescriptorBlockTruncated
+        );
+    }
+
+    /// Test that `DescriptorBlockTagIter` correctly returns an error if
+    /// an escaped block is present.
+    #[test]
+    fn test_descriptor_block_tag_iter_escaped_error() {
+        let mut bytes = vec![];
+
+        // Block number low.
+        push_u32be(&mut bytes, 0x2000);
+        // Flags.
+        push_u32be(
+            &mut bytes,
+            (DescriptorBlockTagFlags::ESCAPED
+                | DescriptorBlockTagFlags::UUID_OMITTED
+                | DescriptorBlockTagFlags::LAST_TAG)
+                .bits(),
+        );
+        // Block number high.
+        push_u32be(&mut bytes, 0xb000);
+        // Checksum.
+        push_u32be(&mut bytes, 0x456);
+
+        assert_eq!(
+            DescriptorBlockTagIter::new(&bytes)
+                .next()
+                .unwrap()
+                .unwrap_err(),
+            IncompatibleKind::JournalBlockEscaped
         );
     }
 }
