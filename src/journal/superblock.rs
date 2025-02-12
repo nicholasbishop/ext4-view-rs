@@ -197,6 +197,28 @@ fn check_incompat_features(
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use crate::test_util::load_compressed_filesystem;
+
+    #[test]
+    fn test_load_journal_superblock() {
+        let fs =
+            load_compressed_filesystem("test_disk_4k_block_journal.bin.zst");
+        let journal_inode =
+            Inode::read(&fs, fs.0.superblock.journal_inode.unwrap()).unwrap();
+        let superblock = JournalSuperblock::load(&fs, &journal_inode).unwrap();
+        assert_eq!(
+            superblock,
+            JournalSuperblock {
+                block_size: 4096,
+                sequence: 3,
+                start_block: 289,
+                uuid: Uuid([
+                    0x6c, 0x48, 0x4f, 0x1b, 0x7f, 0x71, 0x47, 0x4c, 0xa1, 0xf9,
+                    0x3b, 0x50, 0x0c, 0xc1, 0xe2, 0x74
+                ]),
+            }
+        );
+    }
 
     fn write_u32be(bytes: &mut [u8], offset: usize, value: u32) {
         bytes[offset..offset + 4].copy_from_slice(&value.to_be_bytes());
