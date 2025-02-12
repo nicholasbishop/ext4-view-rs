@@ -456,6 +456,9 @@ pub(crate) enum IncompatibleKind {
         /// The unsupported feature bits.
         u32,
     ),
+
+    /// The journal contains an escaped block.
+    JournalBlockEscaped,
 }
 
 impl Display for IncompatibleKind {
@@ -472,6 +475,9 @@ impl Display for IncompatibleKind {
             }
             Self::JournalSuperblockType(val) => {
                 write!(f, "journal superblock type is not supported: {val}")
+            }
+            Self::JournalBlockEscaped => {
+                write!(f, "journal contains an escaped data block")
             }
             Self::JournalChecksumType(val) => {
                 write!(f, "journal checksum type is not supported: {val}")

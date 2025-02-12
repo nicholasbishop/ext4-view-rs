@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::checksum::Checksum;
-use crate::error::{CorruptKind, Ext4Error};
+use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::journal::superblock::JournalSuperblock;
 use crate::util::{read_u32be, u64_from_hilo};
 use bitflags::bitflags;
@@ -145,6 +145,13 @@ impl Iterator for DescriptorBlockTagIter<'_> {
                 CorruptKind::JournalDescriptorBlockTruncated.into()
             ));
         };
+
+        // Escaped data blocks are not yet supported.
+        // TODO: test
+        if tag.flags.contains(DescriptorBlockTagFlags::ESCAPED) {
+            self.is_done = true;
+            return Some(Err(IncompatibleKind::JournalBlockEscaped.into()));
+        }
 
         if tag.flags.contains(DescriptorBlockTagFlags::LAST_TAG) {
             // Last tag reached, nothing more to read.
