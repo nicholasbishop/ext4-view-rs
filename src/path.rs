@@ -23,6 +23,18 @@ pub enum PathError {
 
     /// Path contains a null byte.
     ContainsNull,
+
+    /// Path cannot be created due to encoding.
+    ///
+    /// This error only occurs on non-Unix targets, where
+    /// [`std::os::unix::ffi::OsStrExt`] is not available. On non-Unix
+    /// targets, converting an [`OsStr`] or [`std::path::Path`] to
+    /// [`ext4_view::Path`] requires first converting the input to a
+    /// `&str`, which will fail if the input is not valid UTF-8.
+    ///
+    /// [`OsStr`]: std::ffi::OsStr
+    /// [`ext4_view::Path`]: Path
+    Encoding,
 }
 
 impl Display for PathError {
@@ -32,6 +44,9 @@ impl Display for PathError {
                 write!(f, "path contains a component longer than 255 bytes")
             }
             Self::ContainsNull => write!(f, "path contains a null byte"),
+            Self::Encoding => {
+                write!(f, "path cannot be created due to encoding")
+            }
         }
     }
 }
@@ -195,7 +210,16 @@ impl<'a> TryFrom<&'a std::ffi::OsStr> for Path<'a> {
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(all(feature = "std", not(unix)))]
+impl<'a> TryFrom<&'a std::ffi::OsStr> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(p: &'a std::ffi::OsStr) -> Result<Self, PathError> {
+        Self::try_from(p.to_str().ok_or(PathError::Encoding)?)
+    }
+}
+
+#[cfg(feature = "std")]
 impl<'a> TryFrom<&'a std::path::Path> for Path<'a> {
     type Error = PathError;
 
@@ -423,7 +447,16 @@ impl TryFrom<std::ffi::OsString> for PathBuf {
     }
 }
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(all(feature = "std", not(unix)))]
+impl TryFrom<std::ffi::OsString> for PathBuf {
+    type Error = PathError;
+
+    fn try_from(p: std::ffi::OsString) -> Result<Self, PathError> {
+        Self::try_from(p.into_string().map_err(|_| PathError::Encoding)?)
+    }
+}
+
+#[cfg(feature = "std")]
 impl TryFrom<std::path::PathBuf> for PathBuf {
     type Error = PathError;
 

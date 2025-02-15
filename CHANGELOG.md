@@ -13,6 +13,13 @@
   `impl From<Incompatible>> for Ext4Error`.
 * Made the `Incompatible` type opaque. It is no longer possible to
   `match` on specific types of incompatibility.
+* Implemented several path conversions for non-Unix platforms that were
+  previously only available on Unix. On non-Unix platforms, these
+  conversions will fail on non-UTF-8 input.
+  * `TryFrom<&OsStr> for ext4_view::Path`
+  * `TryFrom<&std::path::PathBuf> for ext4_view::Path`
+  * `TryFrom<OsString> for ext4_view::PathBuf`
+  * `TryFrom<std::path::PathBuf> for ext4_view::PathBuf`
 
 ## 0.8.0
 
