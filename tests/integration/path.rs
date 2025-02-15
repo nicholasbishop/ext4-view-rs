@@ -8,7 +8,7 @@
 
 use ext4_view::{Component, Path, PathBuf, PathError};
 
-#[cfg(all(feature = "std", unix))]
+#[cfg(feature = "std")]
 use std::ffi::{OsStr, OsString};
 
 #[test]
@@ -60,7 +60,7 @@ fn test_path_construction() {
     assert_eq!(PathBuf::default(), []);
 
     // Successful construction from std types.
-    #[cfg(all(feature = "std", unix))]
+    #[cfg(feature = "std")]
     {
         let src: &OsStr = OsStr::new("abc");
         assert_eq!(Path::try_from(src).unwrap(), expected_path);
@@ -84,6 +84,21 @@ fn test_path_construction() {
     let src = &[b'a'; 256];
     assert_eq!(Path::try_from(src), Err(PathError::ComponentTooLong));
     assert_eq!(PathBuf::try_from(src), Err(PathError::ComponentTooLong));
+}
+
+/// Test that creating a path from non-UTF-8 inputs fails on Windows.
+#[cfg(all(feature = "std", windows))]
+#[test]
+fn test_path_construction_windows_non_utf8() {
+    use std::os::windows::ffi::OsStringExt;
+
+    let src = OsString::from_wide(&[0xd800, 0x1000]);
+
+    // Verify that the input is not UTF-8.
+    assert!(src.clone().into_string().is_err());
+
+    assert_eq!(Path::try_from(src.as_os_str()), Err(PathError::Encoding));
+    assert_eq!(PathBuf::try_from(src), Err(PathError::Encoding));
 }
 
 #[test]
