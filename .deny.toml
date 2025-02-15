@@ -16,7 +16,6 @@ allow = [
   "ISC",
   "MPL-2.0",
   "OpenSSL",
-  "Unicode-DFS-2016",
   "Unicode-3.0",
 ]
 
