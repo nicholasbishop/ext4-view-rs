@@ -12,10 +12,10 @@ mod commit_block;
 mod descriptor_block;
 mod superblock;
 
+use crate::Ext4;
 use crate::error::Ext4Error;
 use crate::inode::Inode;
-use crate::Ext4;
-use block_map::{load_block_map, BlockMap};
+use block_map::{BlockMap, load_block_map};
 use superblock::JournalSuperblock;
 
 #[derive(Debug)]
