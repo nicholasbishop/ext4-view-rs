@@ -6,12 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4Read;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::superblock::Superblock;
 use crate::util::{read_u16le, read_u32le, u64_from_hilo, usize_from_u32};
-use crate::Ext4Read;
 use alloc::vec;
 use alloc::vec::Vec;
 

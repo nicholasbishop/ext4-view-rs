@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::{capture_cmd, run_cmd, sudo};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use ext4_view::{Ext4, Ext4Error};
 use sha2::{Digest, Sha256};
 use std::fs::File;

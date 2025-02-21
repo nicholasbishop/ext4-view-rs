@@ -371,7 +371,10 @@ impl Display for CorruptKind {
                 offset_within_block,
                 read_len,
             } => {
-                write!(f, "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}")
+                write!(
+                    f,
+                    "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}"
+                )
             }
         }
     }

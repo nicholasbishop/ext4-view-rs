@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeIndex};
 use crate::iters::extents::Extents;
-use crate::Ext4;
 
 /// Iterator over blocks in a file that uses extents.
 ///

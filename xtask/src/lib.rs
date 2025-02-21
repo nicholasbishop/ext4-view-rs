@@ -8,7 +8,7 @@
 
 mod mount;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use sha2::Digest;
 use sha2::Sha256;
 use std::fs::File;
