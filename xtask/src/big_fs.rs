@@ -53,7 +53,9 @@ pub fn download_big_filesystems() -> Result<()> {
     let expected_sha256 =
         "9e1b25a4e509c9fccd62d074d963e0fda718ef0e06403e9a0a0804eb90a53b31";
 
-    let url = format!("https://storage.googleapis.com/{bucket}/{board}/{version}/{compressed_file_name}");
+    let url = format!(
+        "https://storage.googleapis.com/{bucket}/{board}/{version}/{compressed_file_name}"
+    );
 
     let download_path = tmp_dir.path().join(compressed_file_name);
     let tar_path = tmp_dir.path().join(tar_file_name);

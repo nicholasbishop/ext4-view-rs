@@ -10,7 +10,7 @@ mod big_fs;
 mod dmsetup;
 mod losetup;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use dmsetup::{DmDevice, DmFlakey};
 use losetup::LoopDevice;
@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, str};
 use tempfile::TempDir;
-use xtask::{capture_cmd, diff_walk, run_cmd, sudo, Mount, ReadOnly};
+use xtask::{Mount, ReadOnly, capture_cmd, diff_walk, run_cmd, sudo};
 
 /// Get the path of the root directory of the repo.
 ///

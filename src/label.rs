@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::format::{format_bytes_debug, BytesDisplay};
+use crate::format::{BytesDisplay, format_bytes_debug};
 use core::fmt::{self, Debug, Formatter};
 use core::str::Utf8Error;
 

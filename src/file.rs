@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::error::Ext4Error;
 use crate::inode::Inode;
 use crate::iters::file_blocks::FileBlocks;
@@ -13,7 +14,6 @@ use crate::metadata::Metadata;
 use crate::path::Path;
 use crate::resolve::FollowSymlinks;
 use crate::util::usize_from_u32;
-use crate::Ext4;
 use core::fmt::{self, Debug, Formatter};
 
 #[cfg(feature = "std")]

@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::InodeIndex;
 use crate::util::{read_u16le, read_u32le};
-use crate::Ext4;
 
 #[derive(Debug, Eq, PartialEq)]
 enum DirBlockType {

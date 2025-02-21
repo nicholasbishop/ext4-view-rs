@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::inode::Inode;
@@ -13,7 +14,6 @@ use crate::iters::file_blocks::FileBlocks;
 use crate::journal::block_header::{JournalBlockHeader, JournalBlockType};
 use crate::util::read_u32be;
 use crate::uuid::Uuid;
-use crate::Ext4;
 use alloc::vec;
 use bitflags::bitflags;
 

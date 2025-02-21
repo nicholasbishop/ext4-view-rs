@@ -25,7 +25,7 @@
 //! /big_dir/0 644 file sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9
 //! ```
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::ffi::CString;
 use std::io::{self, Write};
 use std::mem::MaybeUninit;
@@ -34,7 +34,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::{env, fs};
 use xtask::diff_walk::{FileContent, WalkDirEntry};
-use xtask::{calc_file_sha256, Mount, ReadOnly};
+use xtask::{Mount, ReadOnly, calc_file_sha256};
 
 /// Check if a directory is encrypted or not.
 fn is_encrypted_dir(path: &Path) -> Result<bool> {
