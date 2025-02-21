@@ -742,14 +742,16 @@ mod tests {
         assert_eq!(inode.index.get(), 2);
 
         // Successful lookup.
-        assert!(fs
-            .path_to_inode(Path::try_from("/empty_file").unwrap(), follow)
-            .is_ok());
+        assert!(
+            fs.path_to_inode(Path::try_from("/empty_file").unwrap(), follow)
+                .is_ok()
+        );
 
         // Successful lookup with a "." component.
-        assert!(fs
-            .path_to_inode(Path::try_from("/./empty_file").unwrap(), follow)
-            .is_ok());
+        assert!(
+            fs.path_to_inode(Path::try_from("/./empty_file").unwrap(), follow)
+                .is_ok()
+        );
 
         // Successful lookup with a ".." component.
         let inode = fs
@@ -758,30 +760,34 @@ mod tests {
         assert_eq!(inode.index.get(), 2);
 
         // Successful lookup with symlink.
-        assert!(fs
-            .path_to_inode(Path::try_from("/sym_simple").unwrap(), follow)
-            .is_ok());
+        assert!(
+            fs.path_to_inode(Path::try_from("/sym_simple").unwrap(), follow)
+                .is_ok()
+        );
 
         // Error: not an absolute path.
-        assert!(fs
-            .path_to_inode(Path::try_from("empty_file").unwrap(), follow)
-            .is_err());
+        assert!(
+            fs.path_to_inode(Path::try_from("empty_file").unwrap(), follow)
+                .is_err()
+        );
 
         // Error: invalid child of a valid directory.
-        assert!(fs
-            .path_to_inode(
+        assert!(
+            fs.path_to_inode(
                 Path::try_from("/empty_dir/does_not_exist").unwrap(),
                 follow
             )
-            .is_err());
+            .is_err()
+        );
 
         // Error: attempted to lookup child of a regular file.
-        assert!(fs
-            .path_to_inode(
+        assert!(
+            fs.path_to_inode(
                 Path::try_from("/empty_file/does_not_exist").unwrap(),
                 follow
             )
-            .is_err());
+            .is_err()
+        );
 
         // TODO: add deeper paths to the test disk and test here.
     }

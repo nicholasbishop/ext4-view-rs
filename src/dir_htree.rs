@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
@@ -16,7 +17,6 @@ use crate::iters::extents::Extents;
 use crate::iters::file_blocks::FileBlocks;
 use crate::path::PathBuf;
 use crate::util::{read_u16le, read_u32le, usize_from_u32};
-use crate::Ext4;
 use alloc::rc::Rc;
 use alloc::vec;
 
@@ -495,14 +495,16 @@ mod tests {
         assert_eq!(entry.file_name(), "..");
 
         // Check that an arbitrary name returns `None`.
-        assert!(read_dot_or_dotdot(
-            fs.clone(),
-            &inode,
-            "somename".try_into().unwrap(),
-            &block
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            read_dot_or_dotdot(
+                fs.clone(),
+                &inode,
+                "somename".try_into().unwrap(),
+                &block
+            )
+            .unwrap()
+            .is_none()
+        );
     }
 
     /// Use ReadDir to iterate over all directory entries. Check that

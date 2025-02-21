@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::dir_entry::{DirEntryName, DirEntryNameError};
-use crate::format::{format_bytes_debug, BytesDisplay};
+use crate::format::{BytesDisplay, format_bytes_debug};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;

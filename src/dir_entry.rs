@@ -6,14 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
-use crate::format::{format_bytes_debug, BytesDisplay};
+use crate::format::{BytesDisplay, format_bytes_debug};
 use crate::inode::{Inode, InodeIndex};
 use crate::metadata::Metadata;
 use crate::path::{Path, PathBuf};
 use crate::util::{read_u16le, read_u32le};
-use crate::Ext4;
 use alloc::rc::Rc;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
@@ -516,7 +516,9 @@ mod tests {
         bytes.push(8u8); // file type
         bytes.extend("ab/".bytes()); // name
         bytes.resize(72, 0u8);
-        assert!(DirEntry::from_bytes(fs.clone(), &bytes, inode1, path).is_err());
+        assert!(
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path).is_err()
+        );
     }
 
     #[test]

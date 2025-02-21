@@ -197,7 +197,9 @@ mod tests {
         );
 
         block[1020..].copy_from_slice(&[0x74, 0xef, 0x0e, 0xf6]);
-        assert!(validate_descriptor_block_checksum(&superblock, &block).is_ok());
+        assert!(
+            validate_descriptor_block_checksum(&superblock, &block).is_ok()
+        );
     }
 
     fn push_u32be(bytes: &mut Vec<u8>, value: u32) {

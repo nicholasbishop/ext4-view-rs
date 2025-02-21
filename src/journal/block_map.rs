@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::inode::Inode;
@@ -13,11 +14,10 @@ use crate::iters::file_blocks::FileBlocks;
 use crate::journal::block_header::{JournalBlockHeader, JournalBlockType};
 use crate::journal::commit_block::validate_commit_block_checksum;
 use crate::journal::descriptor_block::{
-    validate_descriptor_block_checksum, DescriptorBlockTagIter,
+    DescriptorBlockTagIter, validate_descriptor_block_checksum,
 };
 use crate::journal::superblock::JournalSuperblock;
 use crate::util::usize_from_u32;
-use crate::Ext4;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;

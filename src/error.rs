@@ -405,7 +405,10 @@ impl Display for CorruptKind {
                 block_group,
                 num_block_groups,
             } => {
-                write!(f, "inode {inode} has an invalid block group index: block_group={block_group}, num_block_groups={num_block_groups}")
+                write!(
+                    f,
+                    "inode {inode} has an invalid block group index: block_group={block_group}, num_block_groups={num_block_groups}"
+                )
             }
             Self::InodeLocation {
                 inode,
@@ -415,7 +418,10 @@ impl Display for CorruptKind {
                 block_size,
                 inode_table_first_block,
             } => {
-                write!(f, "inode {inode} has invalid location: block_group={block_group}, inodes_per_block_group={inodes_per_block_group}, inode_size={inode_size}, block_size={block_size}, inode_table_first_block={inode_table_first_block}")
+                write!(
+                    f,
+                    "inode {inode} has invalid location: block_group={block_group}, inodes_per_block_group={inodes_per_block_group}, inode_size={inode_size}, block_size={block_size}, inode_table_first_block={inode_table_first_block}"
+                )
             }
             Self::InodeFileType { inode, mode } => {
                 write!(
@@ -461,7 +467,10 @@ impl Display for CorruptKind {
                 offset_within_block,
                 read_len,
             } => {
-                write!(f, "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}")
+                write!(
+                    f,
+                    "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}"
+                )
             }
         }
     }

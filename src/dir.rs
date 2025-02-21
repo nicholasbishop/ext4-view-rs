@@ -6,13 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::dir_entry::DirEntryName;
 use crate::dir_htree::get_dir_entry_via_htree;
 use crate::error::Ext4Error;
 use crate::inode::{Inode, InodeFlags};
 use crate::iters::read_dir::ReadDir;
 use crate::path::PathBuf;
-use crate::Ext4;
 
 /// Search a directory inode for an entry with the given `name`. If
 /// found, return the entry's inode, otherwise return a `NotFound`

@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::Ext4;
 use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::DirEntry;
@@ -13,7 +14,6 @@ use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::{Inode, InodeFlags, InodeIndex};
 use crate::iters::file_blocks::FileBlocks;
 use crate::path::PathBuf;
-use crate::Ext4;
 use alloc::rc::Rc;
 use alloc::vec;
 use alloc::vec::Vec;

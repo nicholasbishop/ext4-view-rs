@@ -129,8 +129,10 @@ impl Superblock {
             // assert that feature is not present. This assert cannot
             // fail because of the call to `check_incompat_features`
             // above.
-            assert!(!incompatible_features
-                .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE));
+            assert!(
+                !incompatible_features
+                    .contains(IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE)
+            );
 
             Some(
                 InodeIndex::new(s_journal_inum)
