@@ -6,11 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[expect(unused)] // TODO
 mod block_header;
-#[allow(unused)] // TODO
+#[expect(unused)] // TODO
+mod block_map;
 mod commit_block;
-#[allow(unused)] // TODO
 mod descriptor_block;
 #[expect(unused)] // TODO
 mod superblock;
