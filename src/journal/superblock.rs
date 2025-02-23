@@ -60,6 +60,7 @@ impl JournalSuperblock {
     /// An error is returned if:
     /// * The superblock cannot be read from the filesystem.
     /// * `JournalSuperblock::read_bytes` fails.
+    /// * The journal's block size does not match the filesystem block size.
     pub(super) fn load(
         fs: &Ext4,
         journal_inode: &Inode,
@@ -77,6 +78,12 @@ impl JournalSuperblock {
         fs.read_from_block(block_index, 0, &mut block)?;
 
         let superblock = Self::read_bytes(&block)?;
+
+        // Ensure the journal block size matches the rest of the
+        // filesystem.
+        if superblock.block_size != fs.0.superblock.block_size {
+            return Err(CorruptKind::JournalBlockSize.into());
+        }
 
         Ok(superblock)
     }
