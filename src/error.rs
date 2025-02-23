@@ -235,6 +235,9 @@ pub(crate) enum CorruptKind {
     /// Journal block size does not match the filesystem block size.
     JournalBlockSize,
 
+    /// Journal commit block checksum is invalid.
+    JournalCommitBlockChecksum,
+
     /// Journal descriptor block checksum is invalid.
     JournalDescriptorBlockChecksum,
 
@@ -332,6 +335,9 @@ impl Display for CorruptKind {
                     f,
                     "journal block size does not match filesystem block size"
                 )
+            }
+            Self::JournalCommitBlockChecksum => {
+                write!(f, "journal commit block checksum is invalid")
             }
             Self::JournalDescriptorBlockChecksum => {
                 write!(f, "journal descriptor block checksum is invalid")

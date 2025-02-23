@@ -9,6 +9,8 @@
 #[expect(unused)] // TODO
 mod block_header;
 #[allow(unused)] // TODO
+mod commit_block;
+#[allow(unused)] // TODO
 mod descriptor_block;
 #[expect(unused)] // TODO
 mod superblock;
