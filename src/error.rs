@@ -235,11 +235,23 @@ pub(crate) enum CorruptKind {
     /// Journal block size does not match the filesystem block size.
     JournalBlockSize,
 
+    /// Journal does not have the expected number of blocks.
+    JournalTruncated,
+
+    /// Journal first commit doesn't match the sequence number in the superblock.
+    JournalSequence,
+
     /// Journal commit block checksum is invalid.
     JournalCommitBlockChecksum,
 
     /// Journal descriptor block checksum is invalid.
     JournalDescriptorBlockChecksum,
+
+    /// Journal descriptor tag checksum is invalid.
+    JournalDescriptorTagChecksum,
+
+    /// Journal sequence number overflowed.
+    JournalSequenceOverflow,
 
     /// Journal has a truncated descriptor block. Either it is missing a
     /// tag with the `LAST_TAG` flag set, or the final tag does have
@@ -336,11 +348,22 @@ impl Display for CorruptKind {
                     "journal block size does not match filesystem block size"
                 )
             }
+            Self::JournalTruncated => write!(f, "journal is truncated"),
+            Self::JournalSequence => write!(
+                f,
+                "journal's first commit doesn't match the expected sequence"
+            ),
             Self::JournalCommitBlockChecksum => {
                 write!(f, "journal commit block checksum is invalid")
             }
             Self::JournalDescriptorBlockChecksum => {
                 write!(f, "journal descriptor block checksum is invalid")
+            }
+            Self::JournalDescriptorTagChecksum => {
+                write!(f, "journal descriptor tag checksum is invalid")
+            }
+            Self::JournalSequenceOverflow => {
+                write!(f, "journal sequence number overflowed")
             }
             Self::JournalDescriptorBlockTruncated => {
                 write!(f, "journal descriptor block is truncated")
@@ -472,6 +495,12 @@ pub(crate) enum IncompatibleKind {
         u32,
     ),
 
+    /// The journal contains an unsupported block type.
+    JournalBlockType(
+        /// Raw journal block type.
+        u32,
+    ),
+
     /// The journal contains an escaped block.
     JournalBlockEscaped,
 }
@@ -490,6 +519,9 @@ impl Display for IncompatibleKind {
             }
             Self::JournalSuperblockType(val) => {
                 write!(f, "journal superblock type is not supported: {val}")
+            }
+            Self::JournalBlockType(val) => {
+                write!(f, "journal block type is not supported: {val}")
             }
             Self::JournalBlockEscaped => {
                 write!(f, "journal contains an escaped data block")
