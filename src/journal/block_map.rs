@@ -164,7 +164,9 @@ impl<'a> BlockMapLoader<'a> {
     fn process_descriptor_block(&mut self) -> Result<(), Ext4Error> {
         validate_descriptor_block_checksum(self.superblock, &self.block)?;
 
-        let tags = DescriptorBlockTagIter::new(&self.block[12..]);
+        let tags = DescriptorBlockTagIter::new(
+            &self.block[JournalBlockHeader::SIZE..],
+        );
 
         for tag in tags {
             let tag = tag?;

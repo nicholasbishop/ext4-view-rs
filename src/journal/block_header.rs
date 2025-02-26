@@ -19,6 +19,9 @@ pub(super) struct JournalBlockHeader {
 impl JournalBlockHeader {
     pub(super) const MAGIC: u32 = 0xc03b3998;
 
+    /// Size of the header in bytes.
+    pub(super) const SIZE: usize = 12;
+
     /// Read a `JournalBlockHeader` from raw bytes.
     ///
     /// If the bytes do not start with the expected magic number, return
