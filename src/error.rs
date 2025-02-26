@@ -6,11 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_size::BlockSize;
 use crate::features::IncompatibleFeatures;
-use crate::inode::InodeIndex;
+use crate::inode::{InodeIndex, InodeMode};
 use alloc::boxed::Box;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
+use core::num::NonZero;
 
 /// Boxed error, used for IO errors. This is similar in spirit to
 /// `anyhow::Error`, although a much simpler implementation.
@@ -262,8 +264,32 @@ pub(crate) enum CorruptKind {
     /// An inode's checksum is invalid.
     InodeChecksum(InodeIndex),
 
-    /// An inode is invalid.
-    Inode(InodeIndex),
+    /// An inode is too small.
+    InodeTruncated { inode: InodeIndex, size: usize },
+
+    /// An inode's block group is invalid.
+    InodeBlockGroup {
+        inode: InodeIndex,
+        block_group: u32,
+        num_block_groups: usize,
+    },
+
+    /// Failed to calculate an inode's location.
+    ///
+    /// This error can be returned by various calculations in
+    /// `get_inode_location`. The fields here are sufficient to
+    /// reconstruct which specific calculation failed.
+    InodeLocation {
+        inode: InodeIndex,
+        block_group: u32,
+        inodes_per_block_group: NonZero<u32>,
+        inode_size: u16,
+        block_size: BlockSize,
+        inode_table_first_block: u64,
+    },
+
+    /// An inode's file type is invalid.
+    InodeFileType { inode: InodeIndex, mode: InodeMode },
 
     /// The target of a symlink is not a valid path.
     SymlinkTarget(InodeIndex),
@@ -371,7 +397,33 @@ impl Display for CorruptKind {
             Self::InodeChecksum(inode) => {
                 write!(f, "invalid checksum for inode {inode}")
             }
-            Self::Inode(inode) => write!(f, "inode {inode} is invalid"),
+            Self::InodeTruncated { inode, size } => {
+                write!(f, "inode {inode} is truncated: size={size}")
+            }
+            Self::InodeBlockGroup {
+                inode,
+                block_group,
+                num_block_groups,
+            } => {
+                write!(f, "inode {inode} has an invalid block group index: block_group={block_group}, num_block_groups={num_block_groups}")
+            }
+            Self::InodeLocation {
+                inode,
+                block_group,
+                inodes_per_block_group,
+                inode_size,
+                block_size,
+                inode_table_first_block,
+            } => {
+                write!(f, "inode {inode} has invalid location: block_group={block_group}, inodes_per_block_group={inodes_per_block_group}, inode_size={inode_size}, block_size={block_size}, inode_table_first_block={inode_table_first_block}")
+            }
+            Self::InodeFileType { inode, mode } => {
+                write!(
+                    f,
+                    "inode {inode} has invalid file type: mode=0x{mode:04x}",
+                    mode = mode.bits()
+                )
+            }
             Self::SymlinkTarget(inode) => {
                 write!(f, "inode {inode} has an invalid symlink path")
             }
