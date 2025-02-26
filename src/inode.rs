@@ -128,7 +128,11 @@ impl Inode {
         data: &[u8],
     ) -> Result<(Self, u32), Ext4Error> {
         if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
-            return Err(CorruptKind::Inode(index).into());
+            return Err(CorruptKind::InodeTruncated {
+                inode: index,
+                size: data.len(),
+            }
+            .into());
         }
 
         let i_mode = read_u16le(data, 0x0);
@@ -173,8 +177,9 @@ impl Inode {
                     mode,
                     uid,
                     gid,
-                    file_type: FileType::try_from(mode)
-                        .map_err(|_| CorruptKind::Inode(index))?,
+                    file_type: FileType::try_from(mode).map_err(|_| {
+                        CorruptKind::InodeFileType { inode: index, mode }
+                    })?,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,
@@ -190,7 +195,7 @@ impl Inode {
         inode: InodeIndex,
     ) -> Result<Self, Ext4Error> {
         let (block_index, offset_within_block) =
-            get_inode_location(ext4, inode).ok_or(CorruptKind::Inode(inode))?;
+            get_inode_location(ext4, inode)?;
 
         let mut data = vec![0; usize::from(ext4.0.superblock.inode_size)];
         ext4.read_from_block(block_index, offset_within_block, &mut data)?;
@@ -279,7 +284,10 @@ impl Inode {
 /// Get an inode's location: block index and offset within that block.
 /// Note that this is the location of the inode itself, not the file
 /// data associated with the inode.
-fn get_inode_location(ext4: &Ext4, inode: InodeIndex) -> Option<(u64, u32)> {
+fn get_inode_location(
+    ext4: &Ext4,
+    inode: InodeIndex,
+) -> Result<(u64, u32), Ext4Error> {
     let sb = &ext4.0.superblock;
 
     // OK to unwrap: `inode` is nonzero.
@@ -290,25 +298,43 @@ fn get_inode_location(ext4: &Ext4, inode: InodeIndex) -> Option<(u64, u32)> {
     let group = ext4
         .0
         .block_group_descriptors
-        .get(usize_from_u32(block_group_index))?;
+        .get(usize_from_u32(block_group_index))
+        .ok_or(CorruptKind::InodeBlockGroup {
+            inode,
+            block_group: block_group_index,
+            num_block_groups: ext4.0.block_group_descriptors.len(),
+        })?;
 
     let index_within_group = inode_minus_1 % sb.inodes_per_block_group;
 
-    let byte_offset_within_group =
-        u64::from(index_within_group).checked_mul(u64::from(sb.inode_size))?;
+    let err = || CorruptKind::InodeLocation {
+        inode,
+        block_group: block_group_index,
+        inodes_per_block_group: sb.inodes_per_block_group,
+        inode_size: sb.inode_size,
+        block_size: sb.block_size,
+        inode_table_first_block: group.inode_table_first_block,
+    };
+
+    let byte_offset_within_group = u64::from(index_within_group)
+        .checked_mul(u64::from(sb.inode_size))
+        .ok_or_else(err)?;
 
     let byte_offset_of_group = sb
         .block_size
         .to_u64()
-        .checked_mul(group.inode_table_first_block)?;
+        .checked_mul(group.inode_table_first_block)
+        .ok_or_else(err)?;
 
     // Absolute byte index of the inode.
-    let start_byte =
-        byte_offset_of_group.checked_add(byte_offset_within_group)?;
+    let start_byte = byte_offset_of_group
+        .checked_add(byte_offset_within_group)
+        .ok_or_else(err)?;
 
     let block_index = start_byte / sb.block_size.to_nz_u64();
     let offset_within_block =
-        u32::try_from(start_byte % sb.block_size.to_nz_u64()).ok()?;
+        u32::try_from(start_byte % sb.block_size.to_nz_u64())
+            .map_err(|_| err())?;
 
-    Some((block_index, offset_within_block))
+    Ok((block_index, offset_within_block))
 }
