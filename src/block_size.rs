@@ -8,6 +8,7 @@
 
 use crate::util::usize_from_u32;
 use core::cmp::Ordering;
+use core::fmt::{self, Display, Formatter};
 use core::num::NonZero;
 
 /// File system block size.
@@ -51,6 +52,12 @@ impl BlockSize {
 
     pub(crate) const fn to_usize(self) -> usize {
         usize_from_u32(self.0.get())
+    }
+}
+
+impl Display for BlockSize {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.0, f)
     }
 }
 
@@ -99,6 +106,12 @@ impl PartialOrd<BlockSize> for usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_block_size_display() {
+        let bs = BlockSize::from_superblock_value(0).unwrap();
+        assert_eq!(format!("{bs}"), "1024");
+    }
 
     #[test]
     fn test_block_size_from_superblock_value() {
