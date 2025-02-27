@@ -98,7 +98,7 @@ impl JournalSuperblock {
     fn read_bytes(bytes: &[u8]) -> Result<Self, Ext4Error> {
         assert_eq!(bytes.len(), SUPERBLOCK_SIZE);
 
-        let header = JournalBlockHeader::read_bytes(bytes)?
+        let header = JournalBlockHeader::read_bytes(bytes)
             .ok_or(CorruptKind::JournalMagic)?;
 
         // For now only superblock v2 is supported.
