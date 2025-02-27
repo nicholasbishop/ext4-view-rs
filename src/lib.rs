@@ -291,19 +291,20 @@ impl Ext4 {
     /// error is returned.
     fn read_from_block(
         &self,
-        block_index: u64,
+        original_block_index: u64,
         offset_within_block: u32,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
+        let block_index = self.0.journal.map_block_index(original_block_index);
+
         let err = || {
             Ext4Error::from(CorruptKind::BlockRead {
                 block_index,
+                original_block_index,
                 offset_within_block,
                 read_len: dst.len(),
             })
         };
-
-        let block_index = self.0.journal.map_block_index(block_index);
 
         // The first 1024 bytes are reserved for non-filesystem
         // data. This conveniently allows for something like a null
@@ -681,6 +682,7 @@ mod tests {
     ) -> CorruptKind {
         CorruptKind::BlockRead {
             block_index,
+            original_block_index: block_index,
             offset_within_block,
             read_len,
         }

@@ -327,6 +327,11 @@ pub(crate) enum CorruptKind {
         /// Absolute block index.
         block_index: u64,
 
+        /// Absolute block index, without remapping from the journal. If
+        /// this block was not remapped by the journal, this field will
+        /// be the same as `block_index`.
+        original_block_index: u64,
+
         /// Offset in bytes within the block.
         offset_within_block: u32,
 
@@ -464,12 +469,13 @@ impl Display for CorruptKind {
             }
             Self::BlockRead {
                 block_index,
+                original_block_index,
                 offset_within_block,
                 read_len,
             } => {
                 write!(
                     f,
-                    "invalid read of length {read_len} from block {block_index} at offset {offset_within_block}"
+                    "invalid read of length {read_len} from block {block_index} (originally {original_block_index}) at offset {offset_within_block}"
                 )
             }
         }
@@ -629,6 +635,7 @@ mod tests {
     fn test_corrupt_format() {
         let err: Ext4Error = CorruptKind::BlockRead {
             block_index: 123,
+            original_block_index: 124,
             offset_within_block: 456,
             read_len: 789,
         }
@@ -636,12 +643,12 @@ mod tests {
 
         assert_eq!(
             format!("{err}"),
-            "corrupt filesystem: invalid read of length 789 from block 123 at offset 456"
+            "corrupt filesystem: invalid read of length 789 from block 123 (originally 124) at offset 456"
         );
 
         assert_eq!(
             format!("{err:?}"),
-            "Corrupt(BlockRead { block_index: 123, offset_within_block: 456, read_len: 789 })"
+            "Corrupt(BlockRead { block_index: 123, original_block_index: 124, offset_within_block: 456, read_len: 789 })"
         );
     }
 
