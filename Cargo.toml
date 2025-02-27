@@ -19,6 +19,7 @@ rust-version = "1.81"
 include = [
     "src/*.rs",
     "src/iters",
+    "src/journal",
     "LICENSE-APACHE",
     "LICENSE-MIT",
 ]
