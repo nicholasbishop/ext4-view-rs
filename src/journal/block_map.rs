@@ -38,10 +38,14 @@ pub(super) fn load_block_map(
     while let Some(block_index) = loader.journal_block_iter.next() {
         loader.block_index = block_index?;
 
-        // If the end of the journal was reached, or an error occurred,
-        // stop reading the journal. Any uncommitted changes are
-        // discarded.
-        if loader.is_done || loader.process_next().is_err() {
+        // If an error occurred, stop reading the journal. Any
+        // uncommitted changes are discarded.
+        if loader.process_next().is_err() {
+            break;
+        }
+
+        // Stop reading if the end of the journal was reached.
+        if loader.is_done {
             break;
         }
     }
