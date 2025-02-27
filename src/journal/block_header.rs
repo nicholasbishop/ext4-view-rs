@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::error::Ext4Error;
 use crate::util::read_u32be;
 
 /// Header at the start of every non-data block in the journal.
@@ -25,21 +24,25 @@ impl JournalBlockHeader {
     /// Read a `JournalBlockHeader` from raw bytes.
     ///
     /// If the bytes do not start with the expected magic number, return
-    /// `Ok(None)`.
-    pub(super) fn read_bytes(bytes: &[u8]) -> Result<Option<Self>, Ext4Error> {
+    /// `None`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the length of `bytes` is less than 12.
+    pub(super) fn read_bytes(bytes: &[u8]) -> Option<Self> {
         // Return early if this is not a journal block.
         let h_magic = read_u32be(bytes, 0x0);
         if h_magic != Self::MAGIC {
-            return Ok(None);
+            return None;
         }
 
         let h_blocktype = read_u32be(bytes, 0x4);
         let h_sequence = read_u32be(bytes, 0x8);
 
-        Ok(Some(Self {
+        Some(Self {
             block_type: JournalBlockType(h_blocktype),
             sequence: h_sequence,
-        }))
+        })
     }
 }
 
@@ -64,7 +67,7 @@ mod tests {
     #[test]
     fn test_journal_block_header_missing_magic() {
         let bytes = [0; 12];
-        assert!(JournalBlockHeader::read_bytes(&bytes).unwrap().is_none());
+        assert!(JournalBlockHeader::read_bytes(&bytes).is_none());
     }
 
     #[test]
@@ -77,7 +80,7 @@ mod tests {
         // Set sequence.
         bytes[8..12].copy_from_slice(&456u32.to_be_bytes());
         assert_eq!(
-            JournalBlockHeader::read_bytes(&bytes).unwrap().unwrap(),
+            JournalBlockHeader::read_bytes(&bytes).unwrap(),
             JournalBlockHeader {
                 block_type: JournalBlockType(123),
                 sequence: 456,

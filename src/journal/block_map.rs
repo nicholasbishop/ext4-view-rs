@@ -138,7 +138,7 @@ impl<'a> BlockMapLoader<'a> {
         self.fs
             .read_from_block(self.block_index, 0, &mut self.block)?;
 
-        let Some(header) = JournalBlockHeader::read_bytes(&self.block)? else {
+        let Some(header) = JournalBlockHeader::read_bytes(&self.block) else {
             // Journal block magic is not present, so we've reached
             // the end of the journal.
             self.is_done = true;
