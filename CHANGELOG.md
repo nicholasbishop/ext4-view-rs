@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0
+
 * Removed `Ext4Error::as_corrupt` and `Ext4Error::as_incompatible`.
 * Renamed `Incompatible::Missing` to `Incompatible::MissingRequiredFeatures`.
 * Renamed `Incompatible::Incompatible` to `Incompatible::UnsupportedFeatures`.
@@ -20,6 +22,7 @@
   * `TryFrom<&std::path::PathBuf> for ext4_view::Path`
   * `TryFrom<OsString> for ext4_view::PathBuf`
   * `TryFrom<std::path::PathBuf> for ext4_view::PathBuf`
+* Added support for reading filesystems that weren't cleanly unmounted.
 
 ## 0.8.0
 
@@ -28,7 +31,6 @@
 * Added `Ext4::uuid` to get the filesystem UUID.
 * Made the `Corrupt` type opaque. It is no longer possible to `match` on
   specific types of corruption.
-* Added support for reading filesystems that weren't cleanly unmounted.
 
 ## 0.7.0
 
