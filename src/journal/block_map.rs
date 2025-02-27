@@ -38,10 +38,15 @@ pub(super) fn load_block_map(
     while let Some(block_index) = loader.journal_block_iter.next() {
         loader.block_index = block_index?;
 
-        // If an error occurred, stop reading the journal. Any
-        // uncommitted changes are discarded.
-        if loader.process_next().is_err() {
-            break;
+        if let Err(err) = loader.process_next() {
+            if let Ext4Error::Corrupt(_) = err {
+                // If a corruption error occurred, stop reading the
+                // journal. Any uncommitted changes are discarded.
+                break;
+            } else {
+                // Propagate any other type of error.
+                return Err(err);
+            }
         }
 
         // Stop reading if the end of the journal was reached.
