@@ -107,6 +107,33 @@
 
 extern crate alloc;
 
+#[macro_use]
+extern crate log;
+
+/// Log a variable using `Debug` formatting at the trace level.
+///
+/// Example:
+///
+/// let abc = 256;
+/// trace_var!(abc); // Logs "abc=256"
+macro_rules! trace_var {
+    ($var:ident) => {
+        ::log::trace!("{}={:?}", ::core::stringify!($var), $var);
+    };
+}
+
+/// Log a variable in hex using `Debug` formatting at the trace level.
+///
+/// Example:
+///
+/// let abc = 256;
+/// trace_var!(abc); // Logs "abc=0x100"
+macro_rules! trace_var_hex {
+    ($var:ident) => {
+        ::log::trace!("{}={:#x?}", ::core::stringify!($var), $var);
+    };
+}
+
 mod block_group;
 mod block_size;
 mod checksum;
@@ -295,7 +322,11 @@ impl Ext4 {
         offset_within_block: u32,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
+        trace_var!(original_block_index);
+        trace_var!(offset_within_block);
+
         let block_index = self.0.journal.map_block_index(original_block_index);
+        trace_var!(block_index);
 
         let err = || {
             Ext4Error::from(CorruptKind::BlockRead {
@@ -352,6 +383,8 @@ impl Ext4 {
     /// Fails with `FileTooLarge` if the size of the file is too large
     /// to fit in a [`usize`].
     fn read_inode_file(&self, inode: &Inode) -> Result<Vec<u8>, Ext4Error> {
+        trace!("reading inode {}", inode.index);
+
         // Get the file size and initialize the output vector.
         let file_size_in_bytes = usize::try_from(inode.metadata.size_in_bytes)
             .map_err(|_| Ext4Error::FileTooLarge)?;
@@ -376,7 +409,9 @@ impl Ext4 {
         path: Path<'_>,
         follow: FollowSymlinks,
     ) -> Result<Inode, Ext4Error> {
-        resolve::resolve_path(self, path, follow).map(|v| v.0)
+        let r = resolve::resolve_path(self, path, follow).map(|v| v.0);
+        trace!("resolved path to inode: {r:?}");
+        r
     }
 }
 

@@ -63,6 +63,8 @@ pub(crate) fn resolve_path(
     path: Path<'_>,
     follow: FollowSymlinks,
 ) -> Result<(Inode, PathBuf), Ext4Error> {
+    trace!("resolving path, follow={follow:?}");
+
     // Maximum number of symlinks to resolve (for the whole path, not
     // individual components).
     const MAX_SYMLINKS: usize = 40;

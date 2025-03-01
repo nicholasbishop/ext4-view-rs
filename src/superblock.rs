@@ -50,18 +50,29 @@ impl Superblock {
 
         // OK to unwrap: already checked the length.
         let s_blocks_count_lo = read_u32le(bytes, 0x4);
+        trace_var!(s_blocks_count_lo);
         let s_first_data_block = read_u32le(bytes, 0x14);
+        trace_var!(s_first_data_block);
         let s_log_block_size = read_u32le(bytes, 0x18);
+        trace_var!(s_log_block_size);
         let s_blocks_per_group = read_u32le(bytes, 0x20);
+        trace_var!(s_blocks_per_group);
         let s_inodes_per_group = read_u32le(bytes, 0x28);
+        trace_var!(s_inodes_per_group);
         let s_magic = read_u16le(bytes, 0x38);
+        trace_var_hex!(s_magic);
         let s_inode_size = read_u16le(bytes, 0x58);
+        trace_var!(s_inode_size);
         let s_feature_compat = read_u32le(bytes, 0x5c);
+        trace_var_hex!(s_feature_compat);
         let s_feature_incompat = read_u32le(bytes, 0x60);
+        trace_var_hex!(s_feature_incompat);
         let s_feature_ro_compat = read_u32le(bytes, 0x64);
+        trace_var_hex!(s_feature_ro_compat);
         let s_uuid = &bytes[0x68..0x68 + 16];
         let s_volume_name = &bytes[0x78..0x78 + 16];
         let s_journal_inum = read_u32le(bytes, 0xe0);
+        trace_var!(s_journal_inum);
         const S_HASH_SEED_OFFSET: usize = 0xec;
         let s_hash_seed = [
             read_u32le(bytes, S_HASH_SEED_OFFSET),
@@ -70,7 +81,9 @@ impl Superblock {
             read_u32le(bytes, S_HASH_SEED_OFFSET + 12),
         ];
         let s_desc_size = read_u16le(bytes, 0xfe);
+        trace_var!(s_desc_size);
         let s_blocks_count_hi = read_u32le(bytes, 0x150);
+        trace_var!(s_blocks_count_hi);
         let s_checksum_seed = read_u32le(bytes, 0x270);
         const S_CHECKSUM_OFFSET: usize = 0x3fc;
         let s_checksum = read_u32le(bytes, S_CHECKSUM_OFFSET);
@@ -79,6 +92,7 @@ impl Superblock {
 
         let block_size = BlockSize::from_superblock_value(s_log_block_size)
             .ok_or(CorruptKind::InvalidBlockSize)?;
+        trace_var!(block_size);
 
         if s_magic != 0xef53 {
             return Err(CorruptKind::SuperblockMagic.into());
@@ -86,16 +100,20 @@ impl Superblock {
 
         let incompatible_features =
             check_incompat_features(s_feature_incompat)?;
+        trace_var!(incompatible_features);
         let read_only_compatible_features =
             ReadOnlyCompatibleFeatures::from_bits_retain(s_feature_ro_compat);
+        trace_var!(read_only_compatible_features);
         let compatible_features =
             CompatibleFeatures::from_bits_retain(s_feature_compat);
+        trace_var!(compatible_features);
 
         // s_first_data_block is usually 1 if the block size is 1KiB,
         // and otherwise its usually 0.
         let num_data_blocks = blocks_count
             .checked_sub(u64::from(s_first_data_block))
             .ok_or(CorruptKind::FirstDataBlock(s_first_data_block))?;
+        trace_var!(num_data_blocks);
         // Use div_ceil to round up in case `num_data_blocks` isn't an
         // even multiple of `s_blocks_per_group`. (Consider for example
         // `num_data_blocks = 3` and `s_blocks_per_group = 4`; that is
@@ -105,9 +123,11 @@ impl Superblock {
             num_data_blocks.div_ceil(u64::from(s_blocks_per_group)),
         )
         .map_err(|_| CorruptKind::TooManyBlockGroups)?;
+        trace_var!(num_block_groups);
 
         let inodes_per_block_group = NonZero::new(s_inodes_per_group)
             .ok_or(CorruptKind::InodesPerBlockGroup)?;
+        trace_var!(inodes_per_block_group);
 
         let block_group_descriptor_size =
             if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
@@ -115,6 +135,7 @@ impl Superblock {
             } else {
                 32
             };
+        trace_var!(block_group_descriptor_size);
 
         // Inodes are not allowed to exceed the block size.
         if s_inode_size > block_size {
@@ -141,6 +162,7 @@ impl Superblock {
         } else {
             None
         };
+        trace_var!(journal_inode);
 
         // Validate the superblock checksum.
         if read_only_compatible_features
