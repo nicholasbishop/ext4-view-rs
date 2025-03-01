@@ -42,6 +42,8 @@ fn parse_args() -> Result<(std::path::PathBuf, ext4_view::PathBuf)> {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let (path_to_filesystem, path_within_filesystem) = parse_args()?;
 
     // Load the filesystem.
