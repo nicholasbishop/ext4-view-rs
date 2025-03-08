@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::DirEntry;
@@ -35,7 +36,7 @@ pub struct ReadDir {
 
     /// Current absolute block index, or `None` if the next block needs
     /// to be fetched.
-    block_index: Option<u64>,
+    block_index: Option<FsBlockIndex>,
 
     /// Whether this is the first block in the file.
     is_first_block: bool,
