@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FileBlockIndex;
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
@@ -21,7 +22,6 @@ use alloc::rc::Rc;
 use alloc::vec;
 
 type DirHash = u32;
-type ChildBlock = u32;
 
 // Internal node of an htree.
 //
@@ -115,7 +115,7 @@ impl<'a> InternalNode<'a> {
     /// Panics if `index` is out of range.
     ///
     /// For `index` zero, the `hash` key is implicitly zero.
-    fn get_entry(&self, index: usize) -> (DirHash, ChildBlock) {
+    fn get_entry(&self, index: usize) -> (DirHash, FileBlockIndex) {
         // OK to unwrap: `ENTRY_SIZE` is 8 and `index` is at most
         // 2^16-1, so the result is at most 524,280. That fits in a `u32`,
         // and we assume that `usize` is at least that large.
@@ -145,7 +145,10 @@ impl<'a> InternalNode<'a> {
 
     /// Perform a binary search to find the child block index for the
     /// `lookup_hash`.
-    fn lookup_block_by_hash(&self, lookup_hash: DirHash) -> Option<ChildBlock> {
+    fn lookup_block_by_hash(
+        &self,
+        lookup_hash: DirHash,
+    ) -> Option<FileBlockIndex> {
         // Left/right entry index.
         let mut left = 0;
         let mut right = self.num_entries().checked_sub(1)?;
@@ -232,7 +235,7 @@ fn read_dot_or_dotdot(
 fn find_extent_for_block(
     fs: &Ext4,
     inode: &Inode,
-    block: ChildBlock,
+    block: FileBlockIndex,
 ) -> Result<Extent, Ext4Error> {
     for extent in Extents::new(fs.clone(), inode)? {
         let extent = extent?;
@@ -253,7 +256,7 @@ fn find_extent_for_block(
 fn block_from_file_block(
     fs: &Ext4,
     inode: &Inode,
-    relative_block: ChildBlock,
+    relative_block: FileBlockIndex,
 ) -> Result<u64, Ext4Error> {
     if inode.flags.contains(InodeFlags::EXTENTS) {
         let extent = find_extent_for_block(fs, inode, relative_block)?;
@@ -410,7 +413,7 @@ mod tests {
 
         let mut bytes = Vec::new();
         let add_entry =
-            |bytes: &mut Vec<u8>, hash: DirHash, block: ChildBlock| {
+            |bytes: &mut Vec<u8>, hash: DirHash, block: FileBlockIndex| {
                 bytes.extend(hash.to_le_bytes());
                 bytes.extend(block.to_le_bytes());
             };
