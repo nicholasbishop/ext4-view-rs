@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::inode::Inode;
+use crate::iters::file_blocks::FsBlockIndex;
 use crate::util::read_u32le;
 use crate::{Ext4, Ext4Error};
 use alloc::vec;
@@ -99,7 +100,7 @@ impl BlockMap {
             self.num_blocks_yielded.checked_add(1).unwrap();
     }
 
-    fn next_impl(&mut self) -> Result<Option<u64>, Ext4Error> {
+    fn next_impl(&mut self) -> Result<Option<FsBlockIndex>, Ext4Error> {
         if self.num_blocks_yielded >= self.num_blocks_total {
             self.is_done = true;
             return Ok(None);
@@ -120,7 +121,7 @@ impl BlockMap {
             if let Some(level_1) = &mut self.level_1 {
                 if let Some(block_index) = level_1.next() {
                     self.increment_num_blocks_yielded();
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_1 = None;
                     self.level_0_index = 13;
@@ -136,7 +137,7 @@ impl BlockMap {
                 if let Some(block_index) = level_2.next() {
                     let block_index = block_index?;
                     self.increment_num_blocks_yielded();
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_2 = None;
                     self.level_0_index = 14;
@@ -154,7 +155,7 @@ impl BlockMap {
                 if let Some(block_index) = level_3.next() {
                     let block_index = block_index?;
                     self.increment_num_blocks_yielded();
-                    return Ok(Some(u64::from(block_index)));
+                    return Ok(Some(FsBlockIndex::from(block_index)));
                 } else {
                     self.level_3 = None;
                     self.level_0_index = 15;
@@ -171,11 +172,11 @@ impl BlockMap {
             todo!();
         };
 
-        Ok(Some(u64::from(ret)))
+        Ok(Some(FsBlockIndex::from(ret)))
     }
 }
 
-impl_result_iter!(BlockMap, u64);
+impl_result_iter!(BlockMap, FsBlockIndex);
 
 struct IndirectBlockIter {
     /// Indirect block data. The block contains an array of `u32`, each
@@ -190,7 +191,7 @@ struct IndirectBlockIter {
 impl IndirectBlockIter {
     fn new(fs: Ext4, block_index: u32) -> Result<Self, Ext4Error> {
         let mut block = vec![0u8; fs.0.superblock.block_size.to_usize()];
-        fs.read_from_block(u64::from(block_index), 0, &mut block)?;
+        fs.read_from_block(FsBlockIndex::from(block_index), 0, &mut block)?;
 
         Ok(Self {
             block,
