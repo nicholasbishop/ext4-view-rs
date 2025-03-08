@@ -108,6 +108,7 @@
 extern crate alloc;
 
 mod block_group;
+mod block_index;
 mod block_size;
 mod checksum;
 mod dir;
