@@ -151,7 +151,7 @@ impl DirBlock<'_> {
 
         // Other internal nodes are identified by the first record
         // having a length equal to the whole block.
-        let first_rec_len = u32::from(read_u16le(block, 4));
+        let first_rec_len = read_u16le(block, 4);
         if first_rec_len == self.fs.0.superblock.block_size {
             DirBlockType::Internal
         } else {
