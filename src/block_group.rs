@@ -7,8 +7,8 @@
 // except according to those terms.
 
 use crate::Ext4Read;
-use crate::checksum::Checksum;
 use crate::block_index::FsBlockIndex;
+use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::superblock::Superblock;
