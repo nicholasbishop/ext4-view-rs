@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
@@ -287,7 +288,7 @@ impl Inode {
 fn get_inode_location(
     ext4: &Ext4,
     inode: InodeIndex,
-) -> Result<(u64, u32), Ext4Error> {
+) -> Result<(FsBlockIndex, u32), Ext4Error> {
     let sb = &ext4.0.superblock;
 
     // OK to unwrap: `inode` is nonzero.
