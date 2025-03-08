@@ -13,6 +13,7 @@ mod descriptor_block;
 mod superblock;
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::error::Ext4Error;
 use crate::inode::Inode;
 use block_map::{BlockMap, load_block_map};
@@ -55,7 +56,10 @@ impl Journal {
     ///
     /// If the journal does not contain a replacement for the input
     /// block, the input block is returned.
-    pub(crate) fn map_block_index(&self, block_index: u64) -> u64 {
+    pub(crate) fn map_block_index(
+        &self,
+        block_index: FsBlockIndex,
+    ) -> FsBlockIndex {
         *self.block_map.get(&block_index).unwrap_or(&block_index)
     }
 }
