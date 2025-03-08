@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::journal::superblock::JournalSuperblock;
@@ -45,7 +46,7 @@ pub(super) fn validate_descriptor_block_checksum(
 pub(super) struct DescriptorBlockTag {
     /// Absolute block index in the filesystem that should be replaced
     /// with the data block associated with this tag.
-    pub(super) block_index: u64,
+    pub(super) block_index: FsBlockIndex,
 
     /// Checksum of the block data.
     ///
