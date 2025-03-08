@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error, IncompatibleKind};
 use crate::inode::Inode;
@@ -25,7 +26,7 @@ use core::iter::Skip;
 
 /// Map from a block somewhere in the filesystem to a block in the
 /// journal. Both the key and value are absolute block indices.
-pub(super) type BlockMap = BTreeMap<u64, u64>;
+pub(super) type BlockMap = BTreeMap<FsBlockIndex, FsBlockIndex>;
 
 /// Read the block map from the journal.
 pub(super) fn load_block_map(
@@ -79,7 +80,7 @@ struct BlockMapLoader<'a> {
     journal_block_iter: Skip<FileBlocks>,
 
     /// Current block index.
-    block_index: u64,
+    block_index: FsBlockIndex,
 
     /// Buffer to hold the current block's data.
     block: Vec<u8>,
