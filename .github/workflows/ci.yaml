@@ -126,3 +126,18 @@ jobs:
     - run: cargo xtask download-big-filesystems
     - run: cargo xtask diff-walk test_data/chromiumos_root.bin
     - run: cargo xtask diff-walk test_data/chromiumos_stateful.bin
+
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: Swatinem/rust-cache@v2
+      - run: rustup install beta
+      - run: rustup component add --toolchain beta clippy rustfmt
+      - run: rustup default beta
+      - run: cargo clippy --workspace
+      - run: cargo doc -F std
+      - run: cargo fmt --all -- --check
+      - run: cargo test -p ext4-view -F std
