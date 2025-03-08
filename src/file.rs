@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::error::Ext4Error;
 use crate::inode::Inode;
 use crate::iters::file_blocks::FileBlocks;
@@ -33,7 +34,7 @@ pub struct File {
     ///
     /// If `None`, either the next block needs to be fetched from the
     /// `file_blocks` iterator, or the end of the file has been reached.
-    block_index: Option<u64>,
+    block_index: Option<FsBlockIndex>,
 }
 
 impl File {
