@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::InodeIndex;
@@ -31,7 +32,7 @@ pub(crate) struct DirBlock<'a> {
     pub(crate) fs: &'a Ext4,
 
     /// Absolute index of the block within the filesystem.
-    pub(crate) block_index: u64,
+    pub(crate) block_index: FsBlockIndex,
 
     /// Whether this is the first block of the file.
     pub(crate) is_first: bool,
