@@ -143,6 +143,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use block_group::BlockGroupDescriptor;
+use block_index::FsBlockIndex;
 use core::cell::RefCell;
 use core::fmt::{self, Debug, Formatter};
 use error::CorruptKind;
@@ -292,7 +293,7 @@ impl Ext4 {
     /// error is returned.
     fn read_from_block(
         &self,
-        original_block_index: u64,
+        original_block_index: FsBlockIndex,
         offset_within_block: u32,
         dst: &mut [u8],
     ) -> Result<(), Ext4Error> {
@@ -677,7 +678,7 @@ mod tests {
     }
 
     fn block_read_error(
-        block_index: u64,
+        block_index: FsBlockIndex,
         offset_within_block: u32,
         read_len: usize,
     ) -> CorruptKind {
