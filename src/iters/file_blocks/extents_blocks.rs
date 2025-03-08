@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
+use crate::block_index::{FileBlockIndex, FsBlockIndex};
 use crate::error::{CorruptKind, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeIndex};
@@ -33,7 +34,7 @@ pub(super) struct ExtentsBlocks {
 
     /// Current block within the file. This is relative to the file, not
     /// an absolute block index.
-    block_within_file: u32,
+    block_within_file: FileBlockIndex,
 
     /// Total number of blocks in the file.
     num_blocks_total: u32,
@@ -61,7 +62,7 @@ impl ExtentsBlocks {
         })
     }
 
-    fn next_impl(&mut self) -> Result<Option<u64>, Ext4Error> {
+    fn next_impl(&mut self) -> Result<Option<FsBlockIndex>, Ext4Error> {
         if self.block_within_file >= self.num_blocks_total {
             self.is_done = true;
             return Ok(None);
@@ -183,7 +184,7 @@ impl ExtentsBlocks {
 // if hole after last extent {
 //   yield 0 for each block in hole;
 // }
-impl_result_iter!(ExtentsBlocks, u64);
+impl_result_iter!(ExtentsBlocks, FsBlockIndex);
 
 #[cfg(feature = "std")]
 #[cfg(test)]
