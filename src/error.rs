@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::block_index::FsBlockIndex;
 use crate::block_size::BlockSize;
 use crate::features::IncompatibleFeatures;
 use crate::inode::{InodeIndex, InodeMode};
@@ -285,7 +286,7 @@ pub(crate) enum CorruptKind {
         inodes_per_block_group: NonZero<u32>,
         inode_size: u16,
         block_size: BlockSize,
-        inode_table_first_block: u64,
+        inode_table_first_block: FsBlockIndex,
     },
 
     /// An inode's file type is invalid.
@@ -325,12 +326,12 @@ pub(crate) enum CorruptKind {
     /// Invalid read of a block.
     BlockRead {
         /// Absolute block index.
-        block_index: u64,
+        block_index: FsBlockIndex,
 
         /// Absolute block index, without remapping from the journal. If
         /// this block was not remapped by the journal, this field will
         /// be the same as `block_index`.
-        original_block_index: u64,
+        original_block_index: FsBlockIndex,
 
         /// Offset in bytes within the block.
         offset_within_block: u32,
