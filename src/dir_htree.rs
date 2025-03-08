@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::Ext4;
-use crate::block_index::FileBlockIndex;
+use crate::block_index::{FileBlockIndex, FsBlockIndex};
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
 use crate::dir_entry_hash::dir_hash_md4_half;
@@ -257,7 +257,7 @@ fn block_from_file_block(
     fs: &Ext4,
     inode: &Inode,
     relative_block: FileBlockIndex,
-) -> Result<u64, Ext4Error> {
+) -> Result<FsBlockIndex, Ext4Error> {
     if inode.flags.contains(InodeFlags::EXTENTS) {
         let extent = find_extent_for_block(fs, inode, relative_block)?;
         let block_within_extent = relative_block
