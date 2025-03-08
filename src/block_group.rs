@@ -8,6 +8,7 @@
 
 use crate::Ext4Read;
 use crate::checksum::Checksum;
+use crate::block_index::FsBlockIndex;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::features::{IncompatibleFeatures, ReadOnlyCompatibleFeatures};
 use crate::superblock::Superblock;
@@ -19,7 +20,7 @@ pub(crate) type BlockGroupIndex = u32;
 
 #[derive(Debug)]
 pub(crate) struct BlockGroupDescriptor {
-    pub(crate) inode_table_first_block: u64,
+    pub(crate) inode_table_first_block: FsBlockIndex,
     checksum: u16,
 }
 
