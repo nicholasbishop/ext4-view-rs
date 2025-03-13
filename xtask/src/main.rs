@@ -273,19 +273,24 @@ impl DiskParams {
             self.create()?;
             self.make_filesystem_need_recovery()?;
 
-            // Verify that the journal contains at least one block. The
+            // Verify that the journal contains at least one descriptor
+            // block one revocation block, and one commit block. The
             // full output should look something like this:
             //
             // ```
             // Journal starts at block 1, transaction 2
             // Found expected sequence 2, type 1 (descriptor block) at block 1
+            // Found expected sequence 2, type 5 (revoke table) at block 577
             // [...]
             // Found expected sequence 2, type 1 (descriptor block) at block 1303
             // Found expected sequence 2, type 2 (commit block) at block 1311
             // ```
             let logdump = self.run_debugfs("logdump")?;
             let logdump = str::from_utf8(&logdump)?;
-            if logdump.contains("Found expected sequence") {
+            if logdump.contains("(descriptor block)")
+                && logdump.contains("(revoke table)")
+                && logdump.contains("(commit block)")
+            {
                 return Ok(());
             }
         }
@@ -328,7 +333,13 @@ impl DiskParams {
         // bunch of directories.
         let mount = Mount::new(&dm_device.path(), ReadOnly(false))?;
         for i in 0..1000 {
-            fs::create_dir(mount.path().join(format!("dir{i}")))?;
+            let p = mount.path().join(format!("dir{i}"));
+            fs::create_dir(&p)?;
+
+            // Immediately remove the directory and recreate it. This
+            // causes revocation blocks to be created in the journal.
+            fs::remove_dir(&p)?;
+            fs::create_dir(&p)?;
         }
 
         // At this point, the directory blocks have likely been written
