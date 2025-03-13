@@ -307,7 +307,7 @@ mod tests {
             (REQUIRED_FEATURES
                 // Known but unsupported features.
                 | JournalIncompatibleFeatures::FAST_COMMITS
-                | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                | JournalIncompatibleFeatures::ASYNC_COMMITS)
                 .bits()
                 // An unknown and unsupported feature.
                 | 0x10_000,
@@ -316,7 +316,7 @@ mod tests {
             JournalSuperblock::read_bytes(&block).unwrap_err(),
             IncompatibleKind::UnsupportedJournalFeatures(
                 (JournalIncompatibleFeatures::FAST_COMMITS
-                    | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                    | JournalIncompatibleFeatures::ASYNC_COMMITS)
                     .bits()
                     | 0x10_000
             ),
