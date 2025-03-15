@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Added support for the `journal_incompat_revoke` feature.
+
 ## 0.9.0
 
 * Removed `Ext4Error::as_corrupt` and `Ext4Error::as_incompatible`.
