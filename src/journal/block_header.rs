@@ -58,6 +58,7 @@ impl JournalBlockType {
     pub(super) const DESCRIPTOR: Self = Self(1);
     pub(super) const COMMIT: Self = Self(2);
     pub(super) const SUPERBLOCK_V2: Self = Self(4);
+    pub(super) const REVOCATION: Self = Self(5);
 }
 
 #[cfg(test)]

@@ -17,6 +17,9 @@ use crate::journal::commit_block::validate_commit_block_checksum;
 use crate::journal::descriptor_block::{
     DescriptorBlockTagIter, validate_descriptor_block_checksum,
 };
+use crate::journal::revocation_block::{
+    read_revocation_block_table, validate_revocation_block_checksum,
+};
 use crate::journal::superblock::JournalSuperblock;
 use crate::util::usize_from_u32;
 use alloc::collections::BTreeMap;
@@ -75,6 +78,12 @@ struct BlockMapLoader<'a> {
     /// reached, the contents of this map are moved to `block_map`.
     uncommitted_block_map: BlockMap,
 
+    /// Revoked blocks in the current transaction. When a commit block
+    /// is reached, any keys in `uncommitted_block_map` that are in this
+    /// revoked list will be deleted instead of committing them to
+    /// `block_map`.
+    revoked_blocks: Vec<FsBlockIndex>,
+
     /// Iterator over blocks in the journal inode. At construction, the
     /// iterator is advanced to the journal start block.
     journal_block_iter: Skip<FileBlocks>,
@@ -122,6 +131,7 @@ impl<'a> BlockMapLoader<'a> {
             superblock,
             block_map: BlockMap::new(),
             uncommitted_block_map: BlockMap::new(),
+            revoked_blocks: Vec::new(),
             journal_block_iter,
             block_index: 0,
             block: vec![0; fs.0.superblock.block_size.to_usize()],
@@ -152,6 +162,8 @@ impl<'a> BlockMapLoader<'a> {
 
         if header.block_type == JournalBlockType::DESCRIPTOR {
             self.process_descriptor_block()?;
+        } else if header.block_type == JournalBlockType::REVOCATION {
+            self.process_revocation_block()?;
         } else if header.block_type == JournalBlockType::COMMIT {
             self.process_commit_block()?;
         } else {
@@ -204,6 +216,11 @@ impl<'a> BlockMapLoader<'a> {
         Ok(())
     }
 
+    fn process_revocation_block(&mut self) -> Result<(), Ext4Error> {
+        validate_revocation_block_checksum(self.superblock, &self.block)?;
+        read_revocation_block_table(&self.block, &mut self.revoked_blocks)
+    }
+
     /// Process a commit block.
     ///
     /// This indicates that a group of descriptor blocks have been
@@ -212,6 +229,14 @@ impl<'a> BlockMapLoader<'a> {
     /// incremented.
     fn process_commit_block(&mut self) -> Result<(), Ext4Error> {
         validate_commit_block_checksum(self.superblock, &self.block)?;
+
+        // Remove any revoked blocks from uncommitted blocks.
+        for block_index in &self.revoked_blocks {
+            // Don't check the `remove` return value, as a revoked block
+            // wasn't necessarily reused later in the transaction.
+            self.uncommitted_block_map.remove(block_index);
+        }
+        self.revoked_blocks.clear();
 
         // Commit the block map entries.
         self.block_map.extend(self.uncommitted_block_map.iter());

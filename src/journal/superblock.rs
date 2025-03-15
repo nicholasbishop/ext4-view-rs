@@ -37,6 +37,10 @@ const REQUIRED_FEATURES: JournalIncompatibleFeatures =
     JournalIncompatibleFeatures::IS_64BIT
         .union(JournalIncompatibleFeatures::CHECKSUM_V3);
 
+/// Features that may be present, but are not required.
+const ALLOWED_FEATURES: JournalIncompatibleFeatures =
+    JournalIncompatibleFeatures::BLOCK_REVOCATIONS;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(super) struct JournalSuperblock {
     /// Size in bytes of journal blocks. This must be the same block
@@ -177,12 +181,10 @@ fn check_incompat_features(
         ));
     }
 
-    // All non-required features are currently unsupported.
-    //
-    // Note: `!REQUIRED_FEATURES` would only negate "known" bits
-    // specified in the bitflags definition. Convert to raw bits first
-    // to correct this.
-    let unsupported = !(REQUIRED_FEATURES.bits());
+    // Note: the `bits` conversion is needed because otherwise the `!`
+    // would only negate "known" bits specified in the bitflags
+    // definition. Convert to raw bits first to correct this.
+    let unsupported = !((REQUIRED_FEATURES | ALLOWED_FEATURES).bits());
 
     let present_unsupported = present.bits() & unsupported;
     if present_unsupported != 0 {
@@ -213,8 +215,8 @@ mod tests {
                 sequence: 3,
                 start_block: 289,
                 uuid: Uuid([
-                    0x6c, 0x48, 0x4f, 0x1b, 0x7f, 0x71, 0x47, 0x4c, 0xa1, 0xf9,
-                    0x3b, 0x50, 0x0c, 0xc1, 0xe2, 0x74
+                    0xd2, 0x28, 0xa8, 0x78, 0xb9, 0xa7, 0x49, 0xe4, 0x9e, 0x3d,
+                    0xbb, 0xee, 0xd5, 0x60, 0x1c, 0xd3
                 ]),
             }
         );
@@ -307,7 +309,7 @@ mod tests {
             (REQUIRED_FEATURES
                 // Known but unsupported features.
                 | JournalIncompatibleFeatures::FAST_COMMITS
-                | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                | JournalIncompatibleFeatures::ASYNC_COMMITS)
                 .bits()
                 // An unknown and unsupported feature.
                 | 0x10_000,
@@ -316,7 +318,7 @@ mod tests {
             JournalSuperblock::read_bytes(&block).unwrap_err(),
             IncompatibleKind::UnsupportedJournalFeatures(
                 (JournalIncompatibleFeatures::FAST_COMMITS
-                    | JournalIncompatibleFeatures::BLOCK_REVOCATIONS)
+                    | JournalIncompatibleFeatures::ASYNC_COMMITS)
                     .bits()
                     | 0x10_000
             ),

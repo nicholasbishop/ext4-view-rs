@@ -10,6 +10,7 @@ mod block_header;
 mod block_map;
 mod commit_block;
 mod descriptor_block;
+mod revocation_block;
 mod superblock;
 
 use crate::Ext4;

@@ -253,6 +253,12 @@ pub(crate) enum CorruptKind {
     /// Journal descriptor tag checksum is invalid.
     JournalDescriptorTagChecksum,
 
+    /// Journal revocation block checksum is invalid.
+    JournalRevocationBlockChecksum,
+
+    /// Journal revocation block has an invalid table size.
+    JournalRevocationBlockInvalidTableSize(usize),
+
     /// Journal sequence number overflowed.
     JournalSequenceOverflow,
 
@@ -393,6 +399,15 @@ impl Display for CorruptKind {
             }
             Self::JournalDescriptorTagChecksum => {
                 write!(f, "journal descriptor tag checksum is invalid")
+            }
+            Self::JournalRevocationBlockChecksum => {
+                write!(f, "journal revocation block checksum is invalid")
+            }
+            Self::JournalRevocationBlockInvalidTableSize(size) => {
+                write!(
+                    f,
+                    "journal revocation block table size is invalid: {size}"
+                )
             }
             Self::JournalSequenceOverflow => {
                 write!(f, "journal sequence number overflowed")
