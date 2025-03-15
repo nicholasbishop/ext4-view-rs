@@ -37,6 +37,10 @@ const REQUIRED_FEATURES: JournalIncompatibleFeatures =
     JournalIncompatibleFeatures::IS_64BIT
         .union(JournalIncompatibleFeatures::CHECKSUM_V3);
 
+/// Features that may be present, but are not required.
+const ALLOWED_FEATURES: JournalIncompatibleFeatures =
+    JournalIncompatibleFeatures::BLOCK_REVOCATIONS;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(super) struct JournalSuperblock {
     /// Size in bytes of journal blocks. This must be the same block
@@ -177,12 +181,10 @@ fn check_incompat_features(
         ));
     }
 
-    // All non-required features are currently unsupported.
-    //
-    // Note: `!REQUIRED_FEATURES` would only negate "known" bits
-    // specified in the bitflags definition. Convert to raw bits first
-    // to correct this.
-    let unsupported = !(REQUIRED_FEATURES.bits());
+    // Note: the `bits` conversion is needed because otherwise the `!`
+    // would only negate "known" bits specified in the bitflags
+    // definition. Convert to raw bits first to correct this.
+    let unsupported = !((REQUIRED_FEATURES | ALLOWED_FEATURES).bits());
 
     let present_unsupported = present.bits() & unsupported;
     if present_unsupported != 0 {
