@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1
+
 * Added support for the `journal_incompat_revoke` feature.
 
 ## 0.9.0
