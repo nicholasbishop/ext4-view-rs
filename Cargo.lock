@@ -451,6 +451,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
 
 [[package]]
+name = "ovmf-prebuilt"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54830fd518fa4cdeb0cd5fad927f0ff6627a41e9705fe874679671108142ccfa"
+dependencies = [
+ "log",
+ "lzma-rs",
+ "sha2",
+ "tar",
+ "ureq",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -886,6 +899,7 @@ dependencies = [
  "libc",
  "lzma-rs",
  "nix",
+ "ovmf-prebuilt",
  "sha2",
  "tar",
  "tempfile",

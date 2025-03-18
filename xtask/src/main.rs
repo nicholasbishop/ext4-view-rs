@@ -9,6 +9,7 @@
 mod big_fs;
 mod dmsetup;
 mod losetup;
+mod vm_bench;
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
@@ -568,6 +569,9 @@ enum Action {
     /// Each can be used with the `diff-walk` action to verify that the
     /// library can read the whole filesystem correctly.
     DownloadBigFilesystems,
+
+    /// Run a benchmark in a VM.
+    VmBench,
 }
 
 fn main() -> Result<()> {
@@ -577,5 +581,6 @@ fn main() -> Result<()> {
         Action::CreateTestData => create_test_data(),
         Action::DiffWalk { path } => diff_walk::diff_walk(path),
         Action::DownloadBigFilesystems => big_fs::download_big_filesystems(),
+        Action::VmBench => vm_bench::run_vm_bench(),
     }
 }
