@@ -571,7 +571,10 @@ enum Action {
     DownloadBigFilesystems,
 
     /// Run a benchmark in a VM.
-    VmBench,
+    VmBench {
+        /// Path of a file containing an ext4 filesystem.
+        path: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -581,6 +584,6 @@ fn main() -> Result<()> {
         Action::CreateTestData => create_test_data(),
         Action::DiffWalk { path } => diff_walk::diff_walk(path),
         Action::DownloadBigFilesystems => big_fs::download_big_filesystems(),
-        Action::VmBench => vm_bench::run_vm_bench(),
+        Action::VmBench { path } => vm_bench::run_vm_bench(&path),
     }
 }
