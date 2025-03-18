@@ -6,4 +6,4 @@ publish = false
 
 [dependencies]
 ext4-view = { path = ".." }
-uefi = "0.34.1"
+uefi = { version = "0.34.1", features = ["panic_handler"] }
