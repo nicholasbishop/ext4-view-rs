@@ -25,7 +25,7 @@ include = [
 ]
 
 [workspace]
-members = ["xtask"]
+members = ["xtask", "xtask/uefibench"]
 
 [workspace.package]
 edition = "2021"
