@@ -6,6 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Note: this file is used as a module in `bench.rs`, but is also used
+// via an `include!` in `xtask/uefibench`.
+
+use alloc::string::String;
+use alloc::{format, vec};
 use ext4_view::{Ext4, Ext4Error, File, Path};
 use sha2::{Digest, Sha256};
 
