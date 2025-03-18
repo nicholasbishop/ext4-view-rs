@@ -6,7 +6,9 @@ extern crate alloc;
 use alloc::boxed::Box;
 use core::error::Error;
 use ext4_view::{Ext4, Ext4Read};
-use uefi::boot::{self, ScopedProtocol};
+use uefi::boot::{
+    self, OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol,
+};
 use uefi::proto::media::block::BlockIO;
 use uefi::proto::media::disk::DiskIo;
 use uefi::{Handle, Status, println};
@@ -30,7 +32,16 @@ impl Ext4Read for Disk {
 }
 
 fn get_media_id(handle: Handle) -> uefi::Result<u32> {
-    let bio = boot::open_protocol_exclusive::<BlockIO>(handle)?;
+    let bio = unsafe {
+        boot::open_protocol::<BlockIO>(
+            OpenProtocolParams {
+                handle,
+                agent: boot::image_handle(),
+                controller: None,
+            },
+            OpenProtocolAttributes::GetProtocol,
+        )
+    }?;
     println!("last lba: {}", bio.media().last_block());
     Ok(bio.media().media_id())
 }
@@ -52,6 +63,10 @@ fn main() -> Status {
             match Ext4::load(Box::new(Disk { media_id, io })) {
                 Ok(_fs) => {
                     println!("open");
+
+                    // TODO
+                    boot::stall(1_000_000);
+
                     return Status::SUCCESS;
                 }
                 Err(err) => {
