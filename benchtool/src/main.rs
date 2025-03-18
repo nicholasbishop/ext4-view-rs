@@ -6,12 +6,11 @@ extern crate alloc;
 use alloc::boxed::Box;
 use core::error::Error;
 use ext4_view::{Ext4, Ext4Read};
-use uefi::boot::{
-    self, OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol,
-};
+use uefi::boot::{OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol};
 use uefi::proto::media::block::BlockIO;
 use uefi::proto::media::disk::DiskIo;
-use uefi::{Handle, Status, println};
+use uefi::runtime::ResetType;
+use uefi::{Handle, Status, boot, println, runtime};
 
 struct Disk {
     media_id: u32,
@@ -64,10 +63,7 @@ fn main() -> Status {
                 Ok(_fs) => {
                     println!("open");
 
-                    // TODO
-                    boot::stall(1_000_000);
-
-                    return Status::SUCCESS;
+                    runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
                 }
                 Err(err) => {
                     println!("fs err: {err}");
