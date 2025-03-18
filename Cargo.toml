@@ -25,7 +25,7 @@ include = [
 ]
 
 [workspace]
-members = ["xtask"]
+members = ["benchtool", "xtask"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.0", features = ["backtrace"] }
