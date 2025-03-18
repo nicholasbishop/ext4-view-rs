@@ -12,42 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn run_cmd(cmd: &mut Command) -> Result<()> {
-    println!("{cmd:?}");
-    let status = cmd.status()?;
-    if status.success() {
-        Ok(())
-    } else {
-        bail!("command failed: {status}");
-    }
-}
-
-fn build_benchtool() -> Result<()> {
-    let mut cmd = Command::new("cargo");
-    cmd.args([
-        "build",
-        "--target",
-        "x86_64-unknown-uefi",
-        "--release",
-        "-p",
-        "benchtool",
-    ]);
-    run_cmd(&mut cmd)
-}
-
-fn build_esp() -> Result<PathBuf> {
-    let esp = Path::new("target/esp");
-    let boot = esp.join("efi/boot");
-    fs::create_dir_all(&boot)?;
-    fs::copy(
-        "target/x86_64-unknown-uefi/release/benchtool.efi",
-        boot.join("bootx64.efi"),
-    )?;
-
-    Ok(esp.to_owned())
-}
-
-pub fn run_vm_bench() -> Result<()> {
+pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
     build_benchtool()?;
     let esp = build_esp()?;
 
@@ -83,7 +48,53 @@ pub fn run_vm_bench() -> Result<()> {
         &format!("format=raw,file=fat:rw:{}", esp.to_str().unwrap()),
     ]);
 
+    // Add a drive for accessing the ext4 filesystem.
+    cmd.args(["-device", "virtio-scsi-pci,id=scsi"]);
+    cmd.args(["-device", "scsi-hd,drive=hd"]);
+    cmd.args([
+        "-drive",
+        &format!(
+            "if=none,id=hd,format=raw,file={}",
+            filesystem.to_str().unwrap()
+        ),
+    ]);
+
     run_cmd(&mut cmd)?;
 
     todo!();
+}
+
+fn run_cmd(cmd: &mut Command) -> Result<()> {
+    println!("{cmd:?}");
+    let status = cmd.status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        bail!("command failed: {status}");
+    }
+}
+
+fn build_benchtool() -> Result<()> {
+    let mut cmd = Command::new("cargo");
+    cmd.args([
+        "build",
+        "--target",
+        "x86_64-unknown-uefi",
+        "--release",
+        "-p",
+        "benchtool",
+    ]);
+    run_cmd(&mut cmd)
+}
+
+fn build_esp() -> Result<PathBuf> {
+    let esp = Path::new("target/esp");
+    let boot = esp.join("efi/boot");
+    fs::create_dir_all(&boot)?;
+    fs::copy(
+        "target/x86_64-unknown-uefi/release/benchtool.efi",
+        boot.join("bootx64.efi"),
+    )?;
+
+    Ok(esp.to_owned())
 }
