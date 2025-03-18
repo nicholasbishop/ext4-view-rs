@@ -26,9 +26,8 @@ pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
     cmd.args(["-nodefaults", "--enable-kvm"]);
     cmd.args(["-machine", "q35"]);
     cmd.args(["-m", "1G"]);
-    // TODO
-    //cmd.args(["-serial", "stdio"]);
-    cmd.args(["-vga", "std"]);
+    cmd.args(["-serial", "stdio"]);
+    // TODO cmd.args(["-vga", "std"]);
     cmd.args([
         "-drive",
         &format!(
