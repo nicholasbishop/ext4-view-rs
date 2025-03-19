@@ -61,13 +61,17 @@ fn walk(fs: &Ext4, path: ext4_view::Path<'_>) -> Result<(), Ext4Error> {
             continue;
         }
 
-        if entry.file_type()?.is_dir() {
-            // output.extend(walk_with_lib(fs, path.as_path())?);
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            // Read the symlink target.
+            let _target = fs.read_link(&path)?;
+        } else if file_type.is_dir() {
+            // Recurse.
             walk(fs, path.as_path())?;
         } else {
-            // TODO: read the whole file
+            // Read the file.
             let _data = fs.read(&path)?;
-        }
+        };
     }
 
     Ok(())
