@@ -45,7 +45,6 @@ fn get_media_id(handle: Handle) -> uefi::Result<u32> {
     Ok(bio.media().media_id())
 }
 
-// TODO: dedup with xtask?
 fn walk(fs: &Ext4, path: ext4_view::Path<'_>) -> Result<(), Ext4Error> {
     let entry_iter = match fs.read_dir(path) {
         Ok(entry_iter) => entry_iter,
@@ -91,20 +90,15 @@ fn main() -> Status {
         };
 
         if let Ok(io) = boot::open_protocol_exclusive::<DiskIo>(handle) {
-            match Ext4::load(Box::new(Disk { media_id, io })) {
-                Ok(fs) => {
-                    println!("open");
+            if let Ok(fs) = Ext4::load(Box::new(Disk { media_id, io })) {
+                println!("starting walk...");
 
-                    walk(&fs, ext4_view::Path::new("/")).unwrap();
+                walk(&fs, ext4_view::Path::new("/")).unwrap();
 
-                    runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
-                }
-                Err(err) => {
-                    println!("fs err: {err}");
-                }
+                println!("walk complete");
+
+                runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
             }
-        } else {
-            println!("failed to open");
         }
     }
 
