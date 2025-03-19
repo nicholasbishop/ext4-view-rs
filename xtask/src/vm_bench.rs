@@ -60,7 +60,7 @@ pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
 
     run_cmd(&mut cmd)?;
 
-    todo!();
+    Ok(())
 }
 
 fn run_cmd(cmd: &mut Command) -> Result<()> {
