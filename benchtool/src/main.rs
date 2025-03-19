@@ -5,7 +5,7 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use core::error::Error;
-use ext4_view::{Ext4, Ext4Read};
+use ext4_view::{Ext4, Ext4Error, Ext4Read};
 use uefi::boot::{OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol};
 use uefi::proto::media::block::BlockIO;
 use uefi::proto::media::disk::DiskIo;
@@ -45,6 +45,34 @@ fn get_media_id(handle: Handle) -> uefi::Result<u32> {
     Ok(bio.media().media_id())
 }
 
+// TODO: dedup with xtask?
+fn walk(fs: &Ext4, path: ext4_view::Path<'_>) -> Result<(), Ext4Error> {
+    let entry_iter = match fs.read_dir(path) {
+        Ok(entry_iter) => entry_iter,
+        Err(Ext4Error::Encrypted) => return Ok(()),
+        Err(err) => return Err(err.into()),
+    };
+
+    for entry in entry_iter {
+        let entry = entry?;
+        let path = entry.path();
+        let name = entry.file_name();
+        if name == "." || name == ".." {
+            continue;
+        }
+
+        if entry.file_type()?.is_dir() {
+            // output.extend(walk_with_lib(fs, path.as_path())?);
+            walk(fs, path.as_path())?;
+        } else {
+            // TODO: read the whole file
+            let _data = fs.read(&path)?;
+        }
+    }
+
+    Ok(())
+}
+
 #[uefi::entry]
 fn main() -> Status {
     // Find all diskio devices
@@ -60,8 +88,10 @@ fn main() -> Status {
 
         if let Ok(io) = boot::open_protocol_exclusive::<DiskIo>(handle) {
             match Ext4::load(Box::new(Disk { media_id, io })) {
-                Ok(_fs) => {
+                Ok(fs) => {
                     println!("open");
+
+                    walk(&fs, ext4_view::Path::new("/")).unwrap();
 
                     runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
                 }
