@@ -11,6 +11,7 @@ use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 
 pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
     build_benchtool()?;
@@ -27,7 +28,7 @@ pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
     cmd.args(["-machine", "q35"]);
     cmd.args(["-m", "1G"]);
     cmd.args(["-serial", "stdio"]);
-    // TODO cmd.args(["-vga", "std"]);
+    cmd.args(["-display", "none"]);
     cmd.args([
         "-drive",
         &format!(
@@ -58,7 +59,12 @@ pub fn run_vm_bench(filesystem: &Path) -> Result<()> {
         ),
     ]);
 
+    let before_vm = SystemTime::now();
     run_cmd(&mut cmd)?;
+    println!(
+        "VM benchtool took {:?}",
+        SystemTime::now().duration_since(before_vm).unwrap()
+    );
 
     Ok(())
 }
