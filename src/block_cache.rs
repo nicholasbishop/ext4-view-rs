@@ -8,6 +8,7 @@
 
 use crate::block_index::FsBlockIndex;
 use crate::block_size::BlockSize;
+use crate::error::CorruptKind;
 use crate::error::Ext4Error;
 use crate::util::usize_from_u32;
 use alloc::boxed::Box;
@@ -182,13 +183,14 @@ impl BlockCache {
             return Ok(&*self.entries[0].data);
         }
 
-        let block_size = self.block_size.to_usize();
-
         // Get the number of blocks/bytes to read.
         let num_blocks = self.num_blocks_to_read(block_index);
         let num_bytes = usize_from_u32(num_blocks)
-            .checked_mul(block_size)
-            .unwrap_or(block_size);
+            .checked_mul(self.block_size.to_usize())
+            .ok_or(CorruptKind::BlockCacheReadTooLarge {
+                num_blocks,
+                block_size: self.block_size,
+            })?;
 
         // Read blocks into the read buffer.
         f(&mut self.read_buf[..num_bytes])?;
