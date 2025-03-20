@@ -215,7 +215,7 @@ impl Ext4 {
         let superblock = Superblock::from_bytes(&data)?;
 
         // TODO: make numbers clearer.
-        let max_blocks_per_read = 4;
+        let max_blocks_per_read = 8;
         let block_cache =
             BlockCache::new(128, superblock.block_size, max_blocks_per_read);
 
