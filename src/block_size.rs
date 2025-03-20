@@ -32,6 +32,10 @@ impl BlockSize {
         self.0.get()
     }
 
+    pub(crate) const fn to_nz_u32(self) -> NonZero<u32> {
+        self.0
+    }
+
     pub(crate) const fn to_u64(self) -> u64 {
         // Cannot use `u64::try_from` in a `const fn`.
         #[expect(clippy::as_conversions)]
