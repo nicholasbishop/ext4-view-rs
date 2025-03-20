@@ -107,6 +107,7 @@
 
 extern crate alloc;
 
+mod block_cache;
 mod block_group;
 mod block_index;
 mod block_size;
@@ -142,6 +143,7 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use block_cache::BlockCache;
 use block_group::BlockGroupDescriptor;
 use block_index::FsBlockIndex;
 use core::cell::RefCell;
@@ -171,6 +173,7 @@ struct Ext4Inner {
     superblock: Superblock,
     block_group_descriptors: Vec<BlockGroupDescriptor>,
     journal: Journal,
+    block_cache: RefCell<BlockCache>,
 
     /// Reader providing access to the underlying storage.
     ///
@@ -208,6 +211,8 @@ impl Ext4 {
             .map_err(Ext4Error::Io)?;
 
         let superblock = Superblock::from_bytes(&data)?;
+        let block_cache =
+            BlockCache::new(superblock.block_size, superblock.blocks_count)?;
 
         let mut fs = Self(Rc::new(Ext4Inner {
             block_group_descriptors: BlockGroupDescriptor::read_all(
@@ -219,6 +224,7 @@ impl Ext4 {
             // Initialize with an empty journal, because loading the
             // journal requires a valid `Ext4` object.
             journal: Journal::empty(),
+            block_cache: RefCell::new(block_cache),
         }));
 
         // Load the actual journal, if present.
@@ -334,17 +340,27 @@ impl Ext4 {
             return Err(err());
         }
 
-        // Get the absolute byte to start reading from.
-        let start_byte = block_index
-            .checked_mul(block_size.to_u64())
-            .and_then(|v| v.checked_add(u64::from(offset_within_block)))
-            .ok_or_else(err)?;
+        let mut block_cache = self.0.block_cache.borrow_mut();
+        let cached_block = block_cache.get_or_insert_blocks(
+            block_index,
+            |buf: &mut [u8]| {
+                // Get the absolute byte to start reading from.
+                let start_byte = block_index
+                    .checked_mul(block_size.to_u64())
+                    .ok_or_else(err)?;
+                self.0
+                    .reader
+                    .borrow_mut()
+                    .read(start_byte, buf)
+                    .map_err(Ext4Error::Io)
+            },
+        )?;
 
-        self.0
-            .reader
-            .borrow_mut()
-            .read(start_byte, dst)
-            .map_err(Ext4Error::Io)
+        dst.copy_from_slice(
+            &cached_block[usize_from_u32(offset_within_block)..read_end],
+        );
+
+        Ok(())
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.
