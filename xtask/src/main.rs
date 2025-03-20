@@ -584,6 +584,6 @@ fn main() -> Result<()> {
         Action::CreateTestData => create_test_data(),
         Action::DiffWalk { path } => diff_walk::diff_walk(path),
         Action::DownloadBigFilesystems => big_fs::download_big_filesystems(),
-        Action::VmBench { path } => vm_bench::run_vm_bench(&path),
+        Action::VmBench { path } => vm_bench::run_vm_bench(path),
     }
 }
