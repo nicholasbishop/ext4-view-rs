@@ -3,7 +3,11 @@ name = "benchtool"
 version = "0.0.0"
 edition = "2021"
 publish = false
+autotests = false
 
 [dependencies]
 ext4-view = { path = ".." }
-uefi = { version = "0.34.1", features = ["alloc", "global_allocator", "panic_handler"] }
+uefi = { version = "0.34.1", features = ["alloc"] }
+
+[target.'cfg(target_os = "uefi")'.dependencies]
+uefi = { version = "0.34.1", features = ["global_allocator", "panic_handler"] }
