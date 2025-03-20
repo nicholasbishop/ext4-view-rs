@@ -10,52 +10,69 @@ use crate::block_index::FsBlockIndex;
 use crate::block_size::BlockSize;
 use crate::error::Ext4Error;
 use alloc::boxed::Box;
+use alloc::collections::VecDeque;
 use alloc::vec;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 struct CacheEntry {
     block_index: FsBlockIndex,
-    offset_in_block_data: usize,
-}
-
-impl CacheEntry {
-    fn is_in_use(&self) -> bool {
-        self.block_index != 0
-    }
+    data: Box<[u8]>,
 }
 
 pub(crate) struct BlockCache {
-    entries: Box<[CacheEntry]>,
-    block_data: Box<[u8]>,
+    max_entries: usize,
+    entries: VecDeque<CacheEntry>,
+
+    blocks_in_read_buf: usize,
+    read_buf: Box<[u8]>,
+
     block_size: BlockSize,
 }
 
 impl BlockCache {
-    pub(crate) fn new(num_entries: usize, block_size: BlockSize) -> Self {
+    pub(crate) fn new(
+        max_entries: usize,
+        block_size: BlockSize,
+        max_blocks_per_read: usize,
+    ) -> Self {
         // TODO: unwrap
-        let block_data_size =
-            num_entries.checked_mul(block_size.to_usize()).unwrap();
+        let read_buf_len = max_blocks_per_read
+            .checked_mul(block_size.to_usize())
+            .unwrap();
         Self {
-            entries: vec![CacheEntry::default(); num_entries]
-                .into_boxed_slice(),
-            block_data: vec![0; block_data_size].into_boxed_slice(),
+            max_entries,
+            entries: VecDeque::new(),
+            blocks_in_read_buf: max_blocks_per_read,
+            read_buf: vec![0; read_buf_len].into_boxed_slice(),
             block_size,
         }
     }
 
-    pub(crate) fn get_entry(&self, block_index: FsBlockIndex) -> Option<&[u8]> {
-        for entry in &self.entries {
-            if entry.block_index == block_index {
-                // TODO: unwrap OK?
-                let end = entry
-                    .offset_in_block_data
-                    .checked_add(self.block_size.to_usize())
-                    .unwrap();
-                return Some(&self.block_data[entry.offset_in_block_data..end]);
-            }
-        }
+    pub(crate) fn max_blocks_per_read(&self) -> usize {
+        self.blocks_in_read_buf
+    }
 
-        None
+    pub(crate) fn has_entry(&self, block_index: FsBlockIndex) -> bool {
+        self.entries
+            .iter()
+            .any(|entry| entry.block_index == block_index)
+    }
+
+    pub(crate) fn get_entry(
+        &mut self,
+        block_index: FsBlockIndex,
+    ) -> Option<&[u8]> {
+        // TODO: move to list head.
+
+        let index = self
+            .entries
+            .iter()
+            .position(|entry| entry.block_index == block_index)?;
+
+        let entry = self.entries.remove(index).unwrap();
+        self.entries.push_front(entry);
+
+        Some(&*self.entries[0].data)
     }
 
     pub(crate) fn insert_blocks<F>(
@@ -69,32 +86,33 @@ impl BlockCache {
     {
         // TODO: precondition
         assert_ne!(num_blocks, 0);
-        assert!(num_blocks < self.entries.len());
 
-        // How many entries need to be freed?
-        let mut num_to_free = num_blocks;
-        for entry in &self.entries {
-            if !entry.is_in_use() {
-                num_to_free -= 1;
-                if num_to_free == 0 {
-                    break;
-                }
-            }
+        assert!(num_blocks <= self.blocks_in_read_buf);
+
+        // Read block(s) into the buffer.
+        f(&mut self.read_buf)?;
+
+        // Add blocks to the cache.
+        for i in 0..num_blocks {
+            // TODO: unwrap
+            // TODO: as cast
+            let block_index = block_index.checked_add(i as u64).unwrap();
+
+            let start = i * self.block_size.to_usize();
+            let end = start + self.block_size.to_usize();
+            self.entries.push_front(CacheEntry {
+                block_index,
+                data: self.read_buf[start..end].into(),
+            });
         }
 
-        for entry in self.entries.iter_mut().rev() {
-            if num_to_free == 0 {
-                break;
-            }
-            if entry.is_in_use() {
-                
-            }
+        // Remove blocks from the cache if needed. TODO: this should
+        // happen before adding. TODO: don't waste the allocations.
+
+        while self.entries.len() > self.max_entries {
+            self.entries.pop_back();
         }
 
-        // Ensure that there are `num_blocks` of contiguous free space
-        // in `block_data`.
-        
-
-        todo!()
+        Ok(())
     }
 }

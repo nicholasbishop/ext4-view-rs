@@ -139,11 +139,11 @@ mod uuid;
 mod test_util;
 
 use alloc::boxed::Box;
-use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use block_cache::BlockCache;
 use block_group::BlockGroupDescriptor;
 use block_index::FsBlockIndex;
 use core::cell::RefCell;
@@ -189,7 +189,7 @@ struct Ext4Inner {
     reader: RefCell<Box<dyn Ext4Read>>,
 
     // TODO
-    block_cache: RefCell<VecDeque<(FsBlockIndex, Box<[u8]>)>>,
+    block_cache: RefCell<BlockCache>,
 }
 
 /// Read-only access to an [ext4] filesystem.
@@ -214,6 +214,11 @@ impl Ext4 {
 
         let superblock = Superblock::from_bytes(&data)?;
 
+        // TODO: make numbers clearer.
+        let max_blocks_per_read = 4;
+        let block_cache =
+            BlockCache::new(128, superblock.block_size, max_blocks_per_read);
+
         let mut fs = Self(Rc::new(Ext4Inner {
             block_group_descriptors: BlockGroupDescriptor::read_all(
                 &superblock,
@@ -224,7 +229,7 @@ impl Ext4 {
             // Initialize with an empty journal, because loading the
             // journal requires a valid `Ext4` object.
             journal: Journal::empty(),
-            block_cache: RefCell::new(VecDeque::new()),
+            block_cache: RefCell::new(block_cache),
         }));
 
         // Load the actual journal, if present.
@@ -283,40 +288,31 @@ impl Ext4 {
         &self,
         block_index: FsBlockIndex,
     ) -> Result<(), Ext4Error> {
-        // Return from the cache if available.
-        for (b, _data) in &*self.0.block_cache.borrow() {
-            if *b == block_index {
-                return Ok(());
-            }
-        }
-
         let block_size = self.0.superblock.block_size;
+        let mut block_cache = self.0.block_cache.borrow_mut();
 
-        {
-            let mut block_cache = self.0.block_cache.borrow_mut();
-
-            let max_entries = 128;
-            if block_cache.len() < max_entries {
-                block_cache.push_front((
-                    0,
-                    vec![0; block_size.to_usize()].into_boxed_slice(),
-                ));
-            }
-
-            block_cache[0].0 = block_index;
-
-            // TODO: read multiple blocks at a time.
-            // OK to unwrap: already checked in caller.
-            let start_byte =
-                block_index.checked_mul(block_size.to_u64()).unwrap();
-            self.0
-                .reader
-                .borrow_mut()
-                .read(start_byte, &mut block_cache[0].1)
-                .map_err(Ext4Error::Io)?;
+        // If already in the cache, nothing to do.
+        if block_cache.has_entry(block_index) {
+            return Ok(());
         }
 
-        Ok(())
+        // TODO: cap at end of FS, if needed.
+        let num_blocks = block_cache.max_blocks_per_read();
+
+        block_cache.insert_blocks(
+            block_index,
+            num_blocks,
+            |buf: &mut [u8]| {
+                // TODO unwrap
+                let start_byte =
+                    block_index.checked_mul(block_size.to_u64()).unwrap();
+                self.0
+                    .reader
+                    .borrow_mut()
+                    .read(start_byte, buf)
+                    .map_err(Ext4Error::Io)
+            },
+        )
     }
 
     /// Read data from a block.
@@ -391,18 +387,14 @@ impl Ext4 {
         self.ensure_block_cached(block_index)?;
 
         // TODO: duplicating search already done...
-        for (b, data) in &*self.0.block_cache.borrow() {
-            if *b == block_index {
-                dst.copy_from_slice(
-                    &data[usize_from_u32(offset_within_block)..read_end],
-                );
+        // TODO: unwrap
+        let mut block_cache = self.0.block_cache.borrow_mut();
+        let entry = block_cache.get_entry(block_index).unwrap();
+        dst.copy_from_slice(
+            &entry[usize_from_u32(offset_within_block)..read_end],
+        );
 
-                return Ok(());
-            }
-        }
-
-        // This is unreachable because of `ensure_block_cached`.
-        unreachable!("block is not in the cache");
+        Ok(())
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.
