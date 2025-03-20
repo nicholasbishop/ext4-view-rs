@@ -26,7 +26,7 @@ impl Ext4Read for Disk {
         Ok(self
             .io
             .read_disk(self.media_id, start_byte, dst)
-            .map_err(|err| Box::new(err))?)
+            .map_err(Box::new)?)
     }
 }
 
@@ -49,7 +49,7 @@ fn walk(fs: &Ext4, path: ext4_view::Path<'_>) -> Result<(), Ext4Error> {
     let entry_iter = match fs.read_dir(path) {
         Ok(entry_iter) => entry_iter,
         Err(Ext4Error::Encrypted) => return Ok(()),
-        Err(err) => return Err(err.into()),
+        Err(err) => return Err(err),
     };
 
     for entry in entry_iter {
