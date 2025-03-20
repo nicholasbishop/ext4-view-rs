@@ -107,6 +107,7 @@
 
 extern crate alloc;
 
+mod block_cache;
 mod block_group;
 mod block_index;
 mod block_size;
@@ -138,6 +139,7 @@ mod uuid;
 mod test_util;
 
 use alloc::boxed::Box;
+use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec;
@@ -185,6 +187,9 @@ struct Ext4Inner {
     /// reference. `RefCell` enforces at runtime that only one mutable
     /// borrow exists at a time.
     reader: RefCell<Box<dyn Ext4Read>>,
+
+    // TODO
+    block_cache: RefCell<VecDeque<(FsBlockIndex, Box<[u8]>)>>,
 }
 
 /// Read-only access to an [ext4] filesystem.
@@ -219,6 +224,7 @@ impl Ext4 {
             // Initialize with an empty journal, because loading the
             // journal requires a valid `Ext4` object.
             journal: Journal::empty(),
+            block_cache: RefCell::new(VecDeque::new()),
         }));
 
         // Load the actual journal, if present.
@@ -270,6 +276,47 @@ impl Ext4 {
     fn read_root_inode(&self) -> Result<Inode, Ext4Error> {
         let root_inode_index = InodeIndex::new(2).unwrap();
         Inode::read(self, root_inode_index)
+    }
+
+    // TODO: have this return a ref to the block data?
+    fn ensure_block_cached(
+        &self,
+        block_index: FsBlockIndex,
+    ) -> Result<(), Ext4Error> {
+        // Return from the cache if available.
+        for (b, _data) in &*self.0.block_cache.borrow() {
+            if *b == block_index {
+                return Ok(());
+            }
+        }
+
+        let block_size = self.0.superblock.block_size;
+
+        {
+            let mut block_cache = self.0.block_cache.borrow_mut();
+
+            let max_entries = 128;
+            if block_cache.len() < max_entries {
+                block_cache.push_front((
+                    0,
+                    vec![0; block_size.to_usize()].into_boxed_slice(),
+                ));
+            }
+
+            block_cache[0].0 = block_index;
+
+            // TODO: read multiple blocks at a time.
+            // OK to unwrap: already checked in caller.
+            let start_byte =
+                block_index.checked_mul(block_size.to_u64()).unwrap();
+            self.0
+                .reader
+                .borrow_mut()
+                .read(start_byte, &mut block_cache[0].1)
+                .map_err(Ext4Error::Io)?;
+        }
+
+        Ok(())
     }
 
     /// Read data from a block.
@@ -335,16 +382,27 @@ impl Ext4 {
         }
 
         // Get the absolute byte to start reading from.
-        let start_byte = block_index
+        // TODO
+        let _start_byte = block_index
             .checked_mul(block_size.to_u64())
             .and_then(|v| v.checked_add(u64::from(offset_within_block)))
             .ok_or_else(err)?;
 
-        self.0
-            .reader
-            .borrow_mut()
-            .read(start_byte, dst)
-            .map_err(Ext4Error::Io)
+        self.ensure_block_cached(block_index)?;
+
+        // TODO: duplicating search already done...
+        for (b, data) in &*self.0.block_cache.borrow() {
+            if *b == block_index {
+                dst.copy_from_slice(
+                    &data[usize_from_u32(offset_within_block)..read_end],
+                );
+
+                return Ok(());
+            }
+        }
+
+        // This is unreachable because of `ensure_block_cached`.
+        unreachable!("block is not in the cache");
     }
 
     /// Read the entire contents of a file into a `Vec<u8>`.
