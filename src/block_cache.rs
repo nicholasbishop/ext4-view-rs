@@ -14,7 +14,6 @@ use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec;
 
-#[derive(Default)]
 struct CacheEntry {
     block_index: FsBlockIndex,
     data: Box<[u8]>,
