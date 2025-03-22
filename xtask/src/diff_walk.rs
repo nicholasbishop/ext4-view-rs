@@ -10,6 +10,7 @@ use crate::{capture_cmd, run_cmd, sudo};
 use anyhow::{Result, bail};
 use ext4_view::{Ext4, Ext4Error};
 use sha2::{Digest, Sha256};
+use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
@@ -155,14 +156,30 @@ fn is_compressed(path: &Path) -> Result<bool> {
 /// requires elevated permissions.
 pub fn diff_walk(orig_path: &Path) -> Result<()> {
     // Build `mount_and_walk` in release mode.
-    run_cmd(Command::new("cargo").args([
-        "build",
-        "--release",
-        "--package",
-        "xtask",
-        "--bin",
-        "mount_and_walk",
-    ]))?;
+    let path = env::var("PATH")?;
+    run_cmd(
+        Command::new("cargo")
+            .args([
+                "build",
+                "--release",
+                "--package",
+                "xtask",
+                "--bin",
+                "mount_and_walk",
+            ])
+            // Clear the env except for the PATH var. This avoids
+            // unwanted rebuilds. The details are complicated, but
+            // basically rustup/cargo are not designed to allow nested
+            // invocations. Clearing env vars tricks rustup/cargo into
+            // behaving correctly.
+            //
+            // Some past issues that may be relevant (but probably don't
+            // tell the whole story):
+            // * https://github.com/rust-lang/rustup/issues/3036
+            // * https://github.com/rust-lang/cargo/issues/15099
+            .env_clear()
+            .env("PATH", path),
+    )?;
 
     // If the input file is compressed, decompress it and write to a
     // temporary file.
