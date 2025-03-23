@@ -14,13 +14,13 @@ use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec;
 
+#[derive(Clone)]
 struct CacheEntry {
     block_index: FsBlockIndex,
     data: Box<[u8]>,
 }
 
 pub(crate) struct BlockCache {
-    max_entries: usize,
     entries: VecDeque<CacheEntry>,
 
     max_blocks_per_read: u32,
@@ -31,17 +31,25 @@ pub(crate) struct BlockCache {
 
 impl BlockCache {
     pub(crate) fn new(
-        max_entries: usize,
+        num_entries: usize,
         block_size: BlockSize,
         max_blocks_per_read: u32,
     ) -> Self {
+        assert!(usize_from_u32(max_blocks_per_read) <= num_entries);
+
         // TODO: unwrap
         let read_buf_len = usize_from_u32(max_blocks_per_read)
             .checked_mul(block_size.to_usize())
             .unwrap();
+        let entries = vec![
+            CacheEntry {
+                block_index: 0,
+                data: vec![0; block_size.to_usize()].into_boxed_slice(),
+            };
+            num_entries
+        ];
         Self {
-            max_entries,
-            entries: VecDeque::new(),
+            entries: VecDeque::from(entries),
             max_blocks_per_read,
             read_buf: vec![0; read_buf_len].into_boxed_slice(),
             block_size,
@@ -92,8 +100,12 @@ impl BlockCache {
         // Read block(s) into the buffer.
         f(&mut self.read_buf)?;
 
+        let num_entries = self.entries.len();
+
         // Add blocks to the cache.
         for i in 0..num_blocks {
+            let mut entry = self.entries.pop_back().unwrap();
+
             // TODO: unwrap
             let block_index = block_index.checked_add(u64::from(i)).unwrap();
 
@@ -103,18 +115,13 @@ impl BlockCache {
                 .unwrap();
             let end = start.checked_add(self.block_size.to_usize()).unwrap();
 
-            self.entries.push_front(CacheEntry {
-                block_index,
-                data: self.read_buf[start..end].into(),
-            });
+            entry.block_index = block_index;
+            entry.data.copy_from_slice(&self.read_buf[start..end]);
+
+            self.entries.push_front(entry);
         }
 
-        // Remove blocks from the cache if needed. TODO: this should
-        // happen before adding. TODO: don't waste the allocations.
-
-        while self.entries.len() > self.max_entries {
-            self.entries.pop_back();
-        }
+        assert_eq!(self.entries.len(), num_entries);
 
         Ok(())
     }
