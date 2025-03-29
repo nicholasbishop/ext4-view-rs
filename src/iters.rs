@@ -58,3 +58,66 @@ macro_rules! impl_result_iter {
 pub(crate) mod extents;
 pub(crate) mod file_blocks;
 pub(crate) mod read_dir;
+
+#[cfg(test)]
+mod tests {
+    use crate::error::{CorruptKind, Ext4Error};
+
+    struct I {
+        items: Vec<Result<Option<u8>, Ext4Error>>,
+        is_done: bool,
+    }
+
+    impl I {
+        fn next_impl(&mut self) -> Result<Option<u8>, Ext4Error> {
+            // Take and return the first element in `items`.
+            self.items.remove(0)
+        }
+    }
+
+    impl_result_iter!(I, u8);
+
+    /// Test that if `Ok(None)` is returned, the iterator automatically
+    /// skips to the next element.
+    #[test]
+    fn test_iter_macro_none() {
+        let mut iter = I {
+            items: vec![Ok(Some(1)), Ok(None), Ok(Some(2))],
+            is_done: false,
+        };
+        assert_eq!(iter.next().unwrap().unwrap(), 1);
+        assert_eq!(iter.next().unwrap().unwrap(), 2);
+    }
+
+    /// Test that if `Err(_)` is returned, the iterator automatically
+    /// stops after yielding that error.
+    #[test]
+    fn test_iter_macro_error() {
+        let mut iter = I {
+            items: vec![
+                Ok(Some(1)),
+                Err(CorruptKind::SuperblockMagic.into()),
+                Ok(Some(2)),
+            ],
+            is_done: false,
+        };
+        assert_eq!(iter.next().unwrap().unwrap(), 1);
+        assert_eq!(
+            iter.next().unwrap().unwrap_err(),
+            CorruptKind::SuperblockMagic
+        );
+        assert!(iter.next().is_none());
+    }
+
+    /// Test that if `is_done` is set to true, the iterator stops.
+    #[test]
+    fn test_iter_macro_is_done() {
+        let mut iter = I {
+            items: vec![Ok(Some(1)), Ok(Some(2))],
+            is_done: false,
+        };
+        assert_eq!(iter.next().unwrap().unwrap(), 1);
+        iter.is_done = true;
+        assert!(iter.next().is_none());
+    }
+}
