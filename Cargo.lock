@@ -312,9 +312,9 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
 name = "gpt_disk_io"
-version = "0.16.1"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a78ccf419c0f4cf697631870eab2eb6eaf56be532e08502f556e7aad4d783f1b"
+checksum = "cb194b955ba40423510e4342a077df49c70a599cf692cd0e30a86a32d8a9c7b1"
 dependencies = [
  "bytemuck",
  "gpt_disk_types",
