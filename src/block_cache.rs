@@ -142,7 +142,7 @@ impl BlockCache {
         u32::try_from(num_blocks).unwrap()
     }
 
-    /// Get the cache entry for `block_size`, reading and inserting
+    /// Get the cache entry for `block_index`, reading and inserting
     /// blocks into the cache if not already present.
     ///
     /// If the entry is already present, it is moved to the front of the
