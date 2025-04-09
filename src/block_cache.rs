@@ -389,4 +389,84 @@ mod tests {
         // And verify that the underlying allocation hasn't changed.
         assert_eq!(cache.entries[1].data.as_ptr(), block123_ptr);
     }
+
+    #[test]
+    fn test_get_or_insert_blocks() {
+        let num_fs_blocks = 8;
+        let mut cache = BlockCache::with_opts(
+            CacheOpts {
+                block_size: get_block_size(1024),
+                max_blocks_per_read: 2,
+                num_entries: 4,
+            },
+            num_fs_blocks,
+        )
+        .unwrap();
+
+        // Test that an error in the closure is propagated.
+        assert_eq!(
+            cache
+                .get_or_insert_blocks(1, |_| {
+                    Err(CorruptKind::TooManyBlocksInFile.into())
+                })
+                .unwrap_err(),
+            CorruptKind::TooManyBlocksInFile
+        );
+
+        // Request block 1. This requires reading, so blocks 1 and 2 are
+        // added to the cache.
+        let data = cache
+            .get_or_insert_blocks(1, |buf| {
+                // Expecting two blocks due to `max_blocks_per_read=2`.
+                assert_eq!(buf.len(), 1024 * 2);
+
+                // Block 1:
+                buf[0] = 3;
+                // Block 2:
+                buf[1024] = 4;
+
+                Ok(())
+            })
+            .unwrap();
+
+        // Check that block 1's data was returned.
+        assert_eq!(data[0], 3);
+
+        // Requested block should be at the front of the cache.
+        assert_eq!(cache.entries[0].block_index, 1);
+        assert_eq!(cache.entries[0].data[0], 3);
+        // Followed by the other blocks read.
+        assert_eq!(cache.entries[1].block_index, 2);
+        assert_eq!(cache.entries[1].data[0], 4);
+
+        // Request block 2. This is already in the cache, so no read
+        // should occur.
+        let data = cache
+            .get_or_insert_blocks(2, |_| {
+                panic!("read closure called unexpectedly");
+            })
+            .unwrap();
+
+        // Check that block 2's data was returned.
+        assert_eq!(data[0], 4);
+
+        // The requested block should now be at the front of the cache.
+        assert_eq!(cache.entries[0].block_index, 2);
+        assert_eq!(cache.entries[1].block_index, 1);
+
+        // Add blocks 3 and 4 to the cache.
+        cache.get_or_insert_blocks(3, |_| Ok(())).unwrap();
+        assert_eq!(cache.entries[0].block_index, 3);
+        assert_eq!(cache.entries[1].block_index, 4);
+        assert_eq!(cache.entries[2].block_index, 2);
+        assert_eq!(cache.entries[3].block_index, 1);
+
+        // Add blocks 5 and 6 to the cache. This causes blocks 1 and 2
+        // to be evicted.
+        cache.get_or_insert_blocks(5, |_| Ok(())).unwrap();
+        assert_eq!(cache.entries[0].block_index, 5);
+        assert_eq!(cache.entries[1].block_index, 6);
+        assert_eq!(cache.entries[2].block_index, 3);
+        assert_eq!(cache.entries[3].block_index, 4);
+    }
 }
