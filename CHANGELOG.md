@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.9.2
+
+* Added a block cache to improve performance when running in an
+  environment where the OS doesn't provide a block cache.
+
 ## 0.9.1
 
 * Added support for the `journal_incompat_revoke` feature.
