@@ -19,7 +19,6 @@ use dmsetup::{DmDevice, DmFlakey};
 use losetup::LoopDevice;
 use nix::fcntl::{self, FallocateFlags};
 use std::fs::{self, OpenOptions};
-use std::os::fd::AsRawFd;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -451,7 +450,7 @@ fn create_file_with_holes(path: &Path) -> Result<()> {
         let offset = block_size * block;
         let len = block_size * 2;
         fcntl::fallocate(
-            f.as_raw_fd(),
+            &f,
             FallocateFlags::FALLOC_FL_PUNCH_HOLE
                 | FallocateFlags::FALLOC_FL_KEEP_SIZE,
             offset as i64,
