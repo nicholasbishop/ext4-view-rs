@@ -44,7 +44,7 @@ pub fn run_cmd(cmd: &mut Command) -> Result<()> {
     let program = cmd.get_program().to_string_lossy().into_owned();
     let status = cmd
         .status()
-        .context(format!("failed to launch {}", program))?;
+        .context(format!("failed to launch {program}"))?;
     if !status.success() {
         bail!("command {program} failed: {status:?}");
     }
@@ -60,7 +60,7 @@ pub fn capture_cmd(cmd: &mut Command) -> Result<Output> {
     let program = cmd.get_program().to_string_lossy().into_owned();
     let output = cmd
         .output()
-        .context(format!("failed to launch {}", program))?;
+        .context(format!("failed to launch {program}"))?;
     if !output.status.success() {
         bail!(
             "command {program} failed: {status:?}",
