@@ -78,7 +78,7 @@ impl<'a> DirEntryName<'a> {
     /// characters will be replaced with '�'.
     ///
     /// [`Display`]: core::fmt::Display
-    pub fn display(&self) -> BytesDisplay {
+    pub fn display(&self) -> BytesDisplay<'_> {
         BytesDisplay(self.0)
     }
 }
