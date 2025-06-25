@@ -281,7 +281,7 @@ impl PathBuf {
 
     /// Borrow as a `Path`.
     #[must_use]
-    pub fn as_path(&self) -> Path {
+    pub fn as_path(&self) -> Path<'_> {
         Path(&self.0)
     }
 
@@ -296,7 +296,7 @@ impl PathBuf {
     /// characters will be replaced with '�'.
     ///
     /// [`Display`]: core::fmt::Display
-    pub fn display(&self) -> BytesDisplay {
+    pub fn display(&self) -> BytesDisplay<'_> {
         BytesDisplay(&self.0)
     }
 
