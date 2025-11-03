@@ -94,7 +94,7 @@
 //! [issues]: https://github.com/nicholasbishop/ext4-view-rs/issues
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![warn(
     clippy::arithmetic_side_effects,
