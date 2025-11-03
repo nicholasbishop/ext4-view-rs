@@ -9,7 +9,7 @@ autotests = false
 [dependencies]
 ext4-view = { path = "../.." }
 sha2 = { version = "0.10.8", default-features = false }
-uefi = { version = "0.35.0", features = ["alloc"] }
+uefi = { version = "0.36.0", features = ["alloc"] }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-uefi = { version = "0.35.0", features = ["global_allocator", "panic_handler"] }
+uefi = { version = "0.36.0", features = ["global_allocator", "panic_handler"] }
