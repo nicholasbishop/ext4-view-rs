@@ -128,7 +128,20 @@ impl Inode {
         index: InodeIndex,
         data: &[u8],
     ) -> Result<(Self, u32), Ext4Error> {
-        if data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2) {
+        // Inodes must be at least 128 bytes.
+        if data.len() < 128 {
+            return Err(CorruptKind::InodeTruncated {
+                inode: index,
+                size: data.len(),
+            }
+            .into());
+        }
+
+        // If metadata checksums are enabled, the inode must be big
+        // enough to include the checksum fields.
+        if ext4.has_metadata_checksums()
+            && data.len() < (Self::I_CHECKSUM_HI_OFFSET + 2)
+        {
             return Err(CorruptKind::InodeTruncated {
                 inode: index,
                 size: data.len(),
@@ -147,8 +160,17 @@ impl Inode {
         let i_size_high = read_u32le(data, 0x6c);
         let l_i_uid_high = read_u16le(data, 0x74 + 0x4);
         let l_i_gid_high = read_u16le(data, 0x74 + 0x6);
-        let l_i_checksum_lo = read_u16le(data, Self::L_I_CHECKSUM_LO_OFFSET);
-        let i_checksum_hi = read_u16le(data, Self::I_CHECKSUM_HI_OFFSET);
+        let (l_i_checksum_lo, i_checksum_hi) = if ext4.has_metadata_checksums()
+        {
+            (
+                read_u16le(data, Self::L_I_CHECKSUM_LO_OFFSET),
+                read_u16le(data, Self::I_CHECKSUM_HI_OFFSET),
+            )
+        } else {
+            // If metadata checksums aren't enabled then these values
+            // aren't used; arbitrarily set to zero.
+            (0, 0)
+        };
 
         let size_in_bytes = u64_from_hilo(i_size_high, i_size_lo);
         let uid = u32_from_hilo(l_i_uid_high, i_uid);
