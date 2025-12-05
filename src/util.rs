@@ -49,6 +49,7 @@ pub(crate) fn u32_from_hilo(hi: u16, lo: u16) -> u32 {
 /// Panics if `bytes` is not large enough to read two bytes at `offset`.
 #[inline]
 #[must_use]
+#[track_caller]
 pub(crate) fn read_u16le(bytes: &[u8], offset: usize) -> u16 {
     // OK to unwrap: these panics are described in the docstring.
     let end = offset.checked_add(size_of::<u16>()).unwrap();
@@ -63,6 +64,7 @@ pub(crate) fn read_u16le(bytes: &[u8], offset: usize) -> u16 {
 /// Panics if `bytes` is not large enough to read four bytes at `offset`.
 #[inline]
 #[must_use]
+#[track_caller]
 pub(crate) fn read_u32le(bytes: &[u8], offset: usize) -> u32 {
     // OK to unwrap: these panics are described in the docstring.
     let end = offset.checked_add(size_of::<u32>()).unwrap();
@@ -77,6 +79,7 @@ pub(crate) fn read_u32le(bytes: &[u8], offset: usize) -> u32 {
 /// Panics if `bytes` is not large enough to read four bytes at `offset`.
 #[inline]
 #[must_use]
+#[track_caller]
 pub(crate) fn read_u32be(bytes: &[u8], offset: usize) -> u32 {
     // OK to unwrap: these panics are described in the docstring.
     let end = offset.checked_add(size_of::<u32>()).unwrap();
