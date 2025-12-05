@@ -68,6 +68,7 @@ fn gen_big_file(num_blocks: u32) -> Vec<u8> {
 #[derive(PartialEq)]
 enum FsType {
     Ext2,
+    Ext3,
     Ext4,
 }
 
@@ -76,6 +77,8 @@ struct DiskParams {
     size_in_kilobytes: u32,
     fs_type: FsType,
     block_size: u32,
+    // Inode size in bytes. If `None`, the `mkfs` default is used.
+    inode_size: Option<u32>,
 }
 
 impl DiskParams {
@@ -88,6 +91,7 @@ impl DiskParams {
 
         let mkfs = match self.fs_type {
             FsType::Ext2 => "mkfs.ext2",
+            FsType::Ext3 => "mkfs.ext3",
             FsType::Ext4 => "mkfs.ext4",
         };
 
@@ -112,6 +116,12 @@ impl DiskParams {
         // Set block size.
         cmd.arg("-b");
         cmd.arg(self.block_size.to_string());
+
+        // Set inode size.
+        if let Some(inode_size) = self.inode_size {
+            cmd.arg("-I");
+            cmd.arg(inode_size.to_string());
+        }
 
         run_cmd(&mut cmd)
     }
@@ -493,6 +503,7 @@ fn create_test_data() -> Result<()> {
             size_in_kilobytes: 128,
             fs_type: FsType::Ext4,
             block_size: 1024,
+            inode_size: None,
         };
         disk.create()?;
         let data = fs::read(&path)?;
@@ -506,6 +517,7 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 64,
         fs_type: FsType::Ext4,
         block_size: 1024,
+        inode_size: None,
     };
     disk.create()?;
     disk.fill()?;
@@ -520,6 +532,7 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 96,
         fs_type: FsType::Ext2,
         block_size: 1024,
+        inode_size: None,
     };
     disk.create()?;
     disk.fill_ext2()?;
@@ -531,8 +544,21 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 64,
         fs_type: FsType::Ext4,
         block_size: 4096,
+        inode_size: None,
     };
     disk.create_with_journal()?;
+    zstd_compress(&disk.path)?;
+
+    // Filesystem with the smallest-possible inode size, 128 bytes.
+    let path = dir.join("test_disk_small_inodes.bin");
+    let disk = DiskParams {
+        path: path.to_owned(),
+        size_in_kilobytes: 1024 * 64,
+        fs_type: FsType::Ext3,
+        block_size: 1024,
+        inode_size: Some(128),
+    };
+    disk.create()?;
     zstd_compress(&disk.path)?;
 
     Ok(())
