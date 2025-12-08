@@ -72,11 +72,17 @@ enum FsType {
     Ext4,
 }
 
+enum HashAlg {
+    Tea,
+}
+
 struct DiskParams {
     path: PathBuf,
     size_in_kilobytes: u32,
     fs_type: FsType,
     block_size: u32,
+    // Directory block hash algorithm. If `None`, the `mkfs` default is used.
+    hash_alg: Option<HashAlg>,
     // Inode size in bytes. If `None`, the `mkfs` default is used.
     inode_size: Option<u32>,
 }
@@ -121,6 +127,12 @@ impl DiskParams {
         if let Some(inode_size) = self.inode_size {
             cmd.arg("-I");
             cmd.arg(inode_size.to_string());
+        }
+
+        // Set the hash algorithm. This seems to require a config file,
+        // couldn't find a way to do it through mke2fs arguments.
+        if matches!(self.hash_alg, Some(HashAlg::Tea)) {
+            cmd.env("MKE2FS_CONFIG", "xtask/src/tea.mke2fs.conf");
         }
 
         run_cmd(&mut cmd)
@@ -270,6 +282,21 @@ impl DiskParams {
 
         mount.unmount()?;
 
+        Ok(())
+    }
+
+    fn fill_ext3(&self) -> Result<()> {
+        let mount = Mount::new(&self.path, ReadOnly(false))?;
+        let root = mount.path();
+
+        // Create a directory with 1000 files. This is sized to
+        // create an htree with depth 0.
+        let medium_dir = root.join("medium_dir");
+        fs::create_dir(&medium_dir)?;
+        for i in 0..1_000 {
+            let i = i.to_string();
+            fs::write(medium_dir.join(&i), i)?;
+        }
         Ok(())
     }
 
@@ -503,6 +530,7 @@ fn create_test_data() -> Result<()> {
             size_in_kilobytes: 128,
             fs_type: FsType::Ext4,
             block_size: 1024,
+            hash_alg: None,
             inode_size: None,
         };
         disk.create()?;
@@ -517,6 +545,7 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 64,
         fs_type: FsType::Ext4,
         block_size: 1024,
+        hash_alg: None,
         inode_size: None,
     };
     disk.create()?;
@@ -532,6 +561,7 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 96,
         fs_type: FsType::Ext2,
         block_size: 1024,
+        hash_alg: None,
         inode_size: None,
     };
     disk.create()?;
@@ -544,21 +574,27 @@ fn create_test_data() -> Result<()> {
         size_in_kilobytes: 1024 * 64,
         fs_type: FsType::Ext4,
         block_size: 4096,
+        hash_alg: None,
         inode_size: None,
     };
     disk.create_with_journal()?;
     zstd_compress(&disk.path)?;
 
-    // Filesystem with the smallest-possible inode size, 128 bytes.
+    // Ext3 filesystem with the smallest-possible inode size (128
+    // bytes), and using TEA instead of half-MD4 for directory entry
+    // hashes.
     let path = dir.join("test_disk_ext3.bin");
     let disk = DiskParams {
         path: path.to_owned(),
-        size_in_kilobytes: 1024 * 64,
+        size_in_kilobytes: 1024 * 96,
         fs_type: FsType::Ext3,
         block_size: 1024,
+        hash_alg: Some(HashAlg::Tea),
         inode_size: Some(128),
     };
     disk.create()?;
+    disk.fill_ext3()?;
+    disk.check_dir_htree_depth("/medium_dir", 0)?;
     zstd_compress(&disk.path)?;
 
     Ok(())
