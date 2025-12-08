@@ -10,7 +10,7 @@ use crate::Ext4;
 use crate::block_index::{FileBlockIndex, FsBlockIndex};
 use crate::dir_block::DirBlock;
 use crate::dir_entry::{DirEntry, DirEntryName};
-use crate::dir_entry_hash::{HashAlg, dir_hash_md4_half};
+use crate::dir_entry_hash::HashAlg;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::extent::Extent;
 use crate::inode::{Inode, InodeFlags, InodeIndex};
@@ -287,7 +287,7 @@ fn find_leaf_node(
     block: &mut [u8],
 ) -> Result<(), Ext4Error> {
     // Read the htree's hash type from the root block.
-    let _hash_alg = HashAlg::from_u8(block[0x1c])?;
+    let hash_alg = HashAlg::from_u8(block[0x1c])?;
 
     // Read the htree's depth from the root block. The depth is the
     // number of levels in the tree excluding the root and leaf
@@ -298,7 +298,7 @@ fn find_leaf_node(
     // Get the node structure from the root block.
     let root_node = InternalNode::from_root_block(block, inode.index)?;
 
-    let hash = dir_hash_md4_half(name, &fs.0.superblock.htree_hash_seed);
+    let hash = hash_alg.hash(name, &fs.0.superblock.htree_hash_seed);
     let mut child_block_relative = root_node
         .lookup_block_by_hash(hash)
         .ok_or(CorruptKind::DirEntry(inode.index))?;
