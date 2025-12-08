@@ -550,7 +550,7 @@ fn create_test_data() -> Result<()> {
     zstd_compress(&disk.path)?;
 
     // Filesystem with the smallest-possible inode size, 128 bytes.
-    let path = dir.join("test_disk_small_inodes.bin");
+    let path = dir.join("test_disk_ext3.bin");
     let disk = DiskParams {
         path: path.to_owned(),
         size_in_kilobytes: 1024 * 64,
