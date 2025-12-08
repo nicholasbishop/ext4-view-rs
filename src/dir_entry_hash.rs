@@ -29,8 +29,28 @@
 // [1]: https://github.com/RustCrypto/hashes/blob/89989057f560e54d319885f222ff011adf38165a/md4/src/lib.rs
 
 use crate::dir_entry::DirEntryName;
+use crate::error::{Ext4Error, IncompatibleKind};
 use core::mem;
 use core::num::Wrapping;
+
+/// Directory entry hashing algorithm.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HashAlg {
+    /// The Linux kernel's bespoke "half MD4" scheme.
+    HalfMd4,
+}
+
+impl HashAlg {
+    /// Create a `HashAlg` from the numeric value stored in a directory
+    /// root block.
+    pub(crate) fn from_u8(alg: u8) -> Result<Self, Ext4Error> {
+        if alg == 1 {
+            Ok(Self::HalfMd4)
+        } else {
+            Err(IncompatibleKind::DirectoryHash(alg).into())
+        }
+    }
+}
 
 type Wu32 = Wrapping<u32>;
 type StateBlock = [Wu32; 4];
@@ -173,6 +193,15 @@ pub(crate) fn dir_hash_md4_half(
 mod tests {
     use super::*;
     use core::str;
+
+    #[test]
+    fn test_hash_alg_from_u8() {
+        assert_eq!(HashAlg::from_u8(1).unwrap(), HashAlg::HalfMd4);
+        assert_eq!(
+            HashAlg::from_u8(123).unwrap_err(),
+            IncompatibleKind::DirectoryHash(123)
+        );
+    }
 
     /// Check that `create_hash_block(src)` is equal to `expected`.
     #[track_caller]
