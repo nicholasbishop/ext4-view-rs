@@ -12,7 +12,7 @@ use crate::test_util::load_compressed_filesystem;
 /// of 128 bytes.
 #[test]
 fn test_read_small_inode() {
-    let fs = load_compressed_filesystem("test_disk_small_inodes.bin.zst");
+    let fs = load_compressed_filesystem("test_disk_ext3.bin.zst");
     let mut dir_iter = fs.read_dir("/").unwrap();
     let entry = dir_iter.next().unwrap().unwrap();
     assert_eq!(entry.file_name(), ".");
