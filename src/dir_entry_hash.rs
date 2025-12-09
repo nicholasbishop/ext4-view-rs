@@ -26,7 +26,11 @@
 //   shall be included in all copies or substantial portions
 //   of the Software.
 //
+// The `tea` implementation is adapted from the public domain reference
+// algorithm written by David Wheeler and Roger Needham [2].
+//
 // [1]: https://github.com/RustCrypto/hashes/blob/89989057f560e54d319885f222ff011adf38165a/md4/src/lib.rs
+// [2]: https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm#Reference_code
 
 use crate::dir_entry::DirEntryName;
 use crate::error::{Ext4Error, IncompatibleKind};
@@ -38,6 +42,11 @@ use core::num::Wrapping;
 pub(crate) enum HashAlg {
     /// The Linux kernel's bespoke "half MD4" scheme.
     HalfMd4,
+
+    /// Tiny Encryption Algorithm.
+    ///
+    /// <https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm>
+    Tea,
 }
 
 impl HashAlg {
@@ -46,6 +55,8 @@ impl HashAlg {
     pub(crate) fn from_u8(alg: u8) -> Result<Self, Ext4Error> {
         if alg == 1 {
             Ok(Self::HalfMd4)
+        } else if alg == 2 {
+            Ok(Self::Tea)
         } else {
             Err(IncompatibleKind::DirectoryHash(alg).into())
         }
@@ -84,6 +95,17 @@ impl HashAlg {
                 }
 
                 state[1].0
+            }
+            Self::Tea => {
+                // Hash the name in 16-byte chunks.
+                for chunk in
+                    name.as_ref().chunks(mem::size_of::<HashBlock<4>>())
+                {
+                    let inp = create_hash_block(chunk);
+                    tea(&mut state, &inp);
+                }
+
+                state[0].0
             }
         };
 
@@ -161,6 +183,27 @@ fn md4_half(state: &mut StateBlock, data: &HashBlock<8>) {
     state[1] += b;
     state[2] += c;
     state[3] += d;
+}
+
+/// Hash the `data` block into the `state` block using TEA (Tiny
+/// Encryption Algorithm).
+///
+/// This is the same as the public domain algorithm shown at
+/// <https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm>, except 16
+/// rounds are used instead of 32.
+fn tea(state: &mut StateBlock, data: &HashBlock<4>) {
+    let mut sum: Wu32 = Wrapping(0);
+    let mut v0: Wu32 = state[0];
+    let mut v1: Wu32 = state[1];
+
+    for _ in 0..16 {
+        sum += 0x9e3779b9;
+        v0 += ((v1 << 4) + data[0]) ^ (v1 + sum) ^ ((v1 >> 5) + data[1]);
+        v1 += ((v0 << 4) + data[2]) ^ (v0 + sum) ^ ((v0 >> 5) + data[3]);
+    }
+
+    state[0] += v0;
+    state[1] += v1;
 }
 
 // Using `as` is currently the best way to get sign extension.
