@@ -246,6 +246,12 @@ mod tests {
     use super::*;
     use core::str;
 
+    const SEED0: &str = "00000000-0000-0000-0000-000000000000";
+    const SEED1: &str = "333fa1eb-588c-456e-b81c-d1d343cd0e01";
+    const SEED2: &str = "0fc48be0-17dc-4791-b120-39964e159a31";
+    const NON_ASCII_NAME: &str = "NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem";
+    const MAX_LEN_NAME: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU";
+
     #[test]
     fn test_hash_alg_from_u8() {
         assert_eq!(HashAlg::from_u8(1).unwrap(), HashAlg::HalfMd4);
@@ -347,41 +353,33 @@ mod tests {
         // all-zero hash, which will be replaced with the default seed
         // value seen in dir_hash_md4.)
 
-        let seed0 = "00000000-0000-0000-0000-000000000000";
-        let seed1 = "333fa1eb-588c-456e-b81c-d1d343cd0e01";
-        let seed2 = "0fc48be0-17dc-4791-b120-39964e159a31";
-
         // Test a short name.
         let name = DirEntryName::try_from(b"abc").unwrap();
         assert_eq!(
-            HashAlg::HalfMd4.hash(name, &seed_from_uuid(seed1)),
+            HashAlg::HalfMd4.hash(name, &seed_from_uuid(SEED1)),
             0x25783134
         );
         assert_eq!(
-            HashAlg::HalfMd4.hash(name, &seed_from_uuid(seed2)),
+            HashAlg::HalfMd4.hash(name, &seed_from_uuid(SEED2)),
             0x4599f742
         );
         assert_eq!(
-            HashAlg::HalfMd4.hash(name, &seed_from_uuid(seed0)),
+            HashAlg::HalfMd4.hash(name, &seed_from_uuid(SEED0)),
             0xd196a868
         );
 
         // Test a name with non-ASCII characters.
-        let name = DirEntryName::try_from(
-            "NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem",
-        )
-        .unwrap();
+        let name = DirEntryName::try_from(NON_ASCII_NAME).unwrap();
         assert_eq!(
-            HashAlg::HalfMd4.hash(name, &seed_from_uuid(seed1)),
+            HashAlg::HalfMd4.hash(name, &seed_from_uuid(SEED1)),
             0xb40a2038
         );
 
         // Test a max-length name.
-        let name = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU";
-        assert_eq!(name.len(), 255);
-        let name = DirEntryName::try_from(name).unwrap();
+        assert_eq!(MAX_LEN_NAME.len(), 255);
+        let name = DirEntryName::try_from(MAX_LEN_NAME).unwrap();
         assert_eq!(
-            HashAlg::HalfMd4.hash(name, &seed_from_uuid(seed1)),
+            HashAlg::HalfMd4.hash(name, &seed_from_uuid(SEED1)),
             0xe40e82e0
         );
     }
