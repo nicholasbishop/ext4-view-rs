@@ -76,7 +76,9 @@ impl HashAlg {
         let hash = match self {
             Self::HalfMd4 => {
                 // Hash the name in 32-byte chunks.
-                for chunk in name.as_ref().chunks(mem::size_of::<HashBlock>()) {
+                for chunk in
+                    name.as_ref().chunks(mem::size_of::<HashBlock<8>>())
+                {
                     let inp = create_hash_block(chunk);
                     md4_half(&mut state, &inp);
                 }
@@ -92,7 +94,7 @@ impl HashAlg {
 
 type Wu32 = Wrapping<u32>;
 type StateBlock = [Wu32; 4];
-type HashBlock = [Wu32; 8];
+type HashBlock<const N: usize> = [Wu32; N];
 
 /// Hash the `data` block into the `state` block.
 ///
@@ -100,7 +102,7 @@ type HashBlock = [Wu32; 8];
 /// for speed. (This was added to the Linux kernel decades ago; the
 /// speed difference is negligible on modern machines, but disk formats
 /// are forever.)
-fn md4_half(state: &mut StateBlock, data: &HashBlock) {
+fn md4_half(state: &mut StateBlock, data: &HashBlock<8>) {
     const K1: Wu32 = Wrapping(0x5a82_7999);
     const K2: Wu32 = Wrapping(0x6ed9_eba1);
 
@@ -169,10 +171,10 @@ fn sign_extend_byte_to_u32(byte: u8) -> u32 {
 }
 
 /// Create the 32-byte block of data that will be hashed.
-fn create_hash_block(mut src: &[u8]) -> HashBlock {
-    let mut dst = HashBlock::default();
+fn create_hash_block<const N: usize>(mut src: &[u8]) -> HashBlock<N> {
+    let mut dst = [Wu32::default(); N];
 
-    // Get padding value. If `src` is smaller than the block size (32
+    // Get padding value. If `src` is smaller than the block size (4 * N
     // bytes), the remaining bytes will be padded with the length of
     // `src` (as a `u8`).
     let pad = u32::from_le_bytes([src.len().to_le_bytes()[0]; 4]);
@@ -214,7 +216,7 @@ mod tests {
     #[track_caller]
     fn check_hash_block(src: &[u8], expected: [u32; 8]) {
         assert_eq!(
-            create_hash_block(src)
+            create_hash_block::<8>(src)
                 // Convert from `Wu32` to `u32`.
                 .iter()
                 .map(|n| n.0)
