@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* MSRV increased to `1.85`.
+
 ## 0.9.3
 
 * Added support for TEA hashes in directory blocks.

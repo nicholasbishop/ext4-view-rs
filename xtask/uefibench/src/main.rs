@@ -70,14 +70,14 @@ fn main() -> Status {
             continue;
         };
 
-        if let Ok(io) = boot::open_protocol_exclusive::<DiskIo>(handle) {
-            if let Ok(fs) = Ext4::load(Box::new(Disk { media_id, io })) {
-                println!("starting walk...");
-                let digest = walk::walk(&fs).unwrap();
-                println!("filesystem hash: {digest}");
+        if let Ok(io) = boot::open_protocol_exclusive::<DiskIo>(handle)
+            && let Ok(fs) = Ext4::load(Box::new(Disk { media_id, io }))
+        {
+            println!("starting walk...");
+            let digest = walk::walk(&fs).unwrap();
+            println!("filesystem hash: {digest}");
 
-                runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
-            }
+            runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
         }
     }
 
