@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.9.3
+
+* Added support for TEA hashes in directory blocks.
+* Fixed 128-byte inodes incorrectly triggering a corruption error.
+
 ## 0.9.2
 
 * Added a block cache to improve performance when running in an
