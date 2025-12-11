@@ -5,11 +5,12 @@
 [![codecov.io](https://codecov.io/gh/nicholasbishop/ext4-view-rs/coverage.svg?branch=main)](https://app.codecov.io/gh/nicholasbishop/ext4-view-rs)
 
 This repository provides a Rust crate that allows read-only access to an
-[ext4] filesystem. It also works with [ext2] filesystems. Write access
-is an explicit non-goal. The crate is `no_std`, so it can be used in
-embedded contexts. However, it does require `alloc`.
+[ext4] filesystem. It also works with [ext2] and [ext3] filesystems.
+Write access is an explicit non-goal. The crate is `no_std`, so it can
+be used in embedded contexts. However, it does require `alloc`.
 
 [ext2]: https://en.wikipedia.org/wiki/Ext2
+[ext3]: https://en.wikipedia.org/wiki/Ext3
 [ext4]: https://en.wikipedia.org/wiki/Ext4
 
 ## Usage
@@ -52,7 +53,7 @@ See [`examples/cat.rs`](examples/cat.rs) for an example of using the
 In order of importance:
 
 1. Correct
-   * All valid ext2/ext4 filesystems should be readable.
+   * All valid ext2/ext3/ext4 filesystems should be readable.
    * Invalid data should never cause crashes, panics, or non-terminating loops.
    * No `unsafe` code in the main package (it is allowed in dependencies).
    * Well tested.
