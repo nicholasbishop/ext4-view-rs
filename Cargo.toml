@@ -15,7 +15,7 @@ repository = "https://github.com/nicholasbishop/ext4-view-rs"
 categories = ["filesystem", "embedded", "no-std"]
 description = "No-std compatible Rust library for reading ext2/ext4 filesystems"
 keywords = ["ext4", "filesystem", "no_std"]
-rust-version = "1.81"
+rust-version = "1.85"
 include = [
     "src/*.rs",
     "src/iters",
@@ -28,7 +28,7 @@ include = [
 members = ["xtask", "xtask/uefibench"]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
