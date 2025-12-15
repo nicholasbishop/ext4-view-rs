@@ -145,8 +145,18 @@ mod tests {
         assert!(1024u16 == bs);
         assert!(1024u32 == bs);
         assert!(1024usize == bs);
+    }
+
+    #[test]
+    fn test_block_size_ord() {
+        let bs = BlockSize::from_superblock_value(0).unwrap();
+
         assert!(1023u16 < bs);
         assert!(1023u32 < bs);
         assert!(1023usize < bs);
+
+        assert!(1025u16 > bs);
+        assert!(1025u32 > bs);
+        assert!(1025usize > bs);
     }
 }
