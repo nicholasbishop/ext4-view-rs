@@ -558,4 +558,25 @@ mod tests {
         let name = DirEntryName([0xc3, 0x28].as_slice());
         assert!(name.as_str().is_err());
     }
+
+    #[test]
+    fn test_dir_entry_name_buf_partial_eq() {
+        let mut a = DirEntryNameBuf {
+            len: 1,
+            data: [0; 255],
+        };
+        a.data[0] = b'a';
+        a.data[1] = b'X';
+
+        let mut b = a.clone();
+        b.data[1] = b'Y';
+
+        // The two bufs differ after the first byte, but since the
+        // length is 1, they should compare equal.
+        assert_eq!(a, b);
+
+        // Changing the first byte makes them unequal.
+        b.data[0] = b'b';
+        assert_ne!(a, b);
+    }
 }
