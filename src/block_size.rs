@@ -141,10 +141,15 @@ mod tests {
     #[test]
     fn test_block_size_eq() {
         let bs = BlockSize::from_superblock_value(0).unwrap();
-        assert!(bs == 1024u32);
-        assert!(1024u16 == bs);
-        assert!(1024u32 == bs);
-        assert!(1024usize == bs);
+        assert_eq!(bs, 1024u32);
+        assert_eq!(1024u16, bs);
+        assert_eq!(1024u32, bs);
+        assert_eq!(1024usize, bs);
+
+        assert_ne!(bs, 1023u32);
+        assert_ne!(1023u16, bs);
+        assert_ne!(1023u32, bs);
+        assert_ne!(1023usize, bs);
     }
 
     #[test]
