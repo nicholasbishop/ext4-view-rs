@@ -3,6 +3,7 @@
 ## Unreleased
 
 * MSRV increased to `1.85`.
+* Improved error messages for various directory entry corruption errors.
 
 ## 0.9.3
 
