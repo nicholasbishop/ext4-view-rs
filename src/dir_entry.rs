@@ -293,8 +293,9 @@ impl DirEntry {
         // This requirement could be relaxed in the future by passing in
         // a filesystem reference and reading the pointed-to inode.
         let file_type = bytes[7];
-        let file_type =
-            FileType::from_dir_entry(file_type).map_err(|_| err())?;
+        let file_type = FileType::from_dir_entry(file_type).map_err(|_| {
+            CorruptKind::DirEntryInvalidFileType(inode, file_type)
+        })?;
 
         let name = DirEntryNameBuf::try_from(name_slice)
             .map_err(|e| CorruptKind::DirEntryInvalidName(inode, e))?;
@@ -499,6 +500,20 @@ mod tests {
             DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
                 .unwrap_err(),
             CorruptKind::DirEntryMissingHeader(inode1, 0)
+        );
+
+        // Error: invalid file type.
+        let mut bytes = Vec::new();
+        bytes.extend(2u32.to_le_bytes()); // inode
+        bytes.extend(72u16.to_le_bytes()); // record length
+        bytes.push(3u8); // name length
+        bytes.push(123u8); // file type
+        bytes.extend("abc".bytes()); // name
+        bytes.resize(72, 0u8);
+        assert_eq!(
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
+                .unwrap_err(),
+            CorruptKind::DirEntryInvalidFileType(inode1, 123),
         );
 
         // Error: not enough data for the name.

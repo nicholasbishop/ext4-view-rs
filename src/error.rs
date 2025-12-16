@@ -332,6 +332,9 @@ pub(crate) enum CorruptKind {
     /// A directory entry's name length is too large.
     DirEntryNameTooLarge(InodeIndex, u8),
 
+    /// A directory entry's file type is invalid.
+    DirEntryInvalidFileType(InodeIndex, u8),
+
     /// A directory entry's name is invalid.
     DirEntryInvalidName(InodeIndex, DirEntryNameError),
 
@@ -506,6 +509,12 @@ impl Display for CorruptKind {
                 write!(
                     f,
                     "name of directory entry in inode {inode} is too large: {len}"
+                )
+            }
+            Self::DirEntryInvalidFileType(inode, value) => {
+                write!(
+                    f,
+                    "directory entry in inode {inode} has invalid file type: {value}"
                 )
             }
             Self::DirEntryInvalidName(inode, err) => {
