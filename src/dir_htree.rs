@@ -382,7 +382,7 @@ pub(crate) fn get_dir_entry_via_htree(
             path.clone(),
         )?;
         offset_within_block = offset_within_block
-            .checked_add(entry_size)
+            .checked_add(entry_size.get())
             .ok_or(CorruptKind::DirEntry(inode.index))?;
         let Some(dir_entry) = dir_entry else {
             continue;
