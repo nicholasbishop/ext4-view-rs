@@ -242,7 +242,9 @@ impl DirEntry {
         // Check size (the full entry will usually be larger than this),
         // but these header fields must be present.
         if bytes.len() < NAME_OFFSET {
-            return Err(err());
+            return Err(
+                CorruptKind::DirEntryMissingHeader(inode, bytes.len()).into()
+            );
         }
 
         // Get the inode that this entry points to. If zero, this is a
@@ -489,11 +491,11 @@ mod tests {
         assert!(entry.is_none());
         assert_eq!(len, 72);
 
-        // Error: not enough data.
+        // Error: not enough data for the header.
         assert_eq!(
             DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
                 .unwrap_err(),
-            CorruptKind::DirEntry(inode1)
+            CorruptKind::DirEntryMissingHeader(inode1, 0)
         );
 
         // Error: not enough data for the name.
