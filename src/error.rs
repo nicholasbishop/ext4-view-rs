@@ -8,6 +8,7 @@
 
 use crate::block_index::FsBlockIndex;
 use crate::block_size::BlockSize;
+use crate::dir_entry::DirEntryNameError;
 use crate::features::IncompatibleFeatures;
 use crate::inode::{InodeIndex, InodeMode};
 use alloc::boxed::Box;
@@ -328,6 +329,9 @@ pub(crate) enum CorruptKind {
     /// A directory entry is too small to contain the required header.
     DirEntryMissingHeader(InodeIndex, usize),
 
+    /// A directory entry's name is invalid.
+    DirEntryInvalidName(InodeIndex, DirEntryNameError),
+
     // TODO: consider breaking this down into more specific problems.
     /// A directory entry is invalid.
     DirEntry(InodeIndex),
@@ -493,6 +497,12 @@ impl Display for CorruptKind {
                 write!(
                     f,
                     "directory in inode {inode} is too small to contain header: {num_bytes}"
+                )
+            }
+            Self::DirEntryInvalidName(inode, err) => {
+                write!(
+                    f,
+                    "directory entry in inode {inode} has invalid name: {err}"
                 )
             }
             Self::DirEntry(inode) => {
