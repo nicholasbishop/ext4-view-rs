@@ -18,6 +18,7 @@ use alloc::rc::Rc;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::hash::{Hash, Hasher};
+use core::num::NonZero;
 use core::str::Utf8Error;
 
 /// Error returned when [`DirEntryName`] construction fails.
@@ -227,14 +228,18 @@ impl DirEntry {
     ///   special data is stored in directory blocks that aren't
     ///   actually directory entries. If the inode pointed to by the
     ///   entry is zero, this value is set to None.
-    /// * The `usize` in this tuple is the overall length of the entry's
-    ///   data. This is used when iterating over raw dir entry data.
+    /// * The `NonZero<usize>` in this tuple is the overall length of
+    ///   the entry's data. This is used when iterating over raw dir
+    ///   entry data. A `NonZero` is used because it's important for
+    ///   iterators that call `DirEntry::from_bytes` to make forward
+    ///   progress. A length of zero would cause them to enter an
+    ///   infinite loop.
     pub(crate) fn from_bytes(
         fs: Ext4,
         bytes: &[u8],
         inode: InodeIndex,
         path: Rc<PathBuf>,
-    ) -> Result<(Option<Self>, usize), Ext4Error> {
+    ) -> Result<(Option<Self>, NonZero<usize>), Ext4Error> {
         const NAME_OFFSET: usize = 8;
 
         // Check size (the full entry will usually be larger than this),
@@ -263,6 +268,8 @@ impl DirEntry {
                 CorruptKind::DirEntryRecordTooSmall(inode, rec_len).into()
             );
         }
+        // OK to unwrap: above check ensures that `rec_len >= NAME_OFFSET`.
+        let rec_len = NonZero::new(rec_len).unwrap();
 
         // As described above, an inode of zero is used for special
         // entries. Return early since the rest of the fields won't be
@@ -473,7 +480,7 @@ mod tests {
             DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
                 .unwrap();
         let entry = entry.unwrap();
-        assert_eq!(len, 72);
+        assert_eq!(len.get(), 72);
         assert_eq!(entry.inode, inode2);
         assert_eq!(
             entry.name,
@@ -493,7 +500,7 @@ mod tests {
             DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
                 .unwrap();
         assert!(entry.is_none());
-        assert_eq!(len, 72);
+        assert_eq!(len.get(), 72);
 
         // Error: not enough data for the header.
         assert_eq!(
