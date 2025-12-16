@@ -282,7 +282,9 @@ impl DirEntry {
         let name_end: usize = NAME_OFFSET.checked_add(name_len_usize).unwrap();
 
         // Get the entry's name.
-        let name_slice = bytes.get(NAME_OFFSET..name_end).ok_or(err())?;
+        let name_slice = bytes
+            .get(NAME_OFFSET..name_end)
+            .ok_or(CorruptKind::DirEntryNameTooLarge(inode, name_len))?;
 
         // Note: this value is only valid if `FILE_TYPE_IN_DIR_ENTRY` is
         // in the incompatible features set. That requirement is checked
@@ -506,9 +508,10 @@ mod tests {
         bytes.push(3u8); // name length
         bytes.push(1u8); // file type
         bytes.extend("a".bytes()); // name
-        assert!(
+        assert_eq!(
             DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
-                .is_err()
+                .unwrap_err(),
+            CorruptKind::DirEntryNameTooLarge(inode1, 3),
         );
 
         // Error: name contains invalid characters.

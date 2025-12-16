@@ -329,6 +329,9 @@ pub(crate) enum CorruptKind {
     /// A directory entry is too small to contain the required header.
     DirEntryMissingHeader(InodeIndex, usize),
 
+    /// A directory entry's name length is too large.
+    DirEntryNameTooLarge(InodeIndex, u8),
+
     /// A directory entry's name is invalid.
     DirEntryInvalidName(InodeIndex, DirEntryNameError),
 
@@ -497,6 +500,12 @@ impl Display for CorruptKind {
                 write!(
                     f,
                     "directory in inode {inode} is too small to contain header: {num_bytes}"
+                )
+            }
+            Self::DirEntryNameTooLarge(inode, len) => {
+                write!(
+                    f,
+                    "name of directory entry in inode {inode} is too large: {len}"
                 )
             }
             Self::DirEntryInvalidName(inode, err) => {
