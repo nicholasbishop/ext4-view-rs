@@ -325,6 +325,9 @@ pub(crate) enum CorruptKind {
     /// A directory block's checksum is invalid.
     DirBlockChecksum(InodeIndex),
 
+    /// A directory entry is too small to contain the required header.
+    DirEntryMissingHeader(InodeIndex, usize),
+
     // TODO: consider breaking this down into more specific problems.
     /// A directory entry is invalid.
     DirEntry(InodeIndex),
@@ -486,6 +489,12 @@ impl Display for CorruptKind {
                 f,
                 "directory block in inode {inode} has an invalid checksum"
             ),
+            Self::DirEntryMissingHeader(inode, num_bytes) => {
+                write!(
+                    f,
+                    "directory in inode {inode} is too small to contain header: {num_bytes}"
+                )
+            }
             Self::DirEntry(inode) => {
                 write!(f, "invalid directory entry in inode {inode}")
             }
