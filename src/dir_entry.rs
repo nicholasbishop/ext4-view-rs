@@ -237,8 +237,6 @@ impl DirEntry {
     ) -> Result<(Option<Self>, usize), Ext4Error> {
         const NAME_OFFSET: usize = 8;
 
-        let err = || CorruptKind::DirEntry(inode).into();
-
         // Check size (the full entry will usually be larger than this),
         // but these header fields must be present.
         if bytes.len() < NAME_OFFSET {
@@ -261,7 +259,9 @@ impl DirEntry {
         // notably, a value of zero would cause an infinite loop when
         // iterating over entries.
         if rec_len < NAME_OFFSET {
-            return Err(err());
+            return Err(
+                CorruptKind::DirEntryRecordTooSmall(inode, rec_len).into()
+            );
         }
 
         // As described above, an inode of zero is used for special
@@ -500,6 +500,17 @@ mod tests {
             DirEntry::from_bytes(fs.clone(), &[], inode1, path.clone())
                 .unwrap_err(),
             CorruptKind::DirEntryMissingHeader(inode1, 0)
+        );
+
+        // Error: not enough data for a full record.
+        let mut bytes = Vec::new();
+        bytes.extend(2u32.to_le_bytes()); // inode
+        bytes.extend(7u16.to_le_bytes()); // record length
+        bytes.resize(72, 0u8);
+        assert_eq!(
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
+                .unwrap_err(),
+            CorruptKind::DirEntryRecordTooSmall(inode1, 7)
         );
 
         // Error: invalid file type.
