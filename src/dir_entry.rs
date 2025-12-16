@@ -294,7 +294,8 @@ impl DirEntry {
         let file_type =
             FileType::from_dir_entry(file_type).map_err(|_| err())?;
 
-        let name = DirEntryNameBuf::try_from(name_slice).map_err(|_| err())?;
+        let name = DirEntryNameBuf::try_from(name_slice)
+            .map_err(|e| CorruptKind::DirEntryInvalidName(inode, e))?;
         let entry = Self {
             fs,
             inode: points_to_inode,
@@ -518,8 +519,12 @@ mod tests {
         bytes.push(1u8); // file type
         bytes.extend("ab/".bytes()); // name
         bytes.resize(72, 0u8);
-        assert!(
-            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path).is_err()
+        assert_eq!(
+            DirEntry::from_bytes(fs.clone(), &bytes, inode1, path).unwrap_err(),
+            CorruptKind::DirEntryInvalidName(
+                inode1,
+                DirEntryNameError::ContainsSeparator
+            ),
         );
     }
 
