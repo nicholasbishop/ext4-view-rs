@@ -501,7 +501,7 @@ mod tests {
         bytes.extend(2u32.to_le_bytes()); // inode
         bytes.extend(72u16.to_le_bytes()); // record length
         bytes.push(3u8); // name length
-        bytes.push(8u8); // file type
+        bytes.push(1u8); // file type
         bytes.extend("a".bytes()); // name
         assert!(
             DirEntry::from_bytes(fs.clone(), &bytes, inode1, path.clone())
@@ -513,7 +513,7 @@ mod tests {
         bytes.extend(2u32.to_le_bytes()); // inode
         bytes.extend(72u16.to_le_bytes()); // record length
         bytes.push(3u8); // name length
-        bytes.push(8u8); // file type
+        bytes.push(1u8); // file type
         bytes.extend("ab/".bytes()); // name
         bytes.resize(72, 0u8);
         assert!(
