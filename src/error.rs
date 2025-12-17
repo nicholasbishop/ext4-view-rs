@@ -341,6 +341,17 @@ pub(crate) enum CorruptKind {
     /// A directory entry's name is invalid.
     DirEntryInvalidName(InodeIndex, DirEntryNameError),
 
+    /// An htree internal node is too small to contain the required header.
+    HtreeInternalNodeMissingHeader { inode: InodeIndex, num_bytes: usize },
+
+    /// An htree internal node specifies a count that is larger than the
+    /// available data.
+    HtreeInternalNodeCountTooLarge {
+        inode: InodeIndex,
+        num_bytes: usize,
+        count: usize,
+    },
+
     // TODO: consider breaking this down into more specific problems.
     /// A directory entry is invalid.
     DirEntry(InodeIndex),
@@ -530,6 +541,22 @@ impl Display for CorruptKind {
                 write!(
                     f,
                     "directory entry in inode {inode} has invalid name: {err}"
+                )
+            }
+            Self::HtreeInternalNodeMissingHeader { inode, num_bytes } => {
+                write!(
+                    f,
+                    "htree internal node in inode {inode} is too small to contain header: {num_bytes}"
+                )
+            }
+            Self::HtreeInternalNodeCountTooLarge {
+                inode,
+                num_bytes,
+                count,
+            } => {
+                write!(
+                    f,
+                    "htree internal node in inode {inode} has too large many entries: num_bytes={num_bytes}, count={count}"
                 )
             }
             Self::DirEntry(inode) => {
