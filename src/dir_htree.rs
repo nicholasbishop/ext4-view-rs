@@ -60,6 +60,7 @@ type DirHash = u32;
 // 4:  0x418c4380, 3   (hash, block)
 // [...]
 // 14: 0xec5cb0ca, 10  (hash, block)
+#[derive(Debug)]
 struct InternalNode<'a> {
     /// Raw entry data. The header entry is included. Entries that are
     /// not in use are excluded (in other words, this includes entries
@@ -89,11 +90,13 @@ impl<'a> InternalNode<'a> {
     /// Create an `InternalNode` from raw bytes. These bytes come from a
     /// directory block, see [`from_root_block`] and [`from_non_root_block`].
     fn new(mut bytes: &'a [u8], inode: InodeIndex) -> Result<Self, Ext4Error> {
-        let err = CorruptKind::DirEntry(inode).into();
-
         // At least the header entry must be present.
         if bytes.len() < Self::ENTRY_SIZE {
-            return Err(err);
+            return Err(CorruptKind::HtreeInternalNodeMissingHeader {
+                inode,
+                num_bytes: bytes.len(),
+            }
+            .into());
         }
 
         // Get number of in-use entries from the header.
@@ -106,7 +109,13 @@ impl<'a> InternalNode<'a> {
 
         // Shrink raw data to exactly the valid length, or return an
         // error if not enough data.
-        bytes = bytes.get(..end_byte).ok_or(err)?;
+        bytes = bytes.get(..end_byte).ok_or(
+            CorruptKind::HtreeInternalNodeCountTooLarge {
+                inode,
+                count,
+                num_bytes: bytes.len(),
+            },
+        )?;
 
         Ok(Self { entries: bytes })
     }
@@ -456,6 +465,31 @@ mod tests {
         assert_eq!(node.lookup_block_by_hash(12), Some(194));
         assert_eq!(node.lookup_block_by_hash(20), Some(190));
         assert_eq!(node.lookup_block_by_hash(30), Some(189));
+    }
+
+    #[test]
+    fn test_internal_node_errors() {
+        let inode = InodeIndex::new(123).unwrap();
+        assert_eq!(
+            InternalNode::new(&[0; 7], inode).unwrap_err(),
+            CorruptKind::HtreeInternalNodeMissingHeader {
+                inode,
+                num_bytes: 7,
+            }
+        );
+
+        let mut bytes = Vec::new();
+        bytes.extend(20u16.to_le_bytes()); // limit
+        bytes.extend(2u16.to_le_bytes()); // count
+        bytes.extend(456u32.to_le_bytes()); // zero block
+        assert_eq!(
+            InternalNode::new(&bytes, inode).unwrap_err(),
+            CorruptKind::HtreeInternalNodeCountTooLarge {
+                inode,
+                num_bytes: 8,
+                count: 2,
+            }
+        );
     }
 
     #[cfg(feature = "std")]
