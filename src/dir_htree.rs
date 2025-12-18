@@ -538,6 +538,33 @@ mod tests {
             .unwrap()
             .is_none()
         );
+
+        // Error: the first directory entry in the root node is not ".".
+        assert_eq!(block[8], b'.');
+        block[8] = b'x';
+        assert_eq!(
+            read_dot_or_dotdot(
+                fs.clone(),
+                &inode,
+                ".".try_into().unwrap(),
+                &block,
+            )
+            .unwrap_err(),
+            CorruptKind::DirEntry(inode.index)
+        );
+
+        // Error: invalid directory block.
+        block.fill(0);
+        assert_eq!(
+            read_dot_or_dotdot(
+                fs.clone(),
+                &inode,
+                ".".try_into().unwrap(),
+                &block,
+            )
+            .unwrap_err(),
+            CorruptKind::DirEntryRecordTooSmall(inode.index, 0)
+        );
     }
 
     /// Use ReadDir to iterate over all directory entries. Check that
