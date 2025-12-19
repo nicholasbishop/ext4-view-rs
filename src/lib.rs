@@ -526,8 +526,8 @@ impl Ext4 {
     ///
     /// An error will be returned if:
     /// * `path` is not absolute.
-    /// * `path` does not exist
-    /// * `path` is not a directory
+    /// * `path` does not exist.
+    /// * `path` is not a directory.
     ///
     /// This is not an exhaustive list of errors, see the
     /// [crate documentation](crate#errors).
