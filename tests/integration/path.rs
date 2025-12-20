@@ -103,10 +103,18 @@ fn test_path_construction_windows_non_utf8() {
 
 #[test]
 fn test_path_debug() {
-    let src = "abc😁\n".as_bytes();
+    let src = "abc😁\n";
     let expected = r#""abc😁\n""#; // Note the escaped slash.
     assert_eq!(format!("{:?}", Path::new(src)), expected);
     assert_eq!(format!("{:?}", PathBuf::new(src)), expected);
+
+    // Test that the path types in this library have the same `Debug`
+    // format as the `std` path types.
+    #[cfg(feature = "std")]
+    {
+        assert_eq!(format!("{:?}", std::path::Path::new(src)), expected);
+        assert_eq!(format!("{:?}", std::path::PathBuf::from(src)), expected);
+    }
 }
 
 #[test]
