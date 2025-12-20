@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn test_dir_entry_debug() {
         let src = "abc😁\n".as_bytes();
-        let expected = "abc😁\\n"; // Note the escaped slash.
+        let expected = r#""abc😁\n""#; // Note the escaped slash.
         assert_eq!(format!("{:?}", DirEntryName(src)), expected);
 
         let mut src_vec = src.to_vec();

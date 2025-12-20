@@ -14,7 +14,7 @@ fn test_label_empty() {
     let label = Label::new([0; 16]);
     assert_eq!(label.to_str().unwrap(), "");
     assert_eq!(*label.as_bytes(), [0; 16]);
-    assert_eq!(format!("{label:?}"), "");
+    assert_eq!(format!("{label:?}"), r#""""#);
     assert_eq!(format!("{}", label.display()), "");
 }
 
@@ -24,7 +24,7 @@ fn test_label_utf8_with_null() {
     let label = Label::new(*bytes);
     assert_eq!(label.to_str().unwrap(), "test label");
     assert_eq!(label.as_bytes(), bytes);
-    assert_eq!(format!("{label:?}"), "test label");
+    assert_eq!(format!("{label:?}"), r#""test label""#);
     assert_eq!(format!("{}", label.display()), "test label");
 }
 
@@ -34,7 +34,7 @@ fn test_label_utf8_with_interior_null() {
     let label = Label::new(*bytes);
     assert_eq!(label.to_str().unwrap(), "abc");
     assert_eq!(label.as_bytes(), bytes);
-    assert_eq!(format!("{label:?}"), "abc");
+    assert_eq!(format!("{label:?}"), r#""abc""#);
     assert_eq!(format!("{}", label.display()), "abc");
 }
 
@@ -44,7 +44,7 @@ fn test_label_utf8_max_len() {
     let label = Label::new(*bytes);
     assert_eq!(label.to_str().unwrap(), "0123456789abcdef");
     assert_eq!(label.as_bytes(), bytes);
-    assert_eq!(format!("{label:?}"), "0123456789abcdef");
+    assert_eq!(format!("{label:?}"), r#""0123456789abcdef""#);
     assert_eq!(format!("{}", label.display()), "0123456789abcdef");
 }
 
@@ -54,7 +54,7 @@ fn test_label_not_utf8() {
     let label = Label::new(bytes);
     assert!(label.to_str().is_err());
     assert_eq!(*label.as_bytes(), bytes);
-    assert_eq!(format!("{label:?}"), "\\xc0");
+    assert_eq!(format!("{label:?}"), r#""\xc0""#);
     assert_eq!(format!("{}", label.display()), "�");
 }
 

@@ -4,6 +4,8 @@
 
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
+* Changed the `Debug` impls for stringish types (such as `DirEntryName`
+  and `Path`) to wrap the string in quotes, matching `std` behavior`.
 
 ## 0.9.3
 
