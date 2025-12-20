@@ -22,12 +22,12 @@ pub(crate) fn format_bytes_debug(
     if let Ok(s) = str::from_utf8(bytes) {
         // For valid UTF-8, print it unmodified except for escaping
         // special characters like newlines.
-        write!(f, "{}", s.escape_debug())
+        write!(f, "\"{}\"", s.escape_debug())
     } else {
         // Otherwise, print valid ASCII characters (again, with special
         // characters like newlines escaped). Non-ASCII bytes are
         // printed in "\xHH" format.
-        write!(f, "{}", bytes.escape_ascii())
+        write!(f, "\"{}\"", bytes.escape_ascii())
     }
 }
 
@@ -62,12 +62,12 @@ mod tests {
         let f = |b: &[u8]| format!("{:?}", S(b));
 
         // Valid UTF-8.
-        assert_eq!(f("abc😁".as_bytes()), "abc😁");
-        assert_eq!(f("abc\n".as_bytes()), r"abc\n");
+        assert_eq!(f("abc😁".as_bytes()), r#""abc😁""#);
+        assert_eq!(f("abc\n".as_bytes()), r#""abc\n""#);
 
         // Invalid UTF-8.
-        assert_eq!(f(&[0xc3, 0x28]), r"\xc3(");
-        assert_eq!(f(&[0xc3, 0x28, b'\n']), r"\xc3(\n");
+        assert_eq!(f(&[0xc3, 0x28]), r#""\xc3(""#);
+        assert_eq!(f(&[0xc3, 0x28, b'\n']), r#""\xc3(\n""#);
     }
 
     #[test]

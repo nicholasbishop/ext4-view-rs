@@ -104,7 +104,7 @@ fn test_path_construction_windows_non_utf8() {
 #[test]
 fn test_path_debug() {
     let src = "abc😁\n".as_bytes();
-    let expected = "abc😁\\n"; // Note the escaped slash.
+    let expected = r#""abc😁\n""#; // Note the escaped slash.
     assert_eq!(format!("{:?}", Path::new(src)), expected);
     assert_eq!(format!("{:?}", PathBuf::new(src)), expected);
 }
@@ -253,7 +253,7 @@ fn test_component() {
     assert_eq!(format!("{:?}", Component::ParentDir), "ParentDir");
     assert_eq!(
         format!("{:?}", Component::normal("abc").unwrap()),
-        "Normal(abc)"
+        "Normal(\"abc\")"
     );
 }
 
