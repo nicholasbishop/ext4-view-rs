@@ -6,6 +6,8 @@
 * Improved error messages for various directory entry corruption errors.
 * Changed the `Debug` impls for stringish types (such as `DirEntryName`
   and `Path`) to wrap the string in quotes, matching `std` behavior`.
+* Changed the `Debug` impl for `DirEntry` to just show the path,
+  matching `std` behavior.
 
 ## 0.9.3
 
