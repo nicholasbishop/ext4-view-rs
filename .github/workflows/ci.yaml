@@ -59,11 +59,10 @@ jobs:
       - run: cargo test -p ext4-view
       # Test diff-walk.
       - run: cargo xtask diff-walk test_data/test_disk1.bin.zst
-      # Run ignored tests.
-      - run: cargo test -p ext4-view -F std -- --ignored
-      # Test with std enabled, and upload coverage results.
+      # Test with std enabled and ignored tests included. Upload
+      # coverage results to codecov.io.
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov -F std --lcov --output-path lcov.info
+      - run: cargo llvm-cov -F std --lcov --output-path lcov.info -- --include-ignored
       - uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
