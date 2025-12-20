@@ -300,6 +300,19 @@ fn test_metadata_uid_gid() {
 }
 
 #[test]
+fn test_direntry_debug() {
+    let fs = load_test_disk1();
+    let entry = fs
+        .read_dir("/")
+        .unwrap()
+        .map(|e| e.unwrap())
+        .find(|e| e.file_name() == "small_file")
+        .unwrap();
+    assert_eq!(format!("{:?}", entry.path()), r#""/small_file""#);
+    assert_eq!(format!("{entry:?}"), r#"DirEntry("/small_file")"#);
+}
+
+#[test]
 fn test_direntry_metadata() {
     let fs = load_test_disk1();
 

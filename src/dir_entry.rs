@@ -202,7 +202,7 @@ impl TryFrom<&[u8]> for DirEntryNameBuf {
 }
 
 /// Directory entry.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct DirEntry {
     fs: Ext4,
 
@@ -348,6 +348,12 @@ impl DirEntry {
     pub fn metadata(&self) -> Result<Metadata, Ext4Error> {
         let inode = Inode::read(&self.fs, self.inode)?;
         Ok(inode.metadata)
+    }
+}
+
+impl Debug for DirEntry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DirEntry").field(&self.path()).finish()
     }
 }
 
