@@ -8,6 +8,7 @@
 
 use crate::error::BoxedError;
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use async_trait::async_trait;
 use core::error::Error;
@@ -50,6 +51,34 @@ pub trait Ext4Write: Send + Sync {
         start_byte: u64,
         src: &[u8],
     ) -> Result<(), BoxedError>;
+}
+
+#[async_trait]
+impl<T> Ext4Read for Arc<T>
+where
+    T: Ext4Read,
+{
+    async fn read(
+        &self,
+        start_byte: u64,
+        dst: &mut [u8],
+    ) -> Result<(), BoxedError> {
+        (**self).read(start_byte, dst).await
+    }
+}
+
+#[async_trait]
+impl<T> Ext4Write for Arc<T>
+where
+    T: Ext4Write,
+{
+    async fn write(
+        &self,
+        start_byte: u64,
+        src: &[u8],
+    ) -> Result<(), BoxedError> {
+        (**self).write(start_byte, src).await
+    }
 }
 
 /// Error type used by the [`Vec<u8>`] impls of [`Ext4Read`] and [`Ext4Write`].
