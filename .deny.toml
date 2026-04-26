@@ -30,6 +30,6 @@ license-files = [
 [bans]
 multiple-versions = "deny"
 skip-tree = [
-    { name = "getrandom", version = "0.2.15" },
+    { name = "getrandom", version = "0.*" },
     { name = "windows-sys", version = "0.*" },
 ]
