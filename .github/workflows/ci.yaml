@@ -63,7 +63,7 @@ jobs:
       # coverage results to codecov.io.
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo llvm-cov -F std --lcov --output-path lcov.info -- --include-ignored
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
