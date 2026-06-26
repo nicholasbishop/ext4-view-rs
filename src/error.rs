@@ -203,6 +203,9 @@ pub(crate) enum CorruptKind {
     /// The number of inodes per block group is zero.
     InodesPerBlockGroup,
 
+    /// The number of blocks per group is zero.
+    BlocksPerGroup,
+
     /// The inode size exceeds the block size.
     InodeSize,
 
@@ -391,6 +394,9 @@ impl Display for CorruptKind {
             Self::TooManyBlockGroups => write!(f, "too many block groups"),
             Self::InodesPerBlockGroup => {
                 write!(f, "inodes per block group is zero")
+            }
+            Self::BlocksPerGroup => {
+                write!(f, "blocks per group is zero")
             }
             Self::InodeSize => write!(f, "inode size is invalid"),
             Self::JournalInode => write!(f, "invalid journal inode"),

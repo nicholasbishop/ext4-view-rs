@@ -101,8 +101,10 @@ impl Superblock {
         // `num_data_blocks = 3` and `s_blocks_per_group = 4`; that is
         // one block group, but regular division would calculate zero
         // instead of one.)
+        let blocks_per_group = NonZero::new(s_blocks_per_group)
+            .ok_or(CorruptKind::BlocksPerGroup)?;
         let num_block_groups = u32::try_from(
-            num_data_blocks.div_ceil(u64::from(s_blocks_per_group)),
+            num_data_blocks.div_ceil(u64::from(blocks_per_group.get())),
         )
         .map_err(|_| CorruptKind::TooManyBlockGroups)?;
 
@@ -360,6 +362,23 @@ mod tests {
             IncompatibleKind::UnsupportedFeatures(
                 IncompatibleFeatures::from_bits_retain(0x2_0000)
             )
+        );
+    }
+
+    /// Test that an error is returned if `s_blocks_per_group` is zero,
+    /// rather than panicking with a divide-by-zero in `div_ceil`.
+    #[test]
+    fn test_blocks_per_group_zero() {
+        let mut data =
+            include_bytes!("../test_data/raw_superblock.bin").to_vec();
+        // s_blocks_per_group is a 4-byte LE field at offset 0x20.
+        data[0x20] = 0;
+        data[0x21] = 0;
+        data[0x22] = 0;
+        data[0x23] = 0;
+        assert_eq!(
+            Superblock::from_bytes(&data).unwrap_err(),
+            CorruptKind::BlocksPerGroup
         );
     }
 
