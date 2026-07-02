@@ -8,6 +8,9 @@
   and `Path`) to wrap the string in quotes, matching `std` behavior`.
 * Changed the `Debug` impl for `DirEntry` to just show the path,
   matching `std` behavior.
+* Added `trace`-level logging (via the `log` crate) at some journal
+  read points, to aid debugging. Paths and data block contents are
+  never logged.
 
 ## 0.9.3
 

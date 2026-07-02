@@ -46,6 +46,9 @@ pub(super) fn load_block_map(
             if let Ext4Error::Corrupt(_) = err {
                 // If a corruption error occurred, stop reading the
                 // journal. Any uncommitted changes are discarded.
+                log::trace!(
+                    "stopping journal read due to corruption error: {err:?}"
+                );
                 break;
             } else {
                 // Propagate any other type of error.

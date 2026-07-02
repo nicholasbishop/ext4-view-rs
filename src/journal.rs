@@ -43,6 +43,7 @@ impl Journal {
         let Some(journal_inode) = fs.0.superblock.journal_inode else {
             // Return an empty journal if this filesystem does not have
             // a journal.
+            log::trace!("filesystem has no journal; using empty journal");
             return Ok(Self::empty());
         };
 
