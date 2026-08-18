@@ -17,6 +17,19 @@ pub struct Timestamp {
 }
 
 impl Timestamp {
+    /// Create a timestamp from a second count and a nanosecond offset.
+    ///
+    /// Useful for comparing against a known time, and for exercising the edges of
+    /// a narrower time type downstream (NFSv3, for example, carries unsigned
+    /// 32-bit seconds and needs to clamp).
+    #[must_use]
+    pub fn new(seconds: i64, nanoseconds: u32) -> Self {
+        Self {
+            seconds,
+            nanoseconds,
+        }
+    }
+
     /// Decode a timestamp from its on-disk representation.
     ///
     /// `seconds_field` is one of the inode's 32-bit timestamp fields, which
@@ -69,6 +82,13 @@ impl Timestamp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_new() {
+        let timestamp = Timestamp::new(-5, 42);
+        assert_eq!(timestamp.seconds(), -5);
+        assert_eq!(timestamp.nanoseconds(), 42);
+    }
 
     #[test]
     fn test_no_extra_field() {
