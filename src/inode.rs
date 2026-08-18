@@ -13,6 +13,7 @@ use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
 use crate::metadata::Metadata;
 use crate::path::PathBuf;
+use crate::timestamp::Timestamp;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
 };
@@ -152,6 +153,9 @@ impl Inode {
         let i_mode = read_u16le(data, 0x0);
         let i_uid = read_u16le(data, 0x2);
         let i_size_lo = read_u32le(data, 0x4);
+        let i_atime = read_u32le(data, 0x8);
+        let i_ctime = read_u32le(data, 0xc);
+        let i_mtime = read_u32le(data, 0x10);
         let i_gid = read_u16le(data, 0x18);
         let i_flags = read_u32le(data, 0x20);
         // OK to unwrap: already checked the length.
@@ -178,6 +182,39 @@ impl Inode {
         let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
         let mode = InodeMode::from_bits_retain(i_mode);
 
+        // The nanosecond parts of the timestamps, and the creation time,
+        // live past the 128-byte "good old" inode. They are only present if
+        // `i_extra_isize` says the inode is big enough, mirroring the
+        // kernel's `EXT4_FITS_IN_INODE` check.
+        let i_extra_isize = if data.len() >= 0x82 {
+            read_u16le(data, 0x80)
+        } else {
+            0
+        };
+        let extra_fields_end =
+            128usize.saturating_add(usize::from(i_extra_isize));
+        let extra_field = |offset: usize| -> u32 {
+            let end = offset.saturating_add(4);
+            if end <= extra_fields_end && end <= data.len() {
+                read_u32le(data, offset)
+            } else {
+                0
+            }
+        };
+        let has_crtime = 0x94 <= extra_fields_end && 0x94 <= data.len();
+
+        let atime = Timestamp::from_inode_fields(i_atime, extra_field(0x8c));
+        let ctime = Timestamp::from_inode_fields(i_ctime, extra_field(0x84));
+        let mtime = Timestamp::from_inode_fields(i_mtime, extra_field(0x88));
+        let crtime = if has_crtime {
+            Some(Timestamp::from_inode_fields(
+                read_u32le(data, 0x90),
+                extra_field(0x94),
+            ))
+        } else {
+            None
+        };
+
         let mut checksum_base =
             Checksum::with_seed(ext4.0.superblock.checksum_seed);
         checksum_base.update_u32_le(index.get());
@@ -203,6 +240,10 @@ impl Inode {
                     file_type: FileType::try_from(mode).map_err(|_| {
                         CorruptKind::InodeFileType { inode: index, mode }
                     })?,
+                    atime,
+                    ctime,
+                    mtime,
+                    crtime,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,

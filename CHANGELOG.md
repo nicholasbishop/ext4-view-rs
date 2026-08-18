@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Added `Metadata::atime`, `Metadata::ctime`, `Metadata::mtime`, and
+  `Metadata::crtime`, along with the `Timestamp` type they return.
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
 * Changed the `Debug` impls for stringish types (such as `DirEntryName`
