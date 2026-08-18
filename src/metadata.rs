@@ -8,6 +8,7 @@
 
 use crate::file_type::FileType;
 use crate::inode::InodeMode;
+use crate::timestamp::Timestamp;
 
 /// Metadata information about a file.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -35,6 +36,17 @@ pub struct Metadata {
 
     /// Number of 512-byte sectors allocated to the file.
     pub(crate) blocks: u64,
+    /// Time of last access.
+    pub(crate) atime: Timestamp,
+
+    /// Time of last inode change.
+    pub(crate) ctime: Timestamp,
+
+    /// Time of last content modification.
+    pub(crate) mtime: Timestamp,
+
+    /// Time of creation. `None` for inodes too small to store it.
+    pub(crate) crtime: Option<Timestamp>,
 }
 
 impl Metadata {
@@ -138,5 +150,39 @@ impl Metadata {
     #[must_use]
     pub fn blocks(&self) -> u64 {
         self.blocks
+    }
+
+    /// Time of last access.
+    ///
+    /// Note that many systems are mounted with `noatime` or `relatime`, in
+    /// which case this is not updated on every read.
+    #[must_use]
+    pub fn atime(&self) -> Timestamp {
+        self.atime
+    }
+
+    /// Time the inode was last changed.
+    ///
+    /// This covers metadata changes such as permissions, in addition to
+    /// content changes.
+    #[must_use]
+    pub fn ctime(&self) -> Timestamp {
+        self.ctime
+    }
+
+    /// Time the file's contents were last modified.
+    #[must_use]
+    pub fn mtime(&self) -> Timestamp {
+        self.mtime
+    }
+
+    /// Time the file was created.
+    ///
+    /// Returns `None` when the inode is too small to store a creation time.
+    /// Only inodes larger than 128 bytes have this field, so file systems
+    /// created with the minimum inode size do not record it.
+    #[must_use]
+    pub fn crtime(&self) -> Option<Timestamp> {
+        self.crtime
     }
 }

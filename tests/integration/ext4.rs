@@ -340,6 +340,32 @@ fn test_metadata_inode_nlink_blocks() {
 }
 
 #[test]
+fn test_metadata_timestamps() {
+    let fs = load_test_disk1();
+
+    // The expected values in this test were obtained independently, with
+    // `debugfs -R "stat <path>" test_disk1.bin` from e2fsprogs, which prints
+    // each timestamp as `<seconds>:<extra>` in hex.
+
+    // ctime: 0x67887c01:7c715ecc
+    let metadata = fs.metadata("/small_file").unwrap();
+    assert_eq!(metadata.mtime().seconds(), 1_736_997_889);
+    assert_eq!(metadata.mtime().nanoseconds(), 521_951_155);
+
+    // This disk was created in a single pass, so all four timestamps match.
+    assert_eq!(metadata.atime(), metadata.mtime());
+    assert_eq!(metadata.ctime(), metadata.mtime());
+    assert_eq!(metadata.crtime(), Some(metadata.mtime()));
+
+    // A different file has different nanoseconds, so the nanosecond part is
+    // really coming from the inode rather than a shared value.
+    // ctime: 0x67887c01:c2fc4008
+    let metadata = fs.metadata("/holes").unwrap();
+    assert_eq!(metadata.mtime().seconds(), 1_736_997_889);
+    assert_eq!(metadata.mtime().nanoseconds(), 817_827_842);
+}
+
+#[test]
 fn test_direntry_debug() {
     let fs = load_test_disk1();
     let entry = fs

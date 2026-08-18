@@ -23,6 +23,25 @@ fn test_read_small_inode() {
     assert_eq!(entry.file_name(), ".");
 }
 
+/// Test timestamps from a filesystem with 128-byte inodes, which have no
+/// room for the `*_extra` fields that hold nanoseconds and the creation
+/// time.
+#[test]
+fn test_small_inode_timestamps() {
+    let fs = load_ext3();
+
+    // Obtained independently with `debugfs -R "stat /medium_dir/0"`, which
+    // prints `mtime: 0x69363d16` with no extra field for this inode.
+    let metadata = fs.metadata("/medium_dir/0").unwrap();
+    assert_eq!(metadata.mtime().seconds(), 1_765_162_262);
+    assert_eq!(metadata.mtime().nanoseconds(), 0);
+    assert_eq!(metadata.atime(), metadata.mtime());
+    assert_eq!(metadata.ctime(), metadata.mtime());
+
+    // 128-byte inodes have no creation time at all.
+    assert_eq!(metadata.crtime(), None);
+}
+
 /// Test reading files from an htree directory that uses TEA hashes.
 #[test]
 fn test_tea_htree() {
