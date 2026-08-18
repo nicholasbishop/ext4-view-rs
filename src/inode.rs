@@ -153,11 +153,15 @@ impl Inode {
         let i_uid = read_u16le(data, 0x2);
         let i_size_lo = read_u32le(data, 0x4);
         let i_gid = read_u16le(data, 0x18);
+        let i_links_count = read_u16le(data, 0x1a);
+        let i_blocks_lo = read_u32le(data, 0x1c);
         let i_flags = read_u32le(data, 0x20);
         // OK to unwrap: already checked the length.
         let i_block = data.get(0x28..0x28 + Self::INLINE_DATA_LEN).unwrap();
         let i_generation = read_u32le(data, 0x64);
         let i_size_high = read_u32le(data, 0x6c);
+        // `l_i_blocks_high` is the first field of the `osd2` union at 0x74.
+        let l_i_blocks_high = read_u16le(data, 0x74);
         let l_i_uid_high = read_u16le(data, 0x74 + 0x4);
         let l_i_gid_high = read_u16le(data, 0x74 + 0x6);
         let (l_i_checksum_lo, i_checksum_hi) = if ext4.has_metadata_checksums()
@@ -177,6 +181,24 @@ impl Inode {
         let gid = u32_from_hilo(l_i_gid_high, i_gid);
         let checksum = u32_from_hilo(i_checksum_hi, l_i_checksum_lo);
         let mode = InodeMode::from_bits_retain(i_mode);
+        let flags = InodeFlags::from_bits_retain(i_flags);
+
+        // The `i_blocks` field normally counts 512-byte sectors, and the
+        // upper 16 bits in `l_i_blocks_high` are only meaningful when the
+        // file system has the `huge_file` feature. When that feature is
+        // present *and* the inode has the `HUGE_FILE` flag, the field
+        // counts file system blocks instead of sectors.
+        let raw_blocks = if ext4.has_huge_files() {
+            u64_from_hilo(u32::from(l_i_blocks_high), i_blocks_lo)
+        } else {
+            u64::from(i_blocks_lo)
+        };
+        let blocks = if flags.contains(InodeFlags::HUGE_FILE) {
+            raw_blocks
+                .saturating_mul(ext4.0.superblock.block_size.to_u64() / 512)
+        } else {
+            raw_blocks
+        };
 
         let mut checksum_base =
             Checksum::with_seed(ext4.0.superblock.checksum_seed);
@@ -203,8 +225,11 @@ impl Inode {
                     file_type: FileType::try_from(mode).map_err(|_| {
                         CorruptKind::InodeFileType { inode: index, mode }
                     })?,
+                    inode: index.get(),
+                    nlink: i_links_count,
+                    blocks,
                 },
-                flags: InodeFlags::from_bits_retain(i_flags),
+                flags,
                 checksum_base,
                 file_size_in_blocks,
             },

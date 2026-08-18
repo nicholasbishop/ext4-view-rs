@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Added `Metadata::inode`, `Metadata::nlink`, and `Metadata::blocks` to
+  expose the inode index, hard link count, and allocated 512-byte sector
+  count.
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
 * Changed the `Debug` impls for stringish types (such as `DirEntryName`

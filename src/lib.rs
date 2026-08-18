@@ -265,6 +265,15 @@ impl Ext4 {
 
     /// Return true if the filesystem has metadata checksums enabled,
     /// false otherwise.
+    /// Whether the file system has the `huge_file` feature, which changes
+    /// how the inode's block count field is interpreted.
+    fn has_huge_files(&self) -> bool {
+        self.0
+            .superblock
+            .read_only_compatible_features
+            .contains(ReadOnlyCompatibleFeatures::HUGE_FILES)
+    }
+
     fn has_metadata_checksums(&self) -> bool {
         self.0
             .superblock

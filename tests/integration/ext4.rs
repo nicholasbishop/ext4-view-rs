@@ -300,6 +300,46 @@ fn test_metadata_uid_gid() {
 }
 
 #[test]
+fn test_metadata_inode_nlink_blocks() {
+    let fs = load_test_disk1();
+
+    // The expected values in this test were obtained independently, with
+    // `debugfs -R "stat <path>" test_disk1.bin` from e2fsprogs.
+
+    let metadata = fs.metadata("/small_file").unwrap();
+    assert_eq!(metadata.inode(), 14);
+    assert_eq!(metadata.nlink(), 1);
+    assert_eq!(metadata.blocks(), 2);
+
+    // A directory with one subdirectory has three links: its entry in the
+    // parent directory, its own ".", and the subdirectory's "..".
+    let metadata = fs.metadata("/dir1").unwrap();
+    assert_eq!(metadata.inode(), 2050);
+    assert_eq!(metadata.nlink(), 3);
+    assert_eq!(metadata.blocks(), 2);
+
+    // A sparse file allocates fewer sectors than its length implies.
+    let metadata = fs.metadata("/holes").unwrap();
+    assert_eq!(metadata.inode(), 11031);
+    assert_eq!(metadata.len(), 10240);
+    assert_eq!(metadata.blocks(), 8);
+    assert!(metadata.blocks() * 512 < metadata.len());
+
+    // Paths reached through a symlink resolve to the target's inode.
+    assert_eq!(
+        fs.metadata("/sym_simple").unwrap().inode(),
+        fs.metadata("/small_file").unwrap().inode()
+    );
+
+    // `symlink_metadata` does not follow the link, so it reports the
+    // symlink's own inode.
+    assert_ne!(
+        fs.symlink_metadata("/sym_simple").unwrap().inode(),
+        fs.metadata("/small_file").unwrap().inode()
+    );
+}
+
+#[test]
 fn test_direntry_debug() {
     let fs = load_test_disk1();
     let entry = fs
