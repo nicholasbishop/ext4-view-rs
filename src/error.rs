@@ -308,6 +308,9 @@ pub(crate) enum CorruptKind {
     /// The number of blocks in a file exceeds 2^32.
     TooManyBlocksInFile,
 
+    /// A file's block map ended before the size recorded in its inode.
+    FileTruncated(InodeIndex),
+
     /// An extent's magic is invalid.
     ExtentMagic(InodeIndex),
 
@@ -494,6 +497,10 @@ impl Display for CorruptKind {
                 write!(f, "inode {inode} has an invalid symlink path")
             }
             Self::TooManyBlocksInFile => write!(f, "too many blocks in file"),
+            Self::FileTruncated(inode) => write!(
+                f,
+                "inode {inode} has fewer blocks than its size requires"
+            ),
             Self::ExtentMagic(inode) => {
                 write!(f, "extent in inode {inode} has invalid magic")
             }

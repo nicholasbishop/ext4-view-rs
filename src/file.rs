@@ -8,7 +8,7 @@
 
 use crate::Ext4;
 use crate::block_index::FsBlockIndex;
-use crate::error::Ext4Error;
+use crate::error::{CorruptKind, Ext4Error};
 use crate::inode::Inode;
 use crate::iters::file_blocks::FileBlocks;
 use crate::metadata::Metadata;
@@ -126,10 +126,25 @@ impl File {
         let block_index = if let Some(block_index) = self.block_index {
             block_index
         } else {
-            // OK to unwrap: already checked that the position is not at
-            // the end of the file, so there must be at least one more
-            // block to read.
-            let block_index = self.file_blocks.next().unwrap()?;
+            // The position is not at the end of the file, so the size
+            // says there is another block to read -- but the block map
+            // may disagree, in two ways that both reach here:
+            //
+            // * A corrupt inode can record a size larger than its block
+            //   map covers, so the iterator runs out early.
+            //
+            // * A block iterator that already yielded an error stops
+            //   yielding items (`impl_result_iter!` latches `is_done`),
+            //   while `position` was not advanced because the error
+            //   returned before the update. A caller that retries the
+            //   same read then arrives here with an exhausted iterator.
+            //
+            // Neither is a bug in this crate, so neither should abort
+            // the process: both are corruption to report.
+            let Some(block_index) = self.file_blocks.next() else {
+                return Err(CorruptKind::FileTruncated(self.inode.index).into());
+            };
+            let block_index = block_index?;
 
             self.block_index = Some(block_index);
 
@@ -269,5 +284,38 @@ impl Seek for File {
         self.seek_to(pos)?;
 
         Ok(self.position)
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+    use crate::test_util::load_test_disk1;
+
+    /// A file whose inode records more bytes than its block map covers must
+    /// report corruption, not panic.
+    ///
+    /// The same code path is reached without any corruption on disk: a block
+    /// iterator that has already yielded an error stops yielding items, while
+    /// `position` was not advanced (the error returns before the update). A
+    /// caller that retries the same read then finds the iterator exhausted.
+    #[test]
+    fn read_bytes_reports_a_short_block_map() {
+        let fs = load_test_disk1();
+        let mut file = fs.open("/empty_file").unwrap();
+
+        // Claim a size the (empty) block map cannot satisfy.
+        file.inode.metadata.size_in_bytes = 4096;
+
+        let mut buf = [0u8; 512];
+        assert!(matches!(
+            file.read_bytes(&mut buf),
+            Err(Ext4Error::Corrupt(_))
+        ));
+        // And it stays an error rather than becoming a panic on retry.
+        assert!(matches!(
+            file.read_bytes(&mut buf),
+            Err(Ext4Error::Corrupt(_))
+        ));
     }
 }
