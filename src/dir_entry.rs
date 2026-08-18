@@ -333,6 +333,20 @@ impl DirEntry {
     }
 
     /// Get the entry's file type.
+    /// Number of the inode this entry points to, as recorded in the
+    /// directory entry itself.
+    ///
+    /// Unlike [`metadata`][Self::metadata], this needs no additional
+    /// read: the number is part of the directory data that has already
+    /// been loaded. That makes it usable where the inode itself cannot
+    /// be read -- a damaged filesystem -- and where only the identity of
+    /// an entry is needed, for example to detect a directory cycle while
+    /// walking a tree.
+    #[must_use]
+    pub fn inode(&self) -> u32 {
+        self.inode.get()
+    }
+
     pub fn file_type(&self) -> Result<FileType, Ext4Error> {
         // Currently this function cannot fail, but return a `Result` to
         // preserve that option for the future (may be needed for
@@ -606,5 +620,40 @@ mod tests {
 
         let name = DirEntryName([0xc3, 0x28].as_slice());
         assert!(name.as_str().is_err());
+    }
+
+    #[test]
+    fn test_dir_entry_inode() {
+        let fs = crate::test_util::load_test_disk1();
+        let entries: Vec<_> = fs
+            .read_dir("/")
+            .unwrap()
+            .map(|entry| entry.unwrap())
+            .collect();
+
+        let inode_of = |name: &str| -> u32 {
+            entries
+                .iter()
+                .find(|entry| entry.file_name().as_str().unwrap() == name)
+                .unwrap()
+                .inode()
+        };
+
+        // The root directory is always inode 2, and its "." entry points at
+        // itself. The root's parent is the root, so ".." matches too.
+        assert_eq!(inode_of("."), 2);
+        assert_eq!(inode_of(".."), 2);
+
+        // Every other entry points somewhere, and to something other than the
+        // root -- an inode of zero would mean an unused entry, which the
+        // iterator skips.
+        for entry in &entries {
+            let name = entry.file_name();
+            let name = name.as_str().unwrap();
+            assert_ne!(entry.inode(), 0, "{name}");
+            if name != "." && name != ".." {
+                assert_ne!(entry.inode(), 2, "{name}");
+            }
+        }
     }
 }
