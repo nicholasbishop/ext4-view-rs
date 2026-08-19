@@ -25,6 +25,16 @@ pub(crate) struct Superblock {
     pub(crate) inode_size: u16,
     pub(crate) inodes_per_block_group: NonZero<u32>,
     pub(crate) block_group_descriptor_size: u16,
+    /// First block of the filesystem's data: 1 when the block size is 1KiB, 0 otherwise.
+    pub(crate) first_data_block: u32,
+    pub(crate) blocks_per_group: u32,
+    /// With `META_BLOCK_GROUPS`, the first block-group-descriptor *block* stored in the
+    /// meta-block-group layout rather than in one run at the start of the filesystem. `None`
+    /// without the feature.
+    ///
+    /// Counted in descriptor blocks, not in block groups: e2fsprogs compares it against
+    /// `group / descriptors_per_block`.
+    pub(crate) first_meta_block_group: Option<u32>,
     pub(crate) num_block_groups: u32,
     pub(crate) incompatible_features: IncompatibleFeatures,
     pub(crate) read_only_compatible_features: ReadOnlyCompatibleFeatures,
@@ -55,6 +65,7 @@ impl Superblock {
         let s_blocks_per_group = read_u32le(bytes, 0x20);
         let s_inodes_per_group = read_u32le(bytes, 0x28);
         let s_magic = read_u16le(bytes, 0x38);
+        let s_first_meta_bg = read_u32le(bytes, 0x104);
         let s_inode_size = read_u16le(bytes, 0x58);
         let s_feature_compat = read_u32le(bytes, 0x5c);
         let s_feature_incompat = read_u32le(bytes, 0x60);
@@ -177,6 +188,15 @@ impl Superblock {
             inode_size: s_inode_size,
             inodes_per_block_group,
             block_group_descriptor_size,
+            first_data_block: s_first_data_block,
+            blocks_per_group: s_blocks_per_group,
+            first_meta_block_group: if incompatible_features
+                .contains(IncompatibleFeatures::META_BLOCK_GROUPS)
+            {
+                Some(s_first_meta_bg)
+            } else {
+                None
+            },
             num_block_groups,
             incompatible_features,
             read_only_compatible_features,
@@ -206,7 +226,6 @@ fn check_incompat_features(
     let required_features = IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY;
     let disallowed_features = IncompatibleFeatures::COMPRESSION
         | IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
-        | IncompatibleFeatures::META_BLOCK_GROUPS
         | IncompatibleFeatures::MULTIPLE_MOUNT_PROTECTION
         | IncompatibleFeatures::LARGE_EXTENDED_ATTRIBUTES_IN_INODES
         | IncompatibleFeatures::DATA_IN_DIR_ENTRY
@@ -244,6 +263,9 @@ mod tests {
                 inode_size: 256,
                 inodes_per_block_group: NonZero::new(16).unwrap(),
                 block_group_descriptor_size: 64,
+                first_data_block: 1,
+                blocks_per_group: 8192,
+                first_meta_block_group: None,
                 num_block_groups: 1,
                 incompatible_features:
                     IncompatibleFeatures::FILE_TYPE_IN_DIR_ENTRY
