@@ -7,6 +7,8 @@
   count.
 * Added `Metadata::atime`, `Metadata::ctime`, `Metadata::mtime`, and
   `Metadata::crtime`, along with the `Timestamp` type they return.
+* Fixed a symlink whose inode records an impossible size being allocated in
+  full before the target is read. `Ext4Error::PathTooLong` is returned instead.
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
 * Changed the `Debug` impls for stringish types (such as `DirEntryName`

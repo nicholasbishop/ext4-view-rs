@@ -13,6 +13,7 @@ use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
 use crate::metadata::Metadata;
 use crate::path::PathBuf;
+use crate::resolve::MAX_PATH_LEN;
 use crate::timestamp::Timestamp;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
@@ -338,6 +339,17 @@ impl Inode {
             return Err(CorruptKind::SymlinkTarget(self.index).into());
         }
 
+        // A target longer than the maximum path length cannot be resolved, and
+        // the size comes from the inode rather than from the blocks the inode
+        // actually has: nothing cross-checks it, so a corrupt or hostile
+        // filesystem can claim any 64-bit value. Without this check the read
+        // below allocates that much before the target is looked at, which for a
+        // large enough claim aborts the process instead of returning an error.
+        // Linux caps a symlink target at PATH_MAX for the same reason.
+        if self.metadata.size_in_bytes > MAX_PATH_LEN as u64 {
+            return Err(Ext4Error::PathTooLong);
+        }
+
         // Symlink targets of up to 59 bytes are stored inline. Longer
         // targets are stored as regular file data.
         const MAX_INLINE_SYMLINK_LEN: u64 = 59;
@@ -426,4 +438,42 @@ fn get_inode_location(
             .map_err(|_| err())?;
 
     Ok((block_index, offset_within_block))
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+    use crate::path::Path;
+    use crate::resolve::{FollowSymlinks, resolve_path};
+    use crate::test_util::load_test_disk1;
+
+    /// A symlink whose inode claims an impossible size is an error rather than
+    /// an allocation of that size.
+    #[test]
+    fn test_symlink_target_too_long() {
+        let fs = load_test_disk1();
+        let (mut inode, _) = resolve_path(
+            &fs,
+            Path::new("/dir1/dir2/sym_abs"),
+            FollowSymlinks::ExcludeFinalComponent,
+        )
+        .unwrap();
+        assert!(inode.metadata.is_symlink());
+
+        // Eight terabytes, which no symlink target can be and which the read
+        // path would otherwise allocate.
+        inode.metadata.size_in_bytes = 8 * 1024 * 1024 * 1024 * 1024;
+        assert!(matches!(
+            inode.symlink_target(&fs),
+            Err(Ext4Error::PathTooLong)
+        ));
+
+        // The boundary itself is still accepted, so the check does not narrow
+        // what the library can read.
+        inode.metadata.size_in_bytes = MAX_PATH_LEN as u64;
+        assert!(!matches!(
+            inode.symlink_target(&fs),
+            Err(Ext4Error::PathTooLong)
+        ));
+    }
 }
