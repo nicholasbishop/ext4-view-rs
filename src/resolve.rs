@@ -58,6 +58,11 @@ pub(crate) enum FollowSymlinks {
 /// This function panics if path resolution takes over 1000
 /// iterations. This should never occur in practice due to other
 /// restrictions, this is just a hedge against unforeseen bugs.
+/// Maximum path length in bytes. In general this library does not enforce a
+/// path length limit, but during path resolution the length can grow quite a
+/// bit due to symlinks.
+pub(crate) const MAX_PATH_LEN: usize = 4096;
+
 pub(crate) fn resolve_path(
     fs: &Ext4,
     path: Path<'_>,
@@ -66,10 +71,6 @@ pub(crate) fn resolve_path(
     // Maximum number of symlinks to resolve (for the whole path, not
     // individual components).
     const MAX_SYMLINKS: usize = 40;
-    // Maximum path length in bytes. In general this library does not
-    // enforce a path length limit, but during path resolution the
-    // length can grow quite a bit due to symlinks.
-    const MAX_PATH_LEN: usize = 4096;
     // Maximum number of iterations. This limit should never be reached
     // in practice, this is just to guard against unknown bugs that
     // could cause an infinite loop.
