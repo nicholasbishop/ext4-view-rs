@@ -27,6 +27,11 @@ pub(crate) enum FollowSymlinks {
     ExcludeFinalComponent,
 }
 
+/// Maximum path length in bytes. In general this library does not enforce a
+/// path length limit, but during path resolution the length can grow quite a
+/// bit due to symlinks.
+pub(crate) const MAX_PATH_LEN: usize = 4096;
+
 /// Resolve a path to get both the inode it points to and a
 /// canonicalized path representation:
 ///   * Path separators deduplicated ("a//" becomes "a/").
@@ -58,11 +63,6 @@ pub(crate) enum FollowSymlinks {
 /// This function panics if path resolution takes over 1000
 /// iterations. This should never occur in practice due to other
 /// restrictions, this is just a hedge against unforeseen bugs.
-/// Maximum path length in bytes. In general this library does not enforce a
-/// path length limit, but during path resolution the length can grow quite a
-/// bit due to symlinks.
-pub(crate) const MAX_PATH_LEN: usize = 4096;
-
 pub(crate) fn resolve_path(
     fs: &Ext4,
     path: Path<'_>,
