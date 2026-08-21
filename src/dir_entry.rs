@@ -622,6 +622,9 @@ mod tests {
         assert!(name.as_str().is_err());
     }
 
+    // `test_util` loads a real file system image from disk, which the crate
+    // only builds with `std`.
+    #[cfg(feature = "std")]
     #[test]
     fn test_dir_entry_inode() {
         let fs = crate::test_util::load_test_disk1();
