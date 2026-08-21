@@ -183,21 +183,26 @@ impl Inode {
         let mode = InodeMode::from_bits_retain(i_mode);
         let flags = InodeFlags::from_bits_retain(i_flags);
 
-        // The `i_blocks` field normally counts 512-byte sectors, and the
-        // upper 16 bits in `l_i_blocks_high` are only meaningful when the
-        // file system has the `huge_file` feature. When that feature is
-        // present *and* the inode has the `HUGE_FILE` flag, the field
-        // counts file system blocks instead of sectors.
-        let raw_blocks = if ext4.has_huge_files() {
-            u64_from_hilo(u32::from(l_i_blocks_high), i_blocks_lo)
+        // The `i_blocks` field normally counts 512-byte sectors. Both of the
+        // things that can change that depend on the `huge_file` feature:
+        // without it the upper 16 bits at 0x74 are `l_i_reserved` rather
+        // than a block count, and the `HUGE_FILE` inode flag means nothing.
+        // `ext4_inode_blocks` in the kernel puts both steps inside the same
+        // feature check, so a flag set without the feature does not scale
+        // anything here either.
+        let blocks = if ext4.has_huge_files() {
+            let combined =
+                u64_from_hilo(u32::from(l_i_blocks_high), i_blocks_lo);
+            if flags.contains(InodeFlags::HUGE_FILE) {
+                // With the flag the field counts file system blocks, so it
+                // is scaled to the 512-byte units the name promises.
+                combined
+                    .saturating_mul(ext4.0.superblock.block_size.to_u64() / 512)
+            } else {
+                combined
+            }
         } else {
             u64::from(i_blocks_lo)
-        };
-        let blocks = if flags.contains(InodeFlags::HUGE_FILE) {
-            raw_blocks
-                .saturating_mul(ext4.0.superblock.block_size.to_u64() / 512)
-        } else {
-            raw_blocks
         };
 
         let mut checksum_base =
