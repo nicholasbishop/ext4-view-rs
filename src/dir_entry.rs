@@ -332,7 +332,6 @@ impl DirEntry {
         self.path.join(self.name.as_bytes())
     }
 
-    /// Get the entry's file type.
     /// Number of the inode this entry points to, as recorded in the
     /// directory entry itself.
     ///
@@ -347,6 +346,7 @@ impl DirEntry {
         self.inode.get()
     }
 
+    /// Get the entry's file type.
     pub fn file_type(&self) -> Result<FileType, Ext4Error> {
         // Currently this function cannot fail, but return a `Result` to
         // preserve that option for the future (may be needed for
