@@ -51,7 +51,7 @@ pub fn download_big_filesystems() -> Result<()> {
     let board = "amd64-generic-public";
     let version = "R127-15907.0.0";
     let expected_sha256 =
-        "9e1b25a4e509c9fccd62d074d963e0fda718ef0e06403e9a0a0804eb90a53b31";
+        "9E1B25A4E509C9FCCD62D074D963E0FDA718EF0E06403E9A0A0804EB90A53B31";
 
     let url = format!(
         "https://storage.googleapis.com/{bucket}/{board}/{version}/{compressed_file_name}"
