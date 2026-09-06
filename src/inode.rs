@@ -11,7 +11,7 @@ use crate::block_index::FsBlockIndex;
 use crate::checksum::Checksum;
 use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
-use crate::metadata::Metadata;
+use crate::metadata::{Metadata, Timestamp};
 use crate::path::PathBuf;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
@@ -152,6 +152,9 @@ impl Inode {
         let i_mode = read_u16le(data, 0x0);
         let i_uid = read_u16le(data, 0x2);
         let i_size_lo = read_u32le(data, 0x4);
+        let i_atime = read_u32le(data, 0x8);
+        let i_ctime = read_u32le(data, 0xc);
+        let i_mtime = read_u32le(data, 0x10);
         let i_gid = read_u16le(data, 0x18);
         let i_flags = read_u32le(data, 0x20);
         // OK to unwrap: already checked the length.
@@ -171,6 +174,27 @@ impl Inode {
             // aren't used; arbitrarily set to zero.
             (0, 0)
         };
+
+        // The extra fields after the 128-byte inode, when the inode is
+        // large enough and `i_extra_isize` covers them.
+        let extra_end = if data.len() >= 0x82 {
+            usize::from(read_u16le(data, 0x80)).saturating_add(0x80)
+        } else {
+            0
+        };
+        let extra_u32 = |offset: usize| -> Option<u32> {
+            let end = offset.checked_add(4)?;
+            if end <= extra_end && end <= data.len() {
+                Some(read_u32le(data, offset))
+            } else {
+                None
+            }
+        };
+        let atime = Timestamp::from_raw(i_atime, extra_u32(0x8c));
+        let ctime = Timestamp::from_raw(i_ctime, extra_u32(0x84));
+        let mtime = Timestamp::from_raw(i_mtime, extra_u32(0x88));
+        let crtime = extra_u32(0x90)
+            .map(|seconds| Timestamp::from_raw(seconds, extra_u32(0x94)));
 
         let size_in_bytes = u64_from_hilo(i_size_high, i_size_lo);
         let uid = u32_from_hilo(l_i_uid_high, i_uid);
@@ -203,6 +227,10 @@ impl Inode {
                     file_type: FileType::try_from(mode).map_err(|_| {
                         CorruptKind::InodeFileType { inode: index, mode }
                     })?,
+                    atime,
+                    ctime,
+                    mtime,
+                    crtime,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Added `Metadata::accessed`, `changed`, `modified` and `created`, returning
+  the inode's timestamps as a new `Timestamp` type (seconds and
+  nanoseconds, with the extra epoch bits of large inodes applied).
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
 * Changed the `Debug` impls for stringish types (such as `DirEntryName`

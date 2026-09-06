@@ -164,7 +164,7 @@ pub use file_type::FileType;
 pub use format::BytesDisplay;
 pub use iters::read_dir::ReadDir;
 pub use label::Label;
-pub use metadata::Metadata;
+pub use metadata::{Metadata, Timestamp};
 pub use path::{Component, Components, Path, PathBuf, PathError};
 pub use reader::{Ext4Read, MemIoError};
 pub use uuid::Uuid;
