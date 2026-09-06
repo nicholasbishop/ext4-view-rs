@@ -9,8 +9,9 @@
 // Note: this file is used as a module in `bench.rs`, but is also used
 // via an `include!` in `xtask/uefibench`.
 
-use alloc::string::String;
-use alloc::{format, vec};
+use alloc::string::{String, ToString};
+use alloc::vec;
+use base16ct::HexDisplay;
 use ext4_view::{Ext4, Ext4Error, File, Path};
 use sha2::{Digest, Sha256};
 
@@ -21,7 +22,7 @@ use sha2::{Digest, Sha256};
 pub fn walk(fs: &Ext4) -> Result<String, Ext4Error> {
     let mut hash = Sha256::new();
     walk_impl(fs, Path::ROOT, &mut hash)?;
-    Ok(format!("{:x}", hash.finalize()))
+    Ok(HexDisplay(&hash.finalize()).to_string())
 }
 
 fn walk_impl(

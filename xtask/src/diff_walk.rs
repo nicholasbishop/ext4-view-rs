@@ -8,6 +8,7 @@
 
 use crate::{capture_cmd, run_cmd, sudo};
 use anyhow::{Result, bail};
+use base16ct::HexDisplay;
 use ext4_view::{Ext4, Ext4Error};
 use sha2::{Digest, Sha256};
 use std::env;
@@ -84,7 +85,7 @@ fn new_dir_entry(
         FileContent::Dir
     } else {
         let data = fs.read(&path)?;
-        let hash = format!("{:x}", Sha256::digest(data));
+        let hash = HexDisplay(&Sha256::digest(data)).to_string();
         FileContent::Regular(hash)
     };
     Ok(WalkDirEntry {
