@@ -9,6 +9,8 @@
 mod mount;
 
 use anyhow::{Context, Result, bail};
+use base16ct::HexDisplay;
+use digest_io::IoWrapper;
 use sha2::Digest;
 use sha2::Sha256;
 use std::fs::File;
@@ -25,10 +27,9 @@ pub use mount::{Mount, ReadOnly};
 /// loaded into memory all at once.
 pub fn calc_file_sha256(path: &Path) -> Result<String> {
     let mut file = File::open(path)?;
-    let mut hasher = Sha256::new();
+    let mut hasher = IoWrapper(Sha256::new());
     io::copy(&mut file, &mut hasher)?;
-    let hash = hasher.finalize();
-    Ok(format!("{hash:x}"))
+    Ok(HexDisplay(&hasher.0.finalize()).to_string())
 }
 
 fn cmd_to_string(cmd: &Command) -> String {
