@@ -117,6 +117,9 @@ impl Superblock {
 
         let block_group_descriptor_size =
             if incompatible_features.contains(IncompatibleFeatures::IS_64BIT) {
+                if s_desc_size < 64 {
+                    return Err(CorruptKind::BlockGroupDescriptorSize.into());
+                }
                 s_desc_size
             } else {
                 32
@@ -430,7 +433,6 @@ mod tests {
     /// crashing.
     #[cfg(feature = "std")]
     #[test]
-    #[should_panic]
     fn test_invalid_s_desc_size() {
         let mut data =
             crate::test_util::load_compressed_data("test_disk1.bin.zst");
@@ -452,6 +454,9 @@ mod tests {
         data[superblock_start + Superblock::S_DESC_SIZE_OFFSET..][..2]
             .copy_from_slice(&1u16.to_le_bytes());
 
-        crate::Ext4::load(Box::new(data)).unwrap();
+        assert_eq!(
+            crate::Ext4::load(Box::new(data)).unwrap_err(),
+            CorruptKind::BlockGroupDescriptorSize
+        );
     }
 }
