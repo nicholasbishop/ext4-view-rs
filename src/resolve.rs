@@ -70,9 +70,9 @@ pub(crate) fn resolve_path(
     // enforce a path length limit, but during path resolution the
     // length can grow quite a bit due to symlinks.
     const MAX_PATH_LEN: usize = 4096;
-    // Maximum number of iterations. This limit should never be reached
-    // in practice, this is just to guard against unknown bugs that
-    // could cause an infinite loop.
+    // Maximum number of iterations. This limit should never be reached in
+    // practice, this is just to guard against unknown bugs and malicious
+    // filesystems that could lead to an infinite loop.
     const MAX_ITERATIONS: usize = 1000;
 
     if !path.is_absolute() {
@@ -100,15 +100,14 @@ pub(crate) fn resolve_path(
     let mut index = 1;
 
     while index < path.len() {
-        // Guard against infinite loops. Max iterations should never be
-        // reachable in practice due to the other restrictions
-        // (MAX_SYMLINKS and MAX_PATH_LEN), so panic rather than
-        // returning an error.
-        //
         // OK to unwrap: never exceeds `MAX_ITERATIONS`, which is much
         // less than `usize::MAX`.
         num_iterations = num_iterations.checked_add(1).unwrap();
-        assert!(num_iterations <= MAX_ITERATIONS);
+
+        // Guard against infinite loops due to bugs or malicious file systems.
+        if num_iterations > MAX_ITERATIONS {
+            return Err(Ext4Error::PathTooLong);
+        }
 
         // Find the end of the component. This is either the next '/',
         // or the end of the path.
