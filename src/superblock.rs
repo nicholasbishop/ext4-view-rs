@@ -39,6 +39,9 @@ impl Superblock {
     /// Size (in bytes) of the superblock on disk.
     pub(crate) const SIZE_IN_BYTES_ON_DISK: usize = 1024;
 
+    const S_FEATURE_RO_COMPAT_OFFSET: usize = 0x64;
+    const S_DESC_SIZE_OFFSET: usize = 0xfe;
+
     /// Construct `Superblock` from bytes.
     ///
     /// # Panics
@@ -58,7 +61,8 @@ impl Superblock {
         let s_inode_size = read_u16le(bytes, 0x58);
         let s_feature_compat = read_u32le(bytes, 0x5c);
         let s_feature_incompat = read_u32le(bytes, 0x60);
-        let s_feature_ro_compat = read_u32le(bytes, 0x64);
+        let s_feature_ro_compat =
+            read_u32le(bytes, Self::S_FEATURE_RO_COMPAT_OFFSET);
         let s_uuid = &bytes[0x68..0x68 + 16];
         let s_volume_name = &bytes[0x78..0x78 + 16];
         let s_journal_inum = read_u32le(bytes, 0xe0);
@@ -69,7 +73,7 @@ impl Superblock {
             read_u32le(bytes, S_HASH_SEED_OFFSET + 8),
             read_u32le(bytes, S_HASH_SEED_OFFSET + 12),
         ];
-        let s_desc_size = read_u16le(bytes, 0xfe);
+        let s_desc_size = read_u16le(bytes, Self::S_DESC_SIZE_OFFSET);
         let s_blocks_count_hi = read_u32le(bytes, 0x150);
         let s_checksum_seed = read_u32le(bytes, 0x270);
         const S_CHECKSUM_OFFSET: usize = 0x3fc;
@@ -420,5 +424,34 @@ mod tests {
                 IncompatibleFeatures::SEPARATE_JOURNAL_DEVICE
             )
         );
+    }
+
+    /// Test that an invalid `s_desc_size` produces an error rather than
+    /// crashing.
+    #[cfg(feature = "std")]
+    #[test]
+    #[should_panic]
+    fn test_invalid_s_desc_size() {
+        let mut data =
+            crate::test_util::load_compressed_data("test_disk1.bin.zst");
+        let superblock_start = 1024;
+
+        // Turn off checksums to make the filesystem easier to modify.
+        let mut s_feature_ro_compat = u32::from_le_bytes(
+            data[superblock_start + Superblock::S_FEATURE_RO_COMPAT_OFFSET..]
+                [..4]
+                .try_into()
+                .unwrap(),
+        );
+        s_feature_ro_compat &=
+            !ReadOnlyCompatibleFeatures::METADATA_CHECKSUMS.bits();
+        data[superblock_start + Superblock::S_FEATURE_RO_COMPAT_OFFSET..][..4]
+            .copy_from_slice(&s_feature_ro_compat.to_le_bytes());
+
+        // Set `s_desc_size`.
+        data[superblock_start + Superblock::S_DESC_SIZE_OFFSET..][..2]
+            .copy_from_slice(&1u16.to_le_bytes());
+
+        crate::Ext4::load(Box::new(data)).unwrap();
     }
 }
