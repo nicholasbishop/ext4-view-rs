@@ -203,6 +203,9 @@ pub(crate) enum CorruptKind {
     /// The number of inodes per block group is zero.
     InodesPerBlockGroup,
 
+    /// The block group descriptor size in the superblock is invalid.
+    BlockGroupDescriptorSize,
+
     /// The number of blocks per group is zero.
     BlocksPerGroup,
 
@@ -397,6 +400,9 @@ impl Display for CorruptKind {
             Self::TooManyBlockGroups => write!(f, "too many block groups"),
             Self::InodesPerBlockGroup => {
                 write!(f, "inodes per block group is zero")
+            }
+            Self::BlockGroupDescriptorSize => {
+                write!(f, "invalid block group descriptor size")
             }
             Self::BlocksPerGroup => {
                 write!(f, "blocks per group is zero")
