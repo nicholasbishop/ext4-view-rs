@@ -8,6 +8,7 @@
 
 use crate::file_type::FileType;
 use crate::inode::InodeMode;
+use crate::timestamp::Timestamp;
 
 /// Metadata information about a file.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -26,6 +27,19 @@ pub struct Metadata {
 
     /// Owner group ID.
     pub(crate) gid: u32,
+
+    /// Last access time.
+    pub(crate) atime: Timestamp,
+
+    /// Last inode change time.
+    pub(crate) ctime: Timestamp,
+
+    /// Last data modification time.
+    pub(crate) mtime: Timestamp,
+
+    /// Creation time.
+    /// Only present if inode is large enough.
+    pub(crate) crtime: Option<Timestamp>,
 }
 
 impl Metadata {
@@ -90,5 +104,23 @@ impl Metadata {
     #[must_use]
     pub fn gid(&self) -> u32 {
         self.gid
+    }
+
+    /// Last access time.
+    #[must_use]
+    pub fn accessed(&self) -> Timestamp {
+        self.atime
+    }
+
+    /// Last data modification time.
+    #[must_use]
+    pub fn modified(&self) -> Timestamp {
+        self.mtime
+    }
+
+    /// Creation time.
+    #[must_use]
+    pub fn created(&self) -> Option<Timestamp> {
+        self.crtime
     }
 }

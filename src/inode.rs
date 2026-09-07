@@ -13,6 +13,7 @@ use crate::error::{CorruptKind, Ext4Error};
 use crate::file_type::FileType;
 use crate::metadata::Metadata;
 use crate::path::PathBuf;
+use crate::timestamp::Timestamp;
 use crate::util::{
     read_u16le, read_u32le, u32_from_hilo, u64_from_hilo, usize_from_u32,
 };
@@ -118,6 +119,11 @@ impl Inode {
     const INLINE_DATA_LEN: usize = 60;
     const L_I_CHECKSUM_LO_OFFSET: usize = 0x74 + 0x8;
     const I_CHECKSUM_HI_OFFSET: usize = 0x82;
+    const I_CTIME_EXTRA_OFFSET: usize = 0x84;
+    const I_MTIME_EXTRA_OFFSET: usize = 0x88;
+    const I_ATIME_EXTRA_OFFSET: usize = 0x8c;
+    const I_CRTIME_OFFSET: usize = 0x90;
+    const I_CRTIME_EXTRA_OFFSET: usize = 0x94;
 
     /// Load an inode from `bytes`.
     ///
@@ -152,6 +158,9 @@ impl Inode {
         let i_mode = read_u16le(data, 0x0);
         let i_uid = read_u16le(data, 0x2);
         let i_size_lo = read_u32le(data, 0x4);
+        let i_atime = read_u32le(data, 0x8);
+        let i_ctime = read_u32le(data, 0xc);
+        let i_mtime = read_u32le(data, 0x10);
         let i_gid = read_u16le(data, 0x18);
         let i_flags = read_u32le(data, 0x20);
         // OK to unwrap: already checked the length.
@@ -171,6 +180,35 @@ impl Inode {
             // aren't used; arbitrarily set to zero.
             (0, 0)
         };
+
+        // Extra timestamps fields & creation time if inode large enough.
+        let (i_atime_extra, i_ctime_extra, i_mtime_extra, crtime) = if data
+            .len()
+            >= Self::I_CRTIME_EXTRA_OFFSET + 4
+        {
+            let i_atime_extra = read_u32le(data, Self::I_ATIME_EXTRA_OFFSET);
+            let i_ctime_extra = read_u32le(data, Self::I_CTIME_EXTRA_OFFSET);
+            let i_mtime_extra = read_u32le(data, Self::I_MTIME_EXTRA_OFFSET);
+            let i_crtime = read_u32le(data, Self::I_CRTIME_OFFSET);
+            let i_crtime_extra = read_u32le(data, Self::I_CRTIME_EXTRA_OFFSET);
+            let crtime = Timestamp::from_raw(i_crtime, Some(i_crtime_extra))
+                .map_err(|_| CorruptKind::InodeTimestamp { inode: index })?;
+            (
+                Some(i_atime_extra),
+                Some(i_ctime_extra),
+                Some(i_mtime_extra),
+                Some(crtime),
+            )
+        } else {
+            (None, None, None, None)
+        };
+
+        let atime = Timestamp::from_raw(i_atime, i_atime_extra)
+            .map_err(|_| CorruptKind::InodeTimestamp { inode: index })?;
+        let ctime = Timestamp::from_raw(i_ctime, i_ctime_extra)
+            .map_err(|_| CorruptKind::InodeTimestamp { inode: index })?;
+        let mtime = Timestamp::from_raw(i_mtime, i_mtime_extra)
+            .map_err(|_| CorruptKind::InodeTimestamp { inode: index })?;
 
         let size_in_bytes = u64_from_hilo(i_size_high, i_size_lo);
         let uid = u32_from_hilo(l_i_uid_high, i_uid);
@@ -203,6 +241,10 @@ impl Inode {
                     file_type: FileType::try_from(mode).map_err(|_| {
                         CorruptKind::InodeFileType { inode: index, mode }
                     })?,
+                    atime,
+                    ctime,
+                    mtime,
+                    crtime,
                 },
                 flags: InodeFlags::from_bits_retain(i_flags),
                 checksum_base,
