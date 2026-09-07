@@ -132,6 +132,7 @@ mod path;
 mod reader;
 mod resolve;
 mod superblock;
+mod timestamp;
 mod util;
 mod uuid;
 
@@ -167,6 +168,7 @@ pub use label::Label;
 pub use metadata::Metadata;
 pub use path::{Component, Components, Path, PathBuf, PathError};
 pub use reader::{Ext4Read, MemIoError};
+pub use timestamp::Timestamp;
 pub use uuid::Uuid;
 
 struct Ext4Inner {

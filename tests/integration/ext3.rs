@@ -34,3 +34,14 @@ fn test_tea_htree() {
         assert_eq!(fs.read_to_string(&medium_dir.join(&i)).unwrap(), i);
     }
 }
+
+#[test]
+fn test_timestamps() {
+    let fs = load_ext3();
+    let metadata = fs.metadata("/medium_dir/42").unwrap();
+    assert_eq!(metadata.accessed().seconds(), 1765162262);
+    assert_eq!(metadata.accessed().nanoseconds(), 0);
+    assert_eq!(metadata.modified().seconds(), 1765162262);
+    assert_eq!(metadata.modified().nanoseconds(), 0);
+    assert_eq!(metadata.created(), None);
+}

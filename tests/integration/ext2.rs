@@ -47,3 +47,15 @@ fn test_read_file_with_holes() {
 
     assert_eq!(fs.read("/holes").unwrap(), expected_holes_data());
 }
+
+#[test]
+fn test_timestamps() {
+    let fs = load_ext2();
+    let metadata = fs.metadata("/big_file").unwrap();
+    assert_eq!(metadata.accessed().seconds(), 1735776533);
+    assert_eq!(metadata.accessed().nanoseconds(), 928309932);
+    assert_eq!(metadata.modified().seconds(), 1735776533);
+    assert_eq!(metadata.modified().nanoseconds(), 929309821);
+    assert_eq!(metadata.created().unwrap().seconds(), 1735776533);
+    assert_eq!(metadata.created().unwrap().nanoseconds(), 928309932);
+}

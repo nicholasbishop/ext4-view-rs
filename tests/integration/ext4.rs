@@ -300,6 +300,19 @@ fn test_metadata_uid_gid() {
 }
 
 #[test]
+fn test_metadata_timestamps() {
+    let fs = load_test_disk1();
+
+    let metadata = fs.metadata("/owner_file").unwrap();
+    assert_eq!(metadata.accessed().seconds(), 1736997889);
+    assert_eq!(metadata.accessed().nanoseconds(), 521951155);
+    assert_eq!(metadata.modified().seconds(), 1736997889);
+    assert_eq!(metadata.modified().nanoseconds(), 521951155);
+    assert_eq!(metadata.created().unwrap().seconds(), 1736997889);
+    assert_eq!(metadata.created().unwrap().nanoseconds(), 521951155);
+}
+
+#[test]
 fn test_direntry_debug() {
     let fs = load_test_disk1();
     let entry = fs
