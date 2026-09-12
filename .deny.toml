@@ -31,5 +31,6 @@ license-files = [
 multiple-versions = "deny"
 skip-tree = [
     { name = "getrandom", version = "0.*" },
+    { name = "syn", version = "2.*" },
     { name = "windows-sys", version = "0.*" },
 ]
