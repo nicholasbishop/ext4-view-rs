@@ -9,7 +9,7 @@
 * Changed the `Debug` impl for `DirEntry` to just show the path,
   matching `std` behavior.
 * Added support for inode timestamps with a new `Timestamp` type.
-* Fixed some panics when loading corrupt file systems.
+* Fixed some panics and infinite loops when loading corrupt file systems.
 
 ## 0.9.3
 
