@@ -234,6 +234,16 @@ impl Extents {
             let child_header =
                 NodeHeader::from_bytes(&child_header, self.inode)?;
 
+            // OK to unwrap: item.depth is greater than zero in this branch.
+            let expected_child_depth = item.depth.checked_sub(1).unwrap();
+            // Check that the child's depth is one less than the current
+            // node. In combination with the fact that the depth cannot be less
+            // than zero, this prevents a corrupt filesystem from causing an
+            // infinite loop in this iterator.
+            if child_header.depth != expected_child_depth {
+                return Err(CorruptKind::ExtentDepth(self.inode).into());
+            }
+
             // The checksum is written in the four bytes directly after
             // the node.
             let checksum_offset = child_header.checksum_offset();
