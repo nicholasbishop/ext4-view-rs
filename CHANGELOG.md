@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
 * MSRV increased to `1.85`.
 * Improved error messages for various directory entry corruption errors.
