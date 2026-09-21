@@ -10,7 +10,7 @@ autotests = false
 base16ct.workspace = true
 ext4-view = { path = "../.." }
 sha2.workspace = true
-uefi = { version = "0.40.0", features = ["alloc"] }
+uefi = { version = "0.41.0", features = ["alloc"] }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-uefi = { version = "0.40.0", features = ["global_allocator", "panic_handler"] }
+uefi = { version = "0.41.0", features = ["global_allocator", "panic_handler"] }
