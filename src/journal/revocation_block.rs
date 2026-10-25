@@ -48,30 +48,29 @@ pub(super) fn read_revocation_block_table(
     // size will need to be conditionally set to either 4 or 8.
     const BLOCK_INDEX_SIZE_IN_BYTES: usize = 8;
 
-    // Skip past the block header bytes, and remove the trailing
-    // checksum bytes.
-    let data = &block[JournalBlockHeader::SIZE..
-               // OK to unwrap: minimum block length is 1024.
-               block.len().checked_sub(4).unwrap()];
+    const HEADER_SIZE: usize = JournalBlockHeader::SIZE + size_of::<u32>();
 
-    // Get the size (in bytes) of the block-index array.
-    let num_bytes = usize_from_u32(read_u32be(data, 0));
-
-    // Ensure that the table size is an even multiple of the index size.
+    // r_count includes the common header and the size field, but not
+    // the trailing checksum or padding.
+    let used_bytes =
+        usize_from_u32(read_u32be(block, JournalBlockHeader::SIZE));
+    let num_bytes = used_bytes.checked_sub(HEADER_SIZE).ok_or(
+        CorruptKind::JournalRevocationBlockInvalidTableSize(used_bytes),
+    )?;
     if num_bytes % BLOCK_INDEX_SIZE_IN_BYTES != 0 {
         return Err(CorruptKind::JournalRevocationBlockInvalidTableSize(
-            num_bytes,
+            used_bytes,
         )
         .into());
     }
 
-    // Skip past the size field.
-    let data = &data[size_of::<u32>()..];
-
-    // Ensure that the table size fits within the block.
-    let mut data = data.get(..num_bytes).ok_or(
-        CorruptKind::JournalRevocationBlockInvalidTableSize(num_bytes),
-    )?;
+    // OK to unwrap: minimum block length is 1024.
+    let checksum_offset = block.len().checked_sub(4).unwrap();
+    let mut data = block[..checksum_offset]
+        .get(HEADER_SIZE..used_bytes)
+        .ok_or(CorruptKind::JournalRevocationBlockInvalidTableSize(
+            used_bytes,
+        ))?;
 
     // Read each entry and append to `table`.
     while !data.is_empty() {
@@ -99,6 +98,8 @@ mod tests {
     fn test_validate_revocation_block_checksum() {
         let superblock = JournalSuperblock {
             block_size: 1024,
+            max_len: 1024,
+            first_block: 1,
             sequence: 0,
             start_block: 0,
             uuid: Uuid([0; 16]),
@@ -122,8 +123,8 @@ mod tests {
         // Add header data (all zeros since only the length matters for this test).
         block.extend([0; JournalBlockHeader::SIZE]);
 
-        // Add size field (three 8-byte entries).
-        block.extend(24u32.to_be_bytes());
+        // Add total used size (16-byte header plus three 8-byte entries).
+        block.extend(40u32.to_be_bytes());
 
         // Add three entries.
         block.extend(100u64.to_be_bytes());
@@ -148,33 +149,53 @@ mod tests {
         assert_eq!(table, [100, 101, 102]);
     }
 
-    /// Test that `read_revocation_block_table` rejects a table size
-    /// that is not an even multiple of the table entry size.
+    /// A full ordinary record must exclude both padding and checksum.
     #[test]
-    fn test_read_revocation_block_table_uneven_size() {
-        let mut block = create_test_revocation_block();
-        block[JournalBlockHeader::SIZE
-            ..JournalBlockHeader::SIZE + size_of::<u32>()]
-            .copy_from_slice(&7u32.to_be_bytes());
-        let mut table = Vec::new();
-        assert_eq!(
-            read_revocation_block_table(&block, &mut table).unwrap_err(),
-            CorruptKind::JournalRevocationBlockInvalidTableSize(7)
-        );
+    fn test_read_revocation_block_table_full_record() {
+        for block_size in [1024, 4096] {
+            let mut block = vec![0xff; block_size];
+            let count = (block_size - 16 - 4) / 8;
+            let used_bytes = 16 + count * 8;
+            block[12..16].copy_from_slice(
+                &u32::try_from(used_bytes).unwrap().to_be_bytes(),
+            );
+            let expected: Vec<_> =
+                (1..=u64::try_from(count).unwrap()).collect();
+            for (entry, index) in
+                block[16..used_bytes].chunks_exact_mut(8).zip(&expected)
+            {
+                entry.copy_from_slice(&index.to_be_bytes());
+            }
+            let mut table = Vec::new();
+            read_revocation_block_table(&block, &mut table).unwrap();
+            assert_eq!(table, expected);
+        }
     }
 
-    /// Test that `read_revocation_block_table` rejects a table size
-    /// that is bigger than the available space in the block.
     #[test]
-    fn test_read_revocation_block_table_size_too_large() {
+    fn test_read_revocation_block_table_empty() {
         let mut block = create_test_revocation_block();
-        block[JournalBlockHeader::SIZE
-            ..JournalBlockHeader::SIZE + size_of::<u32>()]
-            .copy_from_slice(&1008u32.to_be_bytes());
-        let mut table = Vec::new();
-        assert_eq!(
-            read_revocation_block_table(&block, &mut table).unwrap_err(),
-            CorruptKind::JournalRevocationBlockInvalidTableSize(1008)
-        );
+        block[12..16].copy_from_slice(&16u32.to_be_bytes());
+        let mut table = vec![77];
+        read_revocation_block_table(&block, &mut table).unwrap();
+        assert_eq!(table, [77]);
+    }
+
+    /// Reject undersized headers, partial entries and tables overlapping
+    /// the checksum or extending beyond the block, without appending data.
+    #[test]
+    fn test_read_revocation_block_table_invalid_size() {
+        for used_bytes in [0u32, 8, 15, 17, 23, 1024, 1032, u32::MAX] {
+            let mut block = create_test_revocation_block();
+            block[12..16].copy_from_slice(&used_bytes.to_be_bytes());
+            let mut table = vec![77];
+            assert_eq!(
+                read_revocation_block_table(&block, &mut table).unwrap_err(),
+                CorruptKind::JournalRevocationBlockInvalidTableSize(
+                    usize_from_u32(used_bytes)
+                )
+            );
+            assert_eq!(table, [77]);
+        }
     }
 }

@@ -25,6 +25,8 @@ const CHECKSUM_TYPE_CRC32C: u8 = 4;
 
 // Field offsets within the superblock.
 const SUPERBLOCK_BLOCKSIZE_OFFSET: usize = 0xc;
+const SUPERBLOCK_MAXLEN_OFFSET: usize = 0x10;
+const SUPERBLOCK_FIRST_OFFSET: usize = 0x14;
 const SUPERBLOCK_SEQUENCE_OFFSET: usize = 0x18;
 const SUPERBLOCK_START_OFFSET: usize = 0x1c;
 const SUPERBLOCK_FEATURE_INCOMPAT_OFFSET: usize = 0x28;
@@ -46,6 +48,12 @@ pub(super) struct JournalSuperblock {
     /// Size in bytes of journal blocks. This must be the same block
     /// size as the main filesystem.
     pub(super) block_size: u32,
+
+    /// Exclusive end of the circular journal, relative to its superblock.
+    pub(super) max_len: u32,
+
+    /// First usable block of the circular journal, excluding its superblock.
+    pub(super) first_block: u32,
 
     /// Sequence number of the first journal commit to apply.
     pub(super) sequence: u32,
@@ -88,6 +96,12 @@ impl JournalSuperblock {
         if superblock.block_size != fs.0.superblock.block_size {
             return Err(CorruptKind::JournalBlockSize.into());
         }
+        let journal_size = u64::from(superblock.max_len)
+            .checked_mul(u64::from(superblock.block_size))
+            .ok_or(CorruptKind::JournalSize)?;
+        if journal_size > journal_inode.metadata.size_in_bytes {
+            return Err(CorruptKind::JournalSize.into());
+        }
 
         Ok(superblock)
     }
@@ -114,6 +128,8 @@ impl JournalSuperblock {
         }
 
         let s_blocksize = read_u32be(bytes, SUPERBLOCK_BLOCKSIZE_OFFSET);
+        let s_maxlen = read_u32be(bytes, SUPERBLOCK_MAXLEN_OFFSET);
+        let s_first = read_u32be(bytes, SUPERBLOCK_FIRST_OFFSET);
         let s_sequence = read_u32be(bytes, SUPERBLOCK_SEQUENCE_OFFSET);
         let s_start = read_u32be(bytes, SUPERBLOCK_START_OFFSET);
         let s_feature_incompat =
@@ -145,8 +161,17 @@ impl JournalSuperblock {
         // OK to unwrap: `s_uuid` is always 16 bytes.
         let uuid = Uuid(s_uuid.try_into().unwrap());
 
+        if s_first == 0
+            || s_first >= s_maxlen
+            || (s_start != 0 && !(s_first..s_maxlen).contains(&s_start))
+        {
+            return Err(CorruptKind::JournalSize.into());
+        }
+
         Ok(Self {
             block_size: s_blocksize,
+            max_len: s_maxlen,
+            first_block: s_first,
             sequence: s_sequence,
             start_block: s_start,
             uuid,
@@ -212,6 +237,8 @@ mod tests {
             superblock,
             JournalSuperblock {
                 block_size: 4096,
+                max_len: 1024,
+                first_block: 1,
                 sequence: 3,
                 start_block: 289,
                 uuid: Uuid([
@@ -234,6 +261,8 @@ mod tests {
         write_u32be(&mut block, 4, 4);
         // Set block size.
         write_u32be(&mut block, SUPERBLOCK_BLOCKSIZE_OFFSET, 4096);
+        write_u32be(&mut block, SUPERBLOCK_MAXLEN_OFFSET, 1024);
+        write_u32be(&mut block, SUPERBLOCK_FIRST_OFFSET, 1);
         // Set sequence.
         write_u32be(&mut block, SUPERBLOCK_SEQUENCE_OFFSET, 123);
         // Set start block.
@@ -246,7 +275,13 @@ mod tests {
         // Set checksum type.
         block[SUPERBLOCK_CHECKSUM_TYPE_OFFSET] = CHECKSUM_TYPE_CRC32C;
         // Set checksum.
-        write_u32be(&mut block, SUPERBLOCK_CHECKSUM_OFFSET, 0x78a2_c32b);
+        let mut checksum = Checksum::new();
+        checksum.update(&block);
+        write_u32be(
+            &mut block,
+            SUPERBLOCK_CHECKSUM_OFFSET,
+            checksum.finalize(),
+        );
         block
     }
 
@@ -257,6 +292,8 @@ mod tests {
             JournalSuperblock::read_bytes(&block).unwrap(),
             JournalSuperblock {
                 block_size: 4096,
+                max_len: 1024,
+                first_block: 1,
                 sequence: 123,
                 start_block: 456,
                 uuid: Uuid([0xab; 16]),

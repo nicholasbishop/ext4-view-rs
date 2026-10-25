@@ -52,6 +52,8 @@ mod tests {
     fn test_validate_commit_block_checksum() {
         let superblock = JournalSuperblock {
             block_size: 1024,
+            max_len: 1024,
+            first_block: 1,
             sequence: 0,
             start_block: 0,
             uuid: Uuid([0; 16]),

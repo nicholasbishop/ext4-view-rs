@@ -25,7 +25,7 @@ use crate::util::usize_from_u32;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::iter::Skip;
+use core::iter::{Chain, Skip, Take};
 
 /// Map from a block somewhere in the filesystem to a block in the
 /// journal. Both the key and value are absolute block indices.
@@ -79,14 +79,13 @@ struct BlockMapLoader<'a> {
     uncommitted_block_map: BlockMap,
 
     /// Revoked blocks in the current transaction. When a commit block
-    /// is reached, any keys in `uncommitted_block_map` that are in this
-    /// revoked list will be deleted instead of committing them to
-    /// `block_map`.
+    /// is reached, these keys are removed from both `block_map` and
+    /// `uncommitted_block_map`.
     revoked_blocks: Vec<FsBlockIndex>,
 
     /// Iterator over blocks in the journal inode. At construction, the
     /// iterator is advanced to the journal start block.
-    journal_block_iter: Skip<FileBlocks>,
+    journal_block_iter: Chain<Take<Skip<FileBlocks>>, Take<Skip<FileBlocks>>>,
 
     /// Current block index.
     block_index: FsBlockIndex,
@@ -119,12 +118,28 @@ impl<'a> BlockMapLoader<'a> {
         superblock: &'a JournalSuperblock,
         journal_inode: &Inode,
     ) -> Result<Self, Ext4Error> {
-        // Get an iterator over the journal's block indices.
-        let journal_block_iter = FileBlocks::new(fs.clone(), journal_inode)?;
-
-        // Skip forward to the start block.
-        let journal_block_iter =
-            journal_block_iter.skip(usize_from_u32(superblock.start_block));
+        // Visit each usable journal block at most once, wrapping after the end.
+        // A zero start block denotes an empty journal.
+        let start = superblock.start_block;
+        let (tail_len, head_len) = if start == 0 {
+            (0, 0)
+        } else {
+            let tail_len = superblock
+                .max_len
+                .checked_sub(start)
+                .ok_or(CorruptKind::JournalSize)?;
+            let head_len = start
+                .checked_sub(superblock.first_block)
+                .ok_or(CorruptKind::JournalSize)?;
+            (tail_len, head_len)
+        };
+        let tail = FileBlocks::new(fs.clone(), journal_inode)?
+            .skip(usize_from_u32(start))
+            .take(usize_from_u32(tail_len));
+        let head = FileBlocks::new(fs.clone(), journal_inode)?
+            .skip(usize_from_u32(superblock.first_block))
+            .take(usize_from_u32(head_len));
+        let journal_block_iter = tail.chain(head);
 
         Ok(Self {
             fs,
@@ -230,11 +245,12 @@ impl<'a> BlockMapLoader<'a> {
     fn process_commit_block(&mut self) -> Result<(), Ext4Error> {
         validate_commit_block_checksum(self.superblock, &self.block)?;
 
-        // Remove any revoked blocks from uncommitted blocks.
+        // A committed revocation also invalidates older committed mappings.
         for block_index in &self.revoked_blocks {
             // Don't check the `remove` return value, as a revoked block
             // wasn't necessarily reused later in the transaction.
             self.uncommitted_block_map.remove(block_index);
+            self.block_map.remove(block_index);
         }
         self.revoked_blocks.clear();
 

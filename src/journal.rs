@@ -13,6 +13,9 @@ mod descriptor_block;
 mod revocation_block;
 mod superblock;
 
+#[cfg(all(test, feature = "std"))]
+mod recovery_tests;
+
 use crate::Ext4;
 use crate::block_index::FsBlockIndex;
 use crate::error::Ext4Error;
