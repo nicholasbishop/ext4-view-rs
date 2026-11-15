@@ -12,7 +12,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
-use core::str::{self, Utf8Error};
+use core::str::{self, FromStr, Utf8Error};
 
 /// Error returned when [`Path`] or [`PathBuf`] construction fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -382,6 +382,14 @@ impl AsRef<[u8]> for PathBuf {
 impl Debug for PathBuf {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.as_path().fmt(f)
+    }
+}
+
+impl FromStr for PathBuf {
+    type Err = PathError;
+
+    fn from_str(s: &str) -> Result<Self, PathError> {
+        Self::try_from(s.as_bytes().to_vec())
     }
 }
 

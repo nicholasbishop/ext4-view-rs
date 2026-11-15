@@ -21,6 +21,7 @@ fn test_path_construction() {
     assert_eq!(Path::new(src), expected_path);
     assert_eq!(PathBuf::try_from(src).unwrap(), expected_path);
     assert_eq!(PathBuf::new(src), expected_path);
+    assert_eq!(src.parse::<PathBuf>().unwrap(), expected_path);
 
     // Successful construction from a `&String`.
     let src: &String = &"abc".to_owned();
