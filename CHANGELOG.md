@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Added `FromStr` impl for `PathBuf`.
+
 ## 1.0.0
 
 * MSRV increased to `1.85`.
